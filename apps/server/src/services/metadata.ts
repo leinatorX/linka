@@ -50,6 +50,10 @@ function absolutize(baseUrl: string, value: string): string {
   }
 }
 
+function domainIconUrl(domain: string): string {
+  return `https://icons.duckduckgo.com/ip3/${domain}.ico`;
+}
+
 function extractTextSample(html: string): string {
   return decodeHtml(
     html
@@ -84,11 +88,12 @@ export async function fetchPageMetadata(url: string): Promise<PageMetadata> {
     const favicon = html.match(/<link[^>]+(?:rel=["'][^"']*icon[^"']*["'][^>]+href=["']([^"']+)["']|href=["']([^"']+)["'][^>]+rel=["'][^"']*icon[^"']*["'])[^>]*>/i);
     const coverImage = pickMeta(html, ["og:image", "twitter:image"]);
     const domain = getDomain(url);
+    const faviconUrl = absolutize(url, favicon?.[1] ?? favicon?.[2] ?? "") || domainIconUrl(domain);
 
     return {
       title: title || domain,
       description,
-      faviconUrl: absolutize(url, favicon?.[1] ?? favicon?.[2] ?? "/favicon.ico"),
+      faviconUrl,
       coverImageUrl: absolutize(url, coverImage),
       domain,
       textSample: extractTextSample(html)

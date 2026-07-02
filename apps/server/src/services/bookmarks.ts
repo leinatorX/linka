@@ -1,19 +1,20 @@
 import crypto from "node:crypto";
 import { db, type BookmarkRecord, toBookmark } from "../db.js";
 import { classifyBookmark } from "./ai.js";
+import { ensureCategory, getCategoryNames, normalizeCategoryName } from "./categories.js";
 import { fetchPageMetadata } from "./metadata.js";
 import { getDomain, normalizeUrl } from "../utils/url.js";
 
 export interface BookmarkInput {
   url: string;
   title?: string;
+  category?: string;
   source?: string;
 }
 
 export interface BookmarkQuery {
   q?: string;
   category?: string;
-  tag?: string;
   archived?: boolean;
 }
 
@@ -23,10 +24,10 @@ const selectByNormalizedUrl = db.prepare("SELECT * FROM bookmarks WHERE normaliz
 const insertBookmark = db.prepare(`
   INSERT INTO bookmarks (
     id, url, normalized_url, title, description, summary, domain, favicon_url,
-    cover_image_url, category, tags_json, pinned, archived, source, created_at, updated_at
+    cover_image_url, category, pinned, archived, source, created_at, updated_at
   ) VALUES (
     @id, @url, @normalized_url, @title, @description, @summary, @domain, @favicon_url,
-    @cover_image_url, @category, @tags_json, @pinned, @archived, @source, @created_at, @updated_at
+    @cover_image_url, @category, @pinned, @archived, @source, @created_at, @updated_at
   )
 `);
 const updateBookmarkRecord = db.prepare(`
@@ -34,9 +35,11 @@ const updateBookmarkRecord = db.prepare(`
   SET title = @title,
       summary = @summary,
       category = @category,
-      tags_json = @tags_json,
       pinned = @pinned,
       archived = @archived,
+      url = @url,
+      domain = @domain,
+      favicon_url = @favicon_url,
       updated_at = @updated_at
   WHERE id = @id
 `);
@@ -55,10 +58,6 @@ export function listBookmarks(query: BookmarkQuery = {}) {
     bookmarks = bookmarks.filter((bookmark) => bookmark.category === query.category);
   }
 
-  if (query.tag) {
-    bookmarks = bookmarks.filter((bookmark) => bookmark.tags.includes(query.tag as string));
-  }
-
   if (query.q) {
     const keyword = query.q.toLowerCase();
     bookmarks = bookmarks.filter((bookmark) => {
@@ -67,8 +66,7 @@ export function listBookmarks(query: BookmarkQuery = {}) {
         bookmark.description,
         bookmark.summary,
         bookmark.domain,
-        bookmark.category,
-        bookmark.tags.join(" ")
+        bookmark.category
       ].join(" ").toLowerCase().includes(keyword);
     });
   }
@@ -97,14 +95,16 @@ export async function createBookmark(input: BookmarkInput) {
     metadata = {
       title: input.title || domain,
       description: "",
-      faviconUrl: `https://www.google.com/s2/favicons?sz=64&domain=${domain}`,
+      faviconUrl: `https://icons.duckduckgo.com/ip3/${domain}.ico`,
       coverImageUrl: "",
       domain,
       textSample: ""
     };
   }
 
-  const ai = await classifyBookmark({ ...metadata, title: input.title || metadata.title });
+  const ai = await classifyBookmark({ ...metadata, title: input.title || metadata.title }, getCategoryNames());
+  const category = normalizeCategoryName(input.category || ai.category);
+  ensureCategory(category);
   const now = new Date().toISOString();
   const record: BookmarkRecord = {
     id: crypto.randomUUID(),
@@ -116,8 +116,7 @@ export async function createBookmark(input: BookmarkInput) {
     domain: metadata.domain,
     favicon_url: metadata.faviconUrl,
     cover_image_url: metadata.coverImageUrl,
-    category: ai.category,
-    tags_json: JSON.stringify(ai.tags),
+    category,
     pinned: 0,
     archived: 0,
     source: input.source || "web",
@@ -135,14 +134,27 @@ export function updateBookmark(id: string, patch: Record<string, unknown>) {
     return null;
   }
 
+  let nextUrl = current.url;
+  let nextDomain = current.domain;
+  if (typeof patch.url === "string" && patch.url.trim() !== "") {
+    nextUrl = patch.url.trim();
+    try {
+      nextDomain = new URL(nextUrl).hostname;
+    } catch {
+      // Ignore invalid URL formatting
+    }
+  }
+
   const next = {
     id,
     title: String(patch.title ?? current.title),
     summary: String(patch.summary ?? current.summary),
-    category: String(patch.category ?? current.category),
-    tags_json: JSON.stringify(Array.isArray(patch.tags) ? patch.tags.map(String) : current.tags),
+    category: normalizeCategoryName(String(patch.category ?? current.category)),
     pinned: typeof patch.pinned === "boolean" ? Number(patch.pinned) : Number(current.pinned),
     archived: typeof patch.archived === "boolean" ? Number(patch.archived) : Number(current.archived),
+    url: nextUrl,
+    domain: nextDomain,
+    favicon_url: String(patch.faviconUrl ?? current.faviconUrl),
     updated_at: new Date().toISOString()
   };
 

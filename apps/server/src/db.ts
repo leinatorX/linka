@@ -14,10 +14,18 @@ export interface BookmarkRecord {
   favicon_url: string;
   cover_image_url: string;
   category: string;
-  tags_json: string;
   pinned: 0 | 1;
   archived: 0 | 1;
   source: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CategoryRecord {
+  id: string;
+  name: string;
+  slug: string;
+  sort_order: number;
   created_at: string;
   updated_at: string;
 }
@@ -39,7 +47,6 @@ db.exec(`
     favicon_url TEXT NOT NULL DEFAULT '',
     cover_image_url TEXT NOT NULL DEFAULT '',
     category TEXT NOT NULL DEFAULT '未分类',
-    tags_json TEXT NOT NULL DEFAULT '[]',
     pinned INTEGER NOT NULL DEFAULT 0,
     archived INTEGER NOT NULL DEFAULT 0,
     source TEXT NOT NULL DEFAULT 'web',
@@ -50,6 +57,17 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_bookmarks_created_at ON bookmarks(created_at);
   CREATE INDEX IF NOT EXISTS idx_bookmarks_category ON bookmarks(category);
   CREATE INDEX IF NOT EXISTS idx_bookmarks_archived ON bookmarks(archived);
+
+  CREATE TABLE IF NOT EXISTS categories (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL UNIQUE,
+    slug TEXT NOT NULL UNIQUE,
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_categories_sort_order ON categories(sort_order);
 `);
 
 export function toBookmark(record: BookmarkRecord) {
@@ -64,7 +82,6 @@ export function toBookmark(record: BookmarkRecord) {
     faviconUrl: record.favicon_url,
     coverImageUrl: record.cover_image_url,
     category: record.category,
-    tags: JSON.parse(record.tags_json || "[]") as string[],
     pinned: Boolean(record.pinned),
     archived: Boolean(record.archived),
     source: record.source,

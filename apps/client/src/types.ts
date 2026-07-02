@@ -9,10 +9,18 @@ export interface Bookmark {
   faviconUrl: string;
   coverImageUrl: string;
   category: string;
-  tags: string[];
   pinned: boolean;
   archived: boolean;
   source: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Category {
+  id: string;
+  name: string;
+  slug: string;
+  sortOrder: number;
   createdAt: string;
   updatedAt: string;
 }

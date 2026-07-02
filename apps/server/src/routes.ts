@@ -2,16 +2,22 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { z } from "zod";
 import { config } from "./config.js";
 import { createBookmark, deleteBookmark, getBookmarkById, listBookmarks, updateBookmark } from "./services/bookmarks.js";
+import { createCategory, deleteCategory, listCategories, updateCategory } from "./services/categories.js";
 import { extractFirstUrl, isValidUrl } from "./utils/url.js";
 
 const createBookmarkSchema = z.object({
   url: z.string().url(),
   title: z.string().optional(),
+  category: z.string().optional(),
   source: z.string().optional()
 });
 
 const assistantSchema = z.object({
   message: z.string().min(1)
+});
+
+const categorySchema = z.object({
+  name: z.string().trim().min(1).max(32)
 });
 
 async function requireApiToken(request: FastifyRequest, reply: FastifyReply) {
@@ -40,10 +46,54 @@ export async function registerRoutes(app: FastifyInstance) {
       bookmarks: listBookmarks({
         q: query.q,
         category: query.category,
-        tag: query.tag,
         archived: query.archived === undefined ? undefined : query.archived === "true"
       })
     };
+  });
+
+  app.get("/api/categories", async () => ({
+    categories: listCategories()
+  }));
+
+  app.post("/api/categories", async (request, reply) => {
+    const payload = categorySchema.safeParse(request.body);
+    if (!payload.success) {
+      return reply.code(400).send({ message: "请输入有效的分类名称" });
+    }
+
+    try {
+      return reply.code(201).send({ category: createCategory(payload.data.name) });
+    } catch {
+      return reply.code(409).send({ message: "分类已存在" });
+    }
+  });
+
+  app.patch("/api/categories/:id", async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const payload = categorySchema.safeParse(request.body);
+    if (!payload.success) {
+      return reply.code(400).send({ message: "请输入有效的分类名称" });
+    }
+
+    try {
+      const category = updateCategory(id, payload.data.name);
+      if (!category) {
+        return reply.code(404).send({ message: "分类不存在或不可修改" });
+      }
+
+      return { category };
+    } catch {
+      return reply.code(409).send({ message: "分类已存在" });
+    }
+  });
+
+  app.delete("/api/categories/:id", async (request, reply) => {
+    const { id } = request.params as { id: string };
+    if (!deleteCategory(id)) {
+      return reply.code(404).send({ message: "分类不存在或不可删除" });
+    }
+
+    return { status: "deleted" };
   });
 
   app.post("/api/bookmarks", { preHandler: requireApiToken }, async (request, reply) => {

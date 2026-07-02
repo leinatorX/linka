@@ -5,16 +5,7 @@ export interface AiClassification {
   title: string;
   summary: string;
   category: string;
-  tags: string[];
   confidence: number;
-}
-
-function uniqueTags(tags: unknown): string[] {
-  if (!Array.isArray(tags)) {
-    return [];
-  }
-
-  return [...new Set(tags.map((tag) => String(tag).trim()).filter(Boolean))].slice(0, 6);
 }
 
 function inferCategory(metadata: PageMetadata): string {
@@ -38,30 +29,37 @@ function inferCategory(metadata: PageMetadata): string {
 
 function fallbackClassification(metadata: PageMetadata): AiClassification {
   const category = inferCategory(metadata);
-  const tags = [category, metadata.domain.split(".")[0], ...metadata.title.split(/\s+/).slice(0, 3)]
-    .map((tag) => tag.replace(/[^\p{L}\p{N}\u4e00-\u9fa5_-]/gu, ""))
-    .filter(Boolean)
-    .slice(0, 5);
 
   return {
     title: metadata.title,
     summary: metadata.description || metadata.textSample.slice(0, 120) || "已保存该网页，暂无可用摘要。",
     category,
-    tags: [...new Set(tags)],
     confidence: 0.45
   };
 }
 
-export async function classifyBookmark(metadata: PageMetadata): Promise<AiClassification> {
+function normalizeAiCategory(category: string, allowedCategories: string[]) {
+  const allowed = new Set(allowedCategories);
+  return allowed.has(category) ? category : "未分类";
+}
+
+export async function classifyBookmark(metadata: PageMetadata, allowedCategories: string[]): Promise<AiClassification> {
   if (!config.openaiApiKey) {
-    return fallbackClassification(metadata);
+    const fallback = fallbackClassification(metadata);
+    return {
+      ...fallback,
+      category: normalizeAiCategory(fallback.category, allowedCategories)
+    };
   }
 
+  const categoriesText = allowedCategories.join("、");
   const prompt = [
     "你是 Linka 的网页收藏整理助手。",
     "请根据网页信息生成简体中文整理结果，只返回 JSON，不要输出 Markdown。",
-    "JSON 字段必须包含 title、summary、category、tags、confidence。",
-    "summary 控制在一到三句话，tags 为 3 到 6 个短标签，不确定时 category 使用“未分类”。",
+    "JSON 字段必须包含 title、summary、category、confidence。",
+    "summary 控制在一到三句话。",
+    `category 必须且只能从这些分类中选择：${categoriesText}。`,
+    "不确定时 category 使用“未分类”。",
     "",
     `标题：${metadata.title}`,
     `域名：${metadata.domain}`,
@@ -98,11 +96,14 @@ export async function classifyBookmark(metadata: PageMetadata): Promise<AiClassi
     return {
       title: String(parsed.title || metadata.title),
       summary: String(parsed.summary || metadata.description || "已保存该网页。"),
-      category: String(parsed.category || "未分类"),
-      tags: uniqueTags(parsed.tags),
+      category: normalizeAiCategory(String(parsed.category || "未分类"), allowedCategories),
       confidence: Number(parsed.confidence ?? 0.7)
     };
   } catch {
-    return fallbackClassification(metadata);
+    const fallback = fallbackClassification(metadata);
+    return {
+      ...fallback,
+      category: normalizeAiCategory(fallback.category, allowedCategories)
+    };
   }
 }
