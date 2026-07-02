@@ -15,7 +15,8 @@ const selectedCategory = ref("全部");
 const showArchived = ref(false);
 const assistantInput = ref("");
 const assistantOpen = ref(false);
-const settingsTab = ref<"bookmark" | "categories" | "manage_bookmarks">("bookmark");
+const settingsTab = ref<"categories" | "manage_bookmarks">("manage_bookmarks");
+const showAddBookmarkModal = ref(false);
 const newCategoryName = ref("");
 const settingsBookmarkUrl = ref("");
 const settingsBookmarkTitle = ref("");
@@ -146,6 +147,9 @@ async function addBookmarkFromSettings() {
     settingsBookmarkCategory.value = "";
     settingsMessage.value = result.status === "exists" ? "这个链接已经收藏过了。" : `已添加，并归类到「${result.bookmark.category}」。`;
     await loadBookmarks();
+    if (result.status !== "exists") {
+      showAddBookmarkModal.value = false;
+    }
   } catch (error) {
     settingsMessage.value = error instanceof Error ? error.message : "添加失败";
   } finally {
@@ -380,10 +384,6 @@ onMounted(() => {
 
           <div class="settings-body">
             <nav class="settings-nav" aria-label="设置选项">
-              <button :class="{ active: settingsTab === 'bookmark' }" @click="settingsTab = 'bookmark'">
-                <Plus :size="18" />
-                <span>添加书签</span>
-              </button>
               <button :class="{ active: settingsTab === 'categories' }" @click="settingsTab = 'categories'">
                 <Settings :size="18" />
                 <span>分类管理</span>
@@ -394,40 +394,7 @@ onMounted(() => {
               </button>
             </nav>
 
-            <section v-if="settingsTab === 'bookmark'" class="settings-section">
-              <div class="section-title">
-                <h3>添加书签</h3>
-                <p>粘贴链接后，Linka 会抓取网页信息并自动选择分类。</p>
-              </div>
-
-              <div class="settings-form">
-                <label>
-                  <span>网页链接</span>
-                  <input v-model="settingsBookmarkUrl" placeholder="https://example.com" @keyup.enter="addBookmarkFromSettings" />
-                </label>
-                <label>
-                  <span>标题</span>
-                  <input v-model="settingsBookmarkTitle" placeholder="可选，不填则自动抓取" @keyup.enter="addBookmarkFromSettings" />
-                </label>
-                <label>
-                  <span>分类</span>
-                  <select v-model="settingsBookmarkCategory">
-                    <option value="">AI 自动选择</option>
-                    <option v-for="category in categories" :key="category.id" :value="category.name">
-                      {{ category.name }}
-                    </option>
-                  </select>
-                </label>
-                <button class="btn-primary settings-submit" :disabled="isSettingsSaving" @click="addBookmarkFromSettings">
-                  <Loader2 v-if="isSettingsSaving" class="spin" :size="18" />
-                  <Plus v-else :size="18" />
-                  <span>添加到 Linka</span>
-                </button>
-                <p v-if="settingsMessage" class="settings-message">{{ settingsMessage }}</p>
-              </div>
-            </section>
-
-            <section v-else-if="settingsTab === 'categories'" class="settings-section">
+            <section v-if="settingsTab === 'categories'" class="settings-section">
               <div class="section-title">
                 <h3>分类管理</h3>
                 <p>AI 会优先从这些分类中选择。删除分类后，相关书签会归入“未分类”。</p>
@@ -448,9 +415,14 @@ onMounted(() => {
             </section>
 
             <section v-else-if="settingsTab === 'manage_bookmarks'" class="settings-section">
-              <div class="section-title">
-                <h3>书签管理</h3>
-                <p>在此修改已收藏书签的名称、地址、图标和分类。</p>
+              <div class="section-title" style="display: flex; justify-content: space-between; align-items: flex-start;">
+                <div>
+                  <h3>书签管理</h3>
+                  <p>在此修改已收藏书签的名称、地址、图标和分类。</p>
+                </div>
+                <button class="btn-primary" @click="showAddBookmarkModal = true">
+                  <Plus :size="16" style="margin-right: 6px;" /> 添加书签
+                </button>
               </div>
 
               <div class="bookmark-manage-list">
@@ -494,6 +466,43 @@ onMounted(() => {
             </section>
           </div>
         </div>
+
+        <!-- Add Bookmark Modal -->
+        <transition name="fade">
+          <div class="modal-overlay" v-if="showAddBookmarkModal" @click.self="showAddBookmarkModal = false">
+            <div class="modal-card">
+              <header class="modal-header">
+                <h3>添加书签</h3>
+                <button class="btn-close" @click="showAddBookmarkModal = false"><X :size="20" /></button>
+              </header>
+              <div class="modal-body settings-form">
+                <label>
+                  <span>网页链接</span>
+                  <input v-model="settingsBookmarkUrl" placeholder="https://example.com" @keyup.enter="addBookmarkFromSettings" />
+                </label>
+                <label>
+                  <span>标题</span>
+                  <input v-model="settingsBookmarkTitle" placeholder="可选，不填则自动抓取" @keyup.enter="addBookmarkFromSettings" />
+                </label>
+                <label>
+                  <span>分类</span>
+                  <select v-model="settingsBookmarkCategory">
+                    <option value="">AI 自动选择</option>
+                    <option v-for="category in categories" :key="category.id" :value="category.name">
+                      {{ category.name }}
+                    </option>
+                  </select>
+                </label>
+                <button class="btn-primary settings-submit" style="margin-top: 16px;" :disabled="isSettingsSaving" @click="addBookmarkFromSettings">
+                  <Loader2 v-if="isSettingsSaving" class="spin" :size="18" />
+                  <Plus v-else :size="18" />
+                  <span>添加到 Linka</span>
+                </button>
+                <p v-if="settingsMessage" class="settings-message">{{ settingsMessage }}</p>
+              </div>
+            </div>
+          </div>
+        </transition>
     </section>
 
     <!-- AI Assistant -->
