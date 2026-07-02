@@ -1,6 +1,10 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from "vue";
-import { Archive, Bot, ExternalLink, Loader2, Pin, Plus, Search, Send, Trash2 } from "@lucide/vue";
+import { 
+  Archive, Bell, ChevronDown, ExternalLink, Link2, Loader2, 
+  MoreVertical, Pin, Plus, Search, Send, Settings, Trash2, X,
+  ArrowRight, Bot
+} from "@lucide/vue";
 import { createBookmark, deleteBookmark, listBookmarks, sendAssistantMessage, updateBookmark } from "./api";
 import type { AssistantResponse, Bookmark } from "./types";
 
@@ -10,6 +14,7 @@ const searchInput = ref("");
 const selectedCategory = ref("全部");
 const selectedTag = ref("全部");
 const assistantInput = ref("");
+const assistantOpen = ref(false);
 const assistantMessages = ref<Array<{ role: "user" | "assistant"; text: string; results?: Bookmark[] }>>([
   {
     role: "assistant",
@@ -20,10 +25,8 @@ const isLoading = ref(false);
 const isAssistantLoading = ref(false);
 const errorMessage = ref("");
 
-const categories = computed(() => ["全部", ...new Set(bookmarks.value.map((bookmark) => bookmark.category).filter(Boolean))]);
-const tags = computed(() => ["全部", ...new Set(bookmarks.value.flatMap((bookmark) => bookmark.tags))]);
+const categories = ref<string[]>(["全部"]);
 const visibleBookmarks = computed(() => bookmarks.value);
-const totalTags = computed(() => new Set(bookmarks.value.flatMap((bookmark) => bookmark.tags)).size);
 
 async function loadBookmarks() {
   const params = new URLSearchParams();
@@ -39,6 +42,11 @@ async function loadBookmarks() {
 
   const result = await listBookmarks(params);
   bookmarks.value = result.bookmarks;
+  
+  if (selectedCategory.value === "全部" && !searchInput.value.trim()) {
+    const cats = new Set(result.bookmarks.map((b) => b.category).filter(Boolean));
+    categories.value = ["全部", ...Array.from(cats) as string[]];
+  }
 }
 
 async function addBookmark() {
@@ -88,6 +96,7 @@ async function askAssistant() {
 
   assistantMessages.value.unshift({ role: "user", text: message });
   assistantInput.value = "";
+  assistantOpen.value = true;
   isAssistantLoading.value = true;
 
   try {
@@ -130,140 +139,118 @@ onMounted(() => {
 </script>
 
 <template>
-  <main class="shell">
-    <section class="hero">
-      <div class="brand-block">
-        <div class="brand-mark">L</div>
-        <div>
-          <p class="eyebrow">Save it. Let AI organize it.</p>
-          <h1>Linka</h1>
+  <main class="app-shell">
+    <header class="topbar">
+      <a class="brand" href="/" aria-label="Linka 首页">
+        <div class="brand-icon">
+          <Link2 :size="24" :stroke-width="2.5" />
         </div>
+        <div class="brand-text">
+          <strong>Linka</strong>
+          <span>AI Bookmarks</span>
+        </div>
+      </a>
+
+      <div class="global-search">
+        <Search :size="18" />
+        <input v-model="searchInput" placeholder="搜索书签或向 AI 提问..." @keyup.enter="search" />
       </div>
 
-      <div class="quick-add" @submit.prevent>
-        <label for="url-input">快速收藏</label>
-        <div class="input-row">
-          <input
-            id="url-input"
-            v-model="urlInput"
-            type="url"
-            placeholder="粘贴一个网页链接"
-            @keyup.enter="addBookmark"
-          />
-          <button class="icon-button primary" title="添加收藏" :disabled="isLoading" @click="addBookmark">
-            <Loader2 v-if="isLoading" class="spin" :size="18" />
-            <Plus v-else :size="18" />
-          </button>
-        </div>
-        <p v-if="errorMessage" class="error-text">{{ errorMessage }}</p>
+      <div class="top-actions">
+        <button class="top-icon" title="通知">
+          <Bell :size="20" />
+        </button>
+        <button class="top-icon" title="设置">
+          <Settings :size="20" />
+        </button>
+        <button class="user-pill" title="当前用户">
+          <span>Hongli</span>
+          <ChevronDown :size="16" />
+        </button>
       </div>
-    </section>
+    </header>
 
-    <section class="workspace">
-      <aside class="sidebar">
-        <div class="stat-grid">
-          <div>
-            <strong>{{ bookmarks.length }}</strong>
-            <span>收藏</span>
-          </div>
-          <div>
-            <strong>{{ categories.length - 1 }}</strong>
-            <span>分类</span>
-          </div>
-          <div>
-            <strong>{{ totalTags }}</strong>
-            <span>标签</span>
-          </div>
-        </div>
 
-        <div class="filter-block">
-          <h2>分类</h2>
-          <button
-            v-for="category in categories"
-            :key="category"
-            :class="{ active: selectedCategory === category }"
-            @click="setCategory(category)"
-          >
-            {{ category }}
-          </button>
-        </div>
 
-        <div class="filter-block">
-          <h2>标签</h2>
-          <button
-            v-for="tag in tags"
-            :key="tag"
-            :class="{ active: selectedTag === tag }"
-            @click="setTag(tag)"
-          >
-            {{ tag }}
-          </button>
-        </div>
-      </aside>
+    <nav class="filter-rail" aria-label="收藏筛选">
+      <div class="filter-group">
+        <span class="filter-label">分类</span>
+        <button
+          v-for="category in categories"
+          :key="category"
+          class="filter-btn"
+          :class="{ active: selectedCategory === category }"
+          @click="setCategory(category)"
+        >
+          {{ category }}
+        </button>
+      </div>
 
-      <section class="library">
-        <div class="toolbar">
-          <div class="search-box">
-            <Search :size="18" />
-            <input v-model="searchInput" placeholder="搜索标题、摘要、域名或标签" @keyup.enter="search" />
-          </div>
-          <button class="text-button" @click="search">搜索</button>
-        </div>
 
-        <div v-if="visibleBookmarks.length" class="card-grid">
-          <article v-for="bookmark in visibleBookmarks" :key="bookmark.id" class="bookmark-card">
-            <div class="card-cover" :style="{ backgroundImage: bookmark.coverImageUrl ? `url(${bookmark.coverImageUrl})` : '' }">
+    </nav>
+
+    <section class="library">
+      <transition-group name="fade" tag="div" class="card-grid" v-if="visibleBookmarks.length">
+        <article v-for="bookmark in visibleBookmarks" :key="bookmark.id" class="bookmark-card">
+          <div class="card-header">
+            <div class="site-icon" :style="{ backgroundImage: bookmark.coverImageUrl ? `url(${bookmark.coverImageUrl})` : '' }">
               <img v-if="bookmark.faviconUrl" :src="bookmark.faviconUrl" alt="" />
               <span v-else>{{ bookmark.domain.slice(0, 1).toUpperCase() }}</span>
             </div>
-            <div class="card-body">
-              <div class="card-meta">
-                <span>{{ bookmark.category }}</span>
+            <div class="card-title-wrap">
+              <h2>{{ bookmark.title }}</h2>
+              <div class="domain-line">
                 <span>{{ bookmark.domain }}</span>
-              </div>
-              <h3>{{ bookmark.title }}</h3>
-              <p>{{ bookmark.summary || bookmark.description || "暂无摘要" }}</p>
-              <div class="tag-row">
-                <span v-for="tag in bookmark.tags" :key="tag">{{ tag }}</span>
+                <span v-if="bookmark.category" class="category-badge">{{ bookmark.category }}</span>
               </div>
             </div>
-            <div class="card-actions">
-              <a class="icon-button" :href="bookmark.url" target="_blank" rel="noreferrer" title="打开链接">
-                <ExternalLink :size="17" />
-              </a>
-              <button class="icon-button" :class="{ selected: bookmark.pinned }" title="置顶" @click="togglePinned(bookmark)">
-                <Pin :size="17" />
-              </button>
-              <button class="icon-button" title="归档" @click="archiveBookmark(bookmark)">
-                <Archive :size="17" />
-              </button>
-              <button class="icon-button danger" title="删除" @click="removeBookmark(bookmark)">
-                <Trash2 :size="17" />
-              </button>
-            </div>
-          </article>
-        </div>
-
-        <div v-else class="empty-state">
-          <h2>还没有收藏</h2>
-          <p>粘贴第一个链接，Linka 会自动生成摘要、分类和标签。</p>
-        </div>
-      </section>
-
-      <aside class="assistant">
-        <div class="assistant-header">
-          <Bot :size="20" />
-          <div>
-            <h2>AI 助手</h2>
-            <p>收藏、搜索、整理</p>
           </div>
-        </div>
 
-        <div class="assistant-input">
-          <textarea v-model="assistantInput" rows="4" placeholder="例如：收藏这个链接 https://example.com" @keydown.ctrl.enter.prevent="askAssistant" />
-          <button class="icon-button primary" title="发送" :disabled="isAssistantLoading" @click="askAssistant">
-            <Loader2 v-if="isAssistantLoading" class="spin" :size="18" />
-            <Send v-else :size="18" />
+          <p class="card-summary">{{ bookmark.summary || bookmark.description || "暂无摘要" }}</p>
+
+
+
+          <div class="card-actions-overlay">
+            <a class="icon-action" :href="bookmark.url" target="_blank" rel="noreferrer" title="打开链接">
+              <ExternalLink :size="16" />
+            </a>
+            <button class="icon-action" :class="{ selected: bookmark.pinned }" title="置顶" @click="togglePinned(bookmark)">
+              <Pin :size="16" />
+            </button>
+            <button class="icon-action" title="归档" @click="archiveBookmark(bookmark)">
+              <Archive :size="16" />
+            </button>
+            <button class="icon-action danger" title="删除" @click="removeBookmark(bookmark)">
+              <Trash2 :size="16" />
+            </button>
+          </div>
+        </article>
+      </transition-group>
+
+      <div v-else class="empty-state">
+        <Bot :size="48" color="var(--text-tertiary)" style="margin-bottom: 16px" />
+        <h2>你的数字大脑空空如也</h2>
+        <p>在上方粘贴链接开始收集，AI 会为你搞定剩下的一切。</p>
+      </div>
+    </section>
+
+    <!-- AI Assistant -->
+    <button class="assistant-fab" title="唤起 AI 助手" @click="assistantOpen = true" v-show="!assistantOpen">
+      <Bot />
+    </button>
+
+    <transition name="fade">
+      <aside v-if="assistantOpen" class="assistant-panel">
+        <div class="assistant-header">
+          <div class="brand-icon" style="width: 36px; height: 36px; border-radius: 10px;">
+            <Bot :size="20" />
+          </div>
+          <div class="assistant-header-text">
+            <h2>AI 助手</h2>
+            <p>随时为你整理和检索</p>
+          </div>
+          <button class="btn-close" title="关闭" @click="assistantOpen = false">
+            <X :size="20" />
           </button>
         </div>
 
@@ -278,7 +265,15 @@ onMounted(() => {
             </div>
           </div>
         </div>
+
+        <div class="assistant-input-area">
+          <textarea v-model="assistantInput" placeholder="输入你想收藏的链接，或问我任何问题..." @keydown.ctrl.enter.prevent="askAssistant"></textarea>
+          <button class="btn-send" title="发送 (Ctrl+Enter)" :disabled="isAssistantLoading" @click="askAssistant">
+            <Loader2 v-if="isAssistantLoading" class="spin" :size="20" />
+            <Send v-else :size="20" />
+          </button>
+        </div>
       </aside>
-    </section>
+    </transition>
   </main>
 </template>
