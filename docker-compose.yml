@@ -1,0 +1,18 @@
+services:
+  linka:
+    build: .
+    container_name: linka
+    restart: unless-stopped
+    ports:
+      - "3030:3030"
+    volumes:
+      - ./data:/app/data
+    environment:
+      - LINKA_PORT=3030
+      - LINKA_HOST=0.0.0.0
+      - LINKA_DB_PATH=/app/data/linka.sqlite
+      - LINKA_APP_URL=http://localhost:3030
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - OPENAI_BASE_URL=${OPENAI_BASE_URL:-https://api.openai.com/v1}
+      - OPENAI_MODEL=${OPENAI_MODEL:-gpt-4.1-mini}
+      - LINKA_API_TOKEN=${LINKA_API_TOKEN:-}
