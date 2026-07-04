@@ -1,4 +1,6 @@
+import fs from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 export interface AppConfig {
   port: number;
@@ -11,10 +13,43 @@ export interface AppConfig {
   apiToken: string;
 }
 
+function findWorkspaceRoot(startDir: string) {
+  let currentDir = startDir;
+
+  while (true) {
+    const packageJsonPath = path.join(currentDir, "package.json");
+
+    if (fs.existsSync(packageJsonPath)) {
+      const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, "utf8")) as { name?: string; workspaces?: unknown };
+
+      if (packageJson.name === "linka" && Array.isArray(packageJson.workspaces)) {
+        return currentDir;
+      }
+    }
+
+    const parentDir = path.dirname(currentDir);
+
+    if (parentDir === currentDir) {
+      return process.cwd();
+    }
+
+    currentDir = parentDir;
+  }
+}
+
+function resolveDbPath() {
+  if (process.env.LINKA_DB_PATH) {
+    return path.resolve(process.env.LINKA_DB_PATH);
+  }
+
+  const moduleDir = path.dirname(fileURLToPath(import.meta.url));
+  return path.join(findWorkspaceRoot(moduleDir), "data", "linka.sqlite");
+}
+
 export const config: AppConfig = {
   port: Number(process.env.LINKA_PORT ?? 3030),
   host: process.env.LINKA_HOST ?? "0.0.0.0",
-  dbPath: path.resolve(process.env.LINKA_DB_PATH ?? "./data/linka.sqlite"),
+  dbPath: resolveDbPath(),
   appUrl: process.env.LINKA_APP_URL ?? "http://localhost:3030",
   openaiApiKey: process.env.OPENAI_API_KEY ?? "",
   openaiBaseUrl: process.env.OPENAI_BASE_URL ?? "https://api.openai.com/v1",
