@@ -2206,3 +2206,32 @@ input::placeholder, textarea::placeholder {
   background: rgba(239, 68, 68, 0.12);
   border-color: rgba(239, 68, 68, 0.4);
 }
+.btn-model-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: transparent;
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.btn-model-icon:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+.btn-model-icon:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.btn-model-icon-danger {
+  border-color: rgba(239, 68, 68, 0.25);
+  color: var(--danger);
+}
+.btn-model-icon-danger:hover:not(:disabled) {
+  background: rgba(239, 68, 68, 0.12);
+  border-color: rgba(239, 68, 68, 0.4);
+}

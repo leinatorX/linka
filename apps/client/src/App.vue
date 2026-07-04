@@ -4,8 +4,8 @@ import { useRoute, useRouter } from "vue-router";
 import {
   Archive, ChevronDown, ExternalLink, Link2, Loader2,
   Pin, Plus, Search, Send, Settings, Trash2, X, Bot, Edit2, List, Mic, History, ArrowLeft, GripVertical, Zap,
-  MoreHorizontal, Copy, Eye, EyeOff, Star, RefreshCw, Check, AlertCircle,
-  BookOpen, Key, Sparkles, Cpu, Info, RotateCcw, Save
+  Copy, Eye, EyeOff, Star, RefreshCw, Check, AlertCircle,
+  BookOpen, Key, Sparkles, Cpu, Info, RotateCcw, Save, Activity
 } from "@lucide/vue";
 import { createAssistantConversation, createBookmark, createCategory, deleteAssistantConversations, deleteBookmark, deleteCategory, getAiSettings as fetchAiSettings, getAssistantConversation, listAssistantConversations, listBookmarks, listCategories, saveAiSettings as updateAiSettings, streamAssistantMessage, updateBookmark, updateCategory, testAiConnection } from "./api";
 import type { AiApiFormat, AiProviderConfig, AssistantConversation, Bookmark, Category } from "./types";
@@ -68,40 +68,36 @@ const newAiModelMaxTokens = ref(1000);
 
 const editingProviderId = ref("openai");
 const showApiKey = ref(false);
-const providerDropdownOpen = ref(false);
+const revealedApiKeyProviderIds = ref<Set<string>>(new Set());
 const testStatus = ref<'idle' | 'testing' | 'success' | 'failed'>('idle');
 const testMessage = ref('');
 
-function toggleProviderDropdown() {
-  providerDropdownOpen.value = !providerDropdownOpen.value;
+function isApiKeyRevealed(providerId: string): boolean {
+  return revealedApiKeyProviderIds.value.has(providerId);
 }
 
-function setAsDefaultProvider() {
-  if (activeAiProvider.value) {
-    aiSettingsForm.value.activeProviderId = activeAiProvider.value.id;
-    providerDropdownOpen.value = false;
-    alert(`已将 ${activeAiProvider.value.name} 设为默认供应商`);
+function toggleRevealApiKey(providerId: string) {
+  if (revealedApiKeyProviderIds.value.has(providerId)) {
+    revealedApiKeyProviderIds.value.delete(providerId);
+  } else {
+    revealedApiKeyProviderIds.value.add(providerId);
   }
+  showApiKey.value = false;
 }
 
-function copyProviderConfig() {
-  if (activeAiProvider.value) {
-    const configToCopy = {
-      name: activeAiProvider.value.name,
-      apiFormat: activeAiProvider.value.apiFormat,
-      baseUrl: activeAiProvider.value.baseUrl,
-      temperature: activeAiProvider.value.temperature,
-      models: activeAiProvider.value.models
-    };
-    navigator.clipboard.writeText(JSON.stringify(configToCopy, null, 2))
-      .then(() => {
-        providerDropdownOpen.value = false;
-        alert("配置已复制到剪贴板");
-      })
-      .catch(err => {
-        alert("复制失败: " + err);
-      });
+function copyApiKeyValue(provider: any) {
+  const value = provider.apiKey && provider.apiKey.length > 0
+    ? provider.apiKey
+    : provider.apiKeyPreview;
+  if (!value) {
+    alert("API Key 为空");
+    return;
   }
+  navigator.clipboard.writeText(value)
+    .then(() => alert(isApiKeyRevealed(provider.id) && provider.apiKey
+      ? "API Key 已复制到剪贴板"
+      : "已复制脱敏预览：" + value))
+    .catch(err => alert("复制失败: " + err));
 }
 
 async function testProviderConnection() {
@@ -160,17 +156,6 @@ function getAvatarStyle(providerId: string) {
     deepseek: 'background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);'
   };
   return gradients[providerId] || 'background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%);';
-}
-
-function copyApiKeyToClipboard() {
-  const provider = activeAiProvider.value;
-  if (provider && provider.apiKey) {
-    navigator.clipboard.writeText(provider.apiKey)
-      .then(() => alert("API Key 已复制到剪贴板"))
-      .catch(err => alert("复制失败: " + err));
-  } else {
-    alert("API Key 为空");
-  }
 }
 
 const draggedModelIndex = ref<number | null>(null);
@@ -441,7 +426,6 @@ function addAiProvider() {
 function removeAiProvider(providerId: string) {
   if (aiSettingsForm.value.providers.length <= 1) {
     alert("至少保留一个供应商。");
-    providerDropdownOpen.value = false;
     return;
   }
 
@@ -453,7 +437,6 @@ function removeAiProvider(providerId: string) {
   if (editingProviderId.value === providerId) {
     editingProviderId.value = aiSettingsForm.value.providers[0].id;
   }
-  providerDropdownOpen.value = false;
 }
 
 function openAddAiModelModal() {
@@ -993,32 +976,11 @@ onUnmounted(() => {
                       </div>
                     </div>
 
-                    <!-- Dropdown Wrapper -->
-                    <div style="position: relative;">
-                      <button class="provider-more-btn" @click.stop="toggleProviderDropdown"
-                        style="width: 36px; height: 36px; border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.12); color: var(--text-primary); cursor: pointer; transition: all 0.2s;">
-                        <MoreHorizontal :size="18" />
-                      </button>
-                      <div v-if="providerDropdownOpen" class="dropdown-menu shadow-lg"
-                        style="position: absolute; right: 0; top: 42px; background: #18181b; border: 1px solid rgba(255,255,255,0.08); border-radius: var(--radius-md); padding: 4px; display: flex; flex-direction: column; gap: 2px; min-width: 150px; z-index: 10;">
-                        <button @click="setAsDefaultProvider"
-                          style="display: flex; align-items: center; gap: 8px; padding: 8px 12px; font-size: 13px; background: transparent; border: none; color: var(--text-primary); text-align: left; cursor: pointer; border-radius: 4px; width: 100%;">
-                          <Star :size="14" />
-                          <span>设为默认供应商</span>
-                        </button>
-                        <button @click="copyProviderConfig"
-                          style="display: flex; align-items: center; gap: 8px; padding: 8px 12px; font-size: 13px; background: transparent; border: none; color: var(--text-primary); text-align: left; cursor: pointer; border-radius: 4px; width: 100%;">
-                          <Copy :size="14" />
-                          <span>复制配置</span>
-                        </button>
-                        <hr style="border: none; border-top: 1px solid rgba(255,255,255,0.05); margin: 4px 0;" />
-                        <button @click="removeAiProvider(activeAiProvider.id)" class="danger"
-                          style="display: flex; align-items: center; gap: 8px; padding: 8px 12px; font-size: 13px; background: transparent; border: none; color: var(--danger); text-align: left; cursor: pointer; border-radius: 4px; width: 100%;">
-                          <Trash2 :size="14" />
-                          <span>删除供应商</span>
-                        </button>
-                      </div>
-                    </div>
+                    <!-- Delete Button -->
+                    <button class="provider-more-btn" @click.stop="removeAiProvider(activeAiProvider.id)" title="删除供应商"
+                      style="width: 36px; height: 36px; border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.12); color: var(--danger); cursor: pointer; transition: all 0.2s;">
+                      <Trash2 :size="16" />
+                    </button>
                   </div>
 
                   <!-- Provider Form Fields Panel -->
@@ -1117,17 +1079,31 @@ onUnmounted(() => {
                       <label style="display: flex; flex-direction: column; gap: 8px; margin: 0;">
                         <span style="font-size: 13px; color: var(--text-secondary); font-weight: 500;">API Key</span>
                         <div style="position: relative; display: flex; align-items: center;">
-                          <input :type="showApiKey ? 'text' : 'password'" v-model="activeAiProvider.apiKey"
-                            :placeholder="activeAiProvider.apiKeySet ? activeAiProvider.apiKeyPreview : '请输入 API Key'"
+                          <input v-if="activeAiProvider.apiKeySet && !isApiKeyRevealed(activeAiProvider.id)"
+                            type="text" :value="'•'.repeat(Math.max(activeAiProvider.apiKeyPreview.length || 12, 12))"
+                            readonly tabindex="-1"
+                            style="width: 100%; height: 40px; border-radius: var(--radius-md); background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.08); color: var(--text-primary); padding: 0 80px 0 12px; font-size: 18px; letter-spacing: 2px; cursor: default;" />
+                          <input v-else :type="showApiKey ? 'text' : 'password'" v-model="activeAiProvider.apiKey"
+                            :placeholder="activeAiProvider.apiKeySet ? '请输入新的 API Key 覆盖现有值' : '请输入 API Key'"
                             autocomplete="off"
                             style="width: 100%; height: 40px; border-radius: var(--radius-md); background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.08); color: var(--text-primary); padding: 0 80px 0 12px; font-size: 14px;" />
                           <div style="position: absolute; right: 8px; display: flex; gap: 4px;">
-                            <button type="button" @click="showApiKey = !showApiKey"
+                            <button v-if="activeAiProvider.apiKeySet && !isApiKeyRevealed(activeAiProvider.id)"
+                              type="button" @click="toggleRevealApiKey(activeAiProvider.id)" title="解锁查看/修改"
+                              style="background: transparent; border: none; color: var(--text-secondary); width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; cursor: pointer; border-radius: 4px;">
+                              <Eye :size="16" />
+                            </button>
+                            <button v-else-if="activeAiProvider.apiKeySet" type="button"
+                              @click="toggleRevealApiKey(activeAiProvider.id)" title="锁定"
+                              style="background: transparent; border: none; color: var(--text-secondary); width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; cursor: pointer; border-radius: 4px;">
+                              <EyeOff :size="16" />
+                            </button>
+                            <button v-else type="button" @click="showApiKey = !showApiKey"
                               style="background: transparent; border: none; color: var(--text-secondary); width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; cursor: pointer; border-radius: 4px;">
                               <Eye v-if="!showApiKey" :size="16" />
                               <EyeOff v-else :size="16" />
                             </button>
-                            <button type="button" @click="copyApiKeyToClipboard"
+                            <button type="button" @click="copyApiKeyValue(activeAiProvider)" title="复制"
                               style="background: transparent; border: none; color: var(--text-secondary); width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; cursor: pointer; border-radius: 4px;">
                               <Copy :size="16" />
                             </button>
@@ -1140,12 +1116,19 @@ onUnmounted(() => {
 
                     <!-- 模型列表 -->
                     <div style="display: flex; flex-direction: column; gap: 16px;">
-                      <div style="display: flex; flex-direction: column; gap: 4px;">
-                        <h4
-                          style="font-size: 15px; font-weight: 600; color: var(--text-primary); border-left: 3px solid var(--accent-primary); padding-left: 8px; margin: 0;">
-                          模型列表</h4>
-                        <p style="font-size: 12px; color: var(--text-secondary); margin: 0 0 0 11px;">
-                          拖动模型调整优先级，排在第一位的模型作为默认模型使用。</p>
+                      <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 16px;">
+                        <div style="display: flex; flex-direction: column; gap: 4px;">
+                          <h4
+                            style="font-size: 15px; font-weight: 600; color: var(--text-primary); border-left: 3px solid var(--accent-primary); padding-left: 8px; margin: 0;">
+                            模型列表</h4>
+                          <p style="font-size: 12px; color: var(--text-secondary); margin: 0 0 0 11px;">
+                            拖动模型调整优先级，排在第一位的模型作为默认模型使用。</p>
+                        </div>
+                        <button type="button" class="outline-btn" @click="openAddAiModelModal"
+                          style="display: flex; align-items: center; justify-content: center; gap: 6px; padding: 0 14px; height: 32px; border-radius: var(--radius-md); border: 1px solid rgba(255,255,255,0.12); background: rgba(255,255,255,0.04); color: var(--text-primary); font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.2s; white-space: nowrap;">
+                          <Plus :size="14" />
+                          <span>添加模型</span>
+                        </button>
                       </div>
 
                       <div class="ai-model-list" style="display: flex; flex-direction: column; gap: 12px;">
@@ -1176,25 +1159,23 @@ onUnmounted(() => {
                             </div>
                           </div>
 
-                          <div style="display: flex; align-items: center; gap: 8px;">
-                            <button type="button" class="btn-model-edit" @click="openEditAiModelModal(model)">
-                              <Edit2 :size="12" />
-                              <span>编辑</span>
+                          <div style="display: flex; align-items: center; gap: 6px;">
+                            <button type="button" class="btn-model-icon" title="测试连接"
+                              :disabled="testingModelId === model.id" @click="testModel(activeAiProvider, model)">
+                              <Loader2 v-if="testingModelId === model.id" class="spin" :size="14" />
+                              <Activity v-else :size="14" />
                             </button>
-                            <button type="button" class="btn-model-delete"
+                            <button type="button" class="btn-model-icon" title="编辑"
+                              @click="openEditAiModelModal(model)">
+                              <Edit2 :size="14" />
+                            </button>
+                            <button type="button" class="btn-model-icon btn-model-icon-danger" title="删除"
                               @click="removeAiModel(activeAiProvider, model.id)">
-                              <Trash2 :size="12" />
-                              <span>删除</span>
+                              <Trash2 :size="14" />
                             </button>
                           </div>
                         </div>
                       </div>
-
-                      <button type="button" class="outline-btn" @click="openAddAiModelModal"
-                        style="display: flex; align-items: center; justify-content: center; gap: 8px; width: fit-content; padding: 0 20px; height: 38px; border-radius: var(--radius-md); border: 1px dashed rgba(255,255,255,0.15); background: transparent; color: var(--text-primary); font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s; align-self: flex-start;">
-                        <Plus :size="16" />
-                        <span>添加模型</span>
-                      </button>
                     </div>
 
                     <!-- Bottom Actions Bar -->
