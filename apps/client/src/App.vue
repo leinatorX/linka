@@ -863,48 +863,21 @@ onUnmounted(() => {
 
                 <div class="bookmark-manage-list">
                   <div v-for="bookmark in bookmarks" :key="bookmark.id" class="bookmark-manage-item">
-                    <template v-if="editingBookmarkId === bookmark.id">
-                      <div class="bookmark-manage-edit-form settings-form">
-                        <div class="form-grid-two">
-                          <label><span>标题</span><input v-model="editBookmarkData.title" /></label>
-                          <label><span>链接</span><input v-model="editBookmarkData.url" /></label>
-                        </div>
-                        <div class="form-grid-two">
-                          <label><span>图标链接</span><input v-model="editBookmarkData.faviconUrl"
-                              placeholder="https://..." /></label>
-                          <label>
-                            <span>分类</span>
-                            <select v-model="editBookmarkData.category">
-                              <option value="全部">全部 / 未分类</option>
-                              <option v-for="category in categories" :key="category.id" :value="category.name">
-                                {{ category.name }}
-                              </option>
-                            </select>
-                          </label>
-                        </div>
-                        <div class="bookmark-manage-actions">
-                          <button class="mini-button" @click="editingBookmarkId = null">取消</button>
-                          <button class="mini-button highlight" @click="saveEditedBookmark">保存</button>
-                        </div>
+                    <div class="bookmark-manage-info">
+                      <img v-if="bookmark.faviconUrl" :src="bookmark.faviconUrl" alt=""
+                        class="bookmark-manage-icon" />
+                      <div v-else class="bookmark-manage-icon-placeholder">
+                        <Link2 :size="16" />
                       </div>
-                    </template>
-                    <template v-else>
-                      <div class="bookmark-manage-info">
-                        <img v-if="bookmark.faviconUrl" :src="bookmark.faviconUrl" alt=""
-                          class="bookmark-manage-icon" />
-                        <div v-else class="bookmark-manage-icon-placeholder">
-                          <Link2 :size="16" />
-                        </div>
-                        <div class="bookmark-manage-texts">
-                          <h4>{{ bookmark.title || bookmark.domain }}</h4>
-                          <p>{{ bookmark.url }}</p>
-                        </div>
-                        <span class="bookmark-manage-category" v-if="bookmark.category">{{ bookmark.category }}</span>
+                      <div class="bookmark-manage-texts">
+                        <h4>{{ bookmark.title || bookmark.domain }}</h4>
+                        <p>{{ bookmark.url }}</p>
                       </div>
-                      <button class="mini-button" @click="startEditingBookmark(bookmark)">
-                        <Edit2 :size="14" style="margin-right:4px;" /> 编辑
-                      </button>
-                    </template>
+                      <span class="bookmark-manage-category" v-if="bookmark.category">{{ bookmark.category }}</span>
+                    </div>
+                    <button class="mini-button icon-only" title="编辑" @click="startEditingBookmark(bookmark)">
+                      <Edit2 :size="16" />
+                    </button>
                   </div>
                 </div>
               </div>
@@ -950,6 +923,52 @@ onUnmounted(() => {
                 <span>添加到 Linka</span>
               </button>
               <p v-if="settingsMessage" class="settings-message">{{ settingsMessage }}</p>
+            </div>
+          </div>
+        </div>
+      </transition>
+
+      <!-- Edit Bookmark Modal -->
+      <transition name="fade">
+        <div class="modal-overlay" v-if="editingBookmarkId" @click.self="editingBookmarkId = null">
+          <div class="modal-card">
+            <header class="modal-header">
+              <h3>编辑书签</h3>
+              <button class="btn-close" @click="editingBookmarkId = null">
+                <X :size="20" />
+              </button>
+            </header>
+            <div class="modal-body settings-form">
+              <label>
+                <span>网页链接</span>
+                <input v-model="editBookmarkData.url" placeholder="https://example.com"
+                  @keyup.enter="saveEditedBookmark" />
+              </label>
+              <label>
+                <span>标题</span>
+                <input v-model="editBookmarkData.title" placeholder="可选，不填则自动抓取"
+                  @keyup.enter="saveEditedBookmark" />
+              </label>
+              <label>
+                <span>图标链接</span>
+                <input v-model="editBookmarkData.faviconUrl" placeholder="可选"
+                  @keyup.enter="saveEditedBookmark" />
+              </label>
+              <label>
+                <span>分类</span>
+                <select v-model="editBookmarkData.category">
+                  <option value="全部">全部 / 未分类</option>
+                  <option v-for="category in categories" :key="category.id" :value="category.name">
+                    {{ category.name }}
+                  </option>
+                </select>
+              </label>
+              <div style="display: flex; gap: 12px; margin-top: 16px;">
+                <button class="btn-secondary" style="flex: 1;" @click="editingBookmarkId = null">取消</button>
+                <button class="btn-primary settings-submit" style="flex: 1;" @click="saveEditedBookmark">
+                  <span>保存修改</span>
+                </button>
+              </div>
             </div>
           </div>
         </div>
