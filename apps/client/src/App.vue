@@ -178,6 +178,7 @@ function onModelDragEnd() {
 }
 
 const testingModelId = ref<string | null>(null);
+const modelTestResults = ref<Record<string, { status: 'success' | 'failed'; message: string }>>({});
 
 async function testModel(provider: any, model: any) {
   testingModelId.value = model.id;
@@ -197,9 +198,15 @@ async function testModel(provider: any, model: any) {
         maxTokens: model.maxTokens
       }
     });
-    alert(`测试连接成功！\n\n测试模型：${model.name}\n返回响应：${res.response}`);
+    modelTestResults.value[model.id] = {
+      status: 'success',
+      message: `连接成功 · ${res.response ?? '正常返回'}`
+    };
   } catch (error: any) {
-    alert(`测试连接失败！\n\n测试模型：${model.name}\n错误信息：${error.message || error}`);
+    modelTestResults.value[model.id] = {
+      status: 'failed',
+      message: `连接失败 · ${error.message || String(error)}`
+    };
   } finally {
     testingModelId.value = null;
   }
@@ -1135,43 +1142,58 @@ onUnmounted(() => {
                         <div v-for="(model, index) in activeAiProvider.models" :key="model.id" class="ai-model-row"
                           :class="{ active: index === 0 }" draggable="true" @dragstart="onModelDragStart(index)"
                           @dragenter="onModelDragEnter(index)" @dragend="onModelDragEnd" @dragover.prevent
-                          style="display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border-radius: var(--radius-md); background: rgba(255,255,255,0.01); border: 1px solid rgba(255,255,255,0.04); cursor: default; transition: all 0.2s;"
+                          style="display: flex; flex-direction: column; gap: 8px; padding: 12px 16px; border-radius: var(--radius-md); background: rgba(255,255,255,0.01); border: 1px solid rgba(255,255,255,0.04); cursor: default; transition: all 0.2s;"
                           :style="index === 0 ? 'border-color: rgba(99,102,241,0.2); background: rgba(99,102,241,0.02);' : ''">
 
-                          <div style="display: flex; align-items: center; gap: 12px;">
-                            <div
-                              style="cursor: grab; display: flex; align-items: center; color: var(--text-secondary);">
-                              <GripVertical :size="16" />
-                            </div>
-                            <div style="display: flex; flex-direction: column; gap: 4px;">
-                              <div style="display: flex; align-items: center; gap: 8px;">
-                                <span style="font-size: 14px; font-weight: 600; color: var(--text-primary);">{{
-                                  model.name
-                                }}</span>
-                                <span v-if="index === 0"
-                                  style="font-size: 11px; padding: 1px 6px; border-radius: 4px; background: rgba(99,102,241,0.1); color: #818cf8; font-weight: 500;">默认</span>
-                              </div>
+                          <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px;">
+                            <div style="display: flex; align-items: center; gap: 12px;">
                               <div
-                                style="display: flex; align-items: center; gap: 12px; font-size: 12px; color: var(--text-secondary);">
-                                <span>Context: {{ model.maxTokens.toLocaleString() }} tokens</span>
-                                <span>模型 ID: {{ model.id }}</span>
+                                style="cursor: grab; display: flex; align-items: center; color: var(--text-secondary);">
+                                <GripVertical :size="16" />
                               </div>
+                              <div style="display: flex; flex-direction: column; gap: 4px;">
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                  <span style="font-size: 14px; font-weight: 600; color: var(--text-primary);">{{
+                                    model.name
+                                  }}</span>
+                                  <span v-if="index === 0"
+                                    style="font-size: 11px; padding: 1px 6px; border-radius: 4px; background: rgba(99,102,241,0.1); color: #818cf8; font-weight: 500;">默认</span>
+                                </div>
+                                <div
+                                  style="display: flex; align-items: center; gap: 12px; font-size: 12px; color: var(--text-secondary);">
+                                  <span>Context: {{ model.maxTokens.toLocaleString() }} tokens</span>
+                                  <span>模型 ID: {{ model.id }}</span>
+                                </div>
+                              </div>
+                            </div>
+
+                            <div style="display: flex; align-items: center; gap: 6px;">
+                              <button type="button" class="btn-model-icon" title="测试连接"
+                                :disabled="testingModelId === model.id" @click="testModel(activeAiProvider, model)">
+                                <Loader2 v-if="testingModelId === model.id" class="spin" :size="14" />
+                                <Activity v-else :size="14" />
+                              </button>
+                              <button type="button" class="btn-model-icon" title="编辑"
+                                @click="openEditAiModelModal(model)">
+                                <Edit2 :size="14" />
+                              </button>
+                              <button type="button" class="btn-model-icon btn-model-icon-danger" title="删除"
+                                @click="removeAiModel(activeAiProvider, model.id)">
+                                <Trash2 :size="14" />
+                              </button>
                             </div>
                           </div>
 
-                          <div style="display: flex; align-items: center; gap: 6px;">
-                            <button type="button" class="btn-model-icon" title="测试连接"
-                              :disabled="testingModelId === model.id" @click="testModel(activeAiProvider, model)">
-                              <Loader2 v-if="testingModelId === model.id" class="spin" :size="14" />
-                              <Activity v-else :size="14" />
-                            </button>
-                            <button type="button" class="btn-model-icon" title="编辑"
-                              @click="openEditAiModelModal(model)">
-                              <Edit2 :size="14" />
-                            </button>
-                            <button type="button" class="btn-model-icon btn-model-icon-danger" title="删除"
-                              @click="removeAiModel(activeAiProvider, model.id)">
-                              <Trash2 :size="14" />
+                          <div v-if="modelTestResults[model.id]" class="model-test-result"
+                            :class="['model-test-result-' + modelTestResults[model.id].status]"
+                            style="display: flex; align-items: center; gap: 6px; padding: 6px 10px; border-radius: 6px; font-size: 12px; line-height: 1.4;">
+                            <Check v-if="modelTestResults[model.id].status === 'success'" :size="14" />
+                            <X v-else :size="14" />
+                            <span style="flex: 1;">{{ modelTestResults[model.id].message }}</span>
+                            <button type="button" @click="delete modelTestResults[model.id]"
+                              style="background: transparent; border: none; color: inherit; cursor: pointer; display: inline-flex; align-items: center; padding: 0; opacity: 0.7;"
+                              title="关闭">
+                              <X :size="12" />
                             </button>
                           </div>
                         </div>

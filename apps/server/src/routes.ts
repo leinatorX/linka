@@ -5,7 +5,7 @@ import { generateAssistantReply, streamAssistantReply, testAiConnection } from "
 import { addAssistantMessage, buildConversationContext, createAssistantConversation, deleteAssistantConversations, ensureAssistantConversation, getAssistantConversation, listAssistantConversations } from "./services/assistant.js";
 import { createBookmark, deleteBookmark, getBookmarkById, listBookmarks, updateBookmark } from "./services/bookmarks.js";
 import { createCategory, deleteCategory, listCategories, updateCategory } from "./services/categories.js";
-import { getPublicAiSettings, saveAiSettings } from "./services/settings.js";
+import { getPublicAiSettings, getProviderApiKey, saveAiSettings } from "./services/settings.js";
 import { extractFirstUrl, isValidUrl } from "./utils/url.js";
 
 const createBookmarkSchema = z.object({
@@ -135,8 +135,23 @@ export async function registerRoutes(app: FastifyInstance) {
       return reply.code(400).send({ message: "请输入有效的测试配置" });
     }
 
+    const incomingKey = payload.data.provider.apiKey?.trim();
+    const resolvedKey = incomingKey && incomingKey.length > 0
+      ? incomingKey
+      : getProviderApiKey(payload.data.provider.id) ?? "";
+
+    if (!resolvedKey) {
+      return reply.code(400).send({
+        success: false,
+        message: "请先填写或保存 API Key 再进行测试"
+      });
+    }
+
     try {
-      const response = await testAiConnection(payload.data.provider, payload.data.model);
+      const response = await testAiConnection(
+        { ...payload.data.provider, apiKey: resolvedKey },
+        payload.data.model
+      );
       return { success: true, response };
     } catch (error) {
       return reply.code(502).send({

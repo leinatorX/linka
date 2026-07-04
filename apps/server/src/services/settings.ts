@@ -294,3 +294,9 @@ export function getActiveAiConfig(modelName?: string): ActiveAiConfig {
 
   return { provider, model };
 }
+
+export function getProviderApiKey(providerId: string): string | undefined {
+  const settings = getAiSettings();
+  const provider = settings.providers.find((item) => item.id === providerId);
+  return provider?.apiKey && provider.apiKey.length > 0 ? provider.apiKey : undefined;
+}
