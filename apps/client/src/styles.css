@@ -771,11 +771,15 @@ input::placeholder, textarea::placeholder {
 }
 
 .btn-close-settings {
+  position: absolute;
+  top: 20px;
+  right: 64px;
+  z-index: 10;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 44px;
-  height: 44px;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.05);
   color: var(--text-secondary);
@@ -788,6 +792,32 @@ input::placeholder, textarea::placeholder {
   background: rgba(255, 255, 255, 0.1);
   color: var(--text-primary);
   transform: scale(1.05);
+}
+
+.btn-guide {
+  position: absolute;
+  top: 20px;
+  right: 112px;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 36px;
+  padding: 0 14px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text-secondary);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.btn-guide:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-primary);
+  border-color: rgba(255, 255, 255, 0.15);
 }
 
 .hero-content h2 {
@@ -807,7 +837,7 @@ input::placeholder, textarea::placeholder {
   display: flex;
   align-items: center;
   gap: 32px;
-  padding: 0 64px;
+  padding: 14px 64px 0;
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
   margin-bottom: 32px;
 }
@@ -2120,4 +2150,59 @@ input::placeholder, textarea::placeholder {
   justify-content: center !important;
   border-radius: var(--radius-sm) !important;
   margin-top: 12px !important;
+}
+
+.provider-more-btn:hover {
+  background: rgba(255, 255, 255, 0.08) !important;
+  border-color: rgba(255, 255, 255, 0.2) !important;
+  transform: scale(1.02);
+}
+
+.dropdown-menu button {
+  transition: background 0.15s ease;
+}
+.dropdown-menu button:hover {
+  background: rgba(255, 255, 255, 0.06) !important;
+}
+.dropdown-menu button.danger:hover {
+  background: rgba(239, 68, 68, 0.12) !important;
+}
+
+.btn-model-edit {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 12px;
+  height: 32px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: transparent;
+  color: var(--text-primary);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.btn-model-edit:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+.btn-model-delete {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 12px;
+  height: 32px;
+  border-radius: 6px;
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  background: transparent;
+  color: var(--danger);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.btn-model-delete:hover {
+  background: rgba(239, 68, 68, 0.12);
+  border-color: rgba(239, 68, 68, 0.4);
 }

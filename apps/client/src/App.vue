@@ -4,7 +4,8 @@ import { useRoute, useRouter } from "vue-router";
 import {
   Archive, ChevronDown, ExternalLink, Link2, Loader2,
   Pin, Plus, Search, Send, Settings, Trash2, X, Bot, Edit2, List, Mic, History, ArrowLeft, GripVertical, Zap,
-  MoreHorizontal, Copy, Eye, EyeOff, Star, RefreshCw, Check, AlertCircle
+  MoreHorizontal, Copy, Eye, EyeOff, Star, RefreshCw, Check, AlertCircle,
+  BookOpen, Key, Sparkles, Cpu, Info, RotateCcw, Save
 } from "@lucide/vue";
 import { createAssistantConversation, createBookmark, createCategory, deleteAssistantConversations, deleteBookmark, deleteCategory, getAiSettings as fetchAiSettings, getAssistantConversation, listAssistantConversations, listBookmarks, listCategories, saveAiSettings as updateAiSettings, streamAssistantMessage, updateBookmark, updateCategory, testAiConnection } from "./api";
 import type { AiApiFormat, AiProviderConfig, AssistantConversation, Bookmark, Category } from "./types";
@@ -112,7 +113,7 @@ async function testProviderConnection() {
     testMessage.value = '测试失败：该供应商下没有模型';
     return;
   }
-  
+
   testStatus.value = 'testing';
   try {
     const res = await testAiConnection({
@@ -690,6 +691,12 @@ function closeSettings() {
   router.push("/");
 }
 
+function openGuide() {
+  // 打开官方项目主页/使用指南说明
+  window.open("https://github.com/leinatorX/linka", "_blank");
+}
+
+
 async function addCategory() {
   const name = newCategoryName.value.trim();
   if (!name) {
@@ -841,15 +848,14 @@ onUnmounted(() => {
     <section v-else class="settings-page" aria-label="Linka 设置">
       <Teleport to="body">
         <div class="settings-grand-layout">
-          <header class="settings-hero">
-            <div class="hero-content">
-              <h2>设置中心</h2>
-              <p>统一管理分类、书签与 AI 配置，享受全景沉浸式体验。</p>
-            </div>
-            <button class="btn-close-settings" title="返回首页" @click="closeSettings">
-              <X :size="32" />
-            </button>
-          </header>
+          <button class="btn-guide" title="使用指南" @click="openGuide">
+            <BookOpen :size="16" />
+            <span>使用指南</span>
+          </button>
+          <button class="btn-close-settings" title="返回首页" @click="closeSettings">
+            <X :size="24" />
+          </button>
+
 
           <nav class="settings-tabs-grand" aria-label="设置选项">
             <button :class="{ active: settingsTab === 'categories' }" @click="settingsTab = 'categories'">分类管理</button>
@@ -869,7 +875,9 @@ onUnmounted(() => {
 
                 <div class="category-create settings-form">
                   <input v-model="newCategoryName" placeholder="新分类名称" @keyup.enter="addCategory" />
-                  <button class="btn-primary compact icon-btn" title="添加" @click="addCategory"><Plus /></button>
+                  <button class="btn-primary compact icon-btn" title="添加" @click="addCategory">
+                    <Plus />
+                  </button>
                 </div>
 
                 <div class="category-list">
@@ -888,34 +896,37 @@ onUnmounted(() => {
             </section>
 
             <section v-else-if="settingsTab === 'ai'">
-              <div class="ai-provider-layout" style="width: 100%; display: grid; grid-template-columns: 280px 1fr; gap: 32px; align-items: start;">
-                
+              <div class="ai-provider-layout"
+                style="width: 100%; display: grid; grid-template-columns: 280px 1fr; gap: 32px; align-items: start;">
+
                 <!-- Left Sidebar: Provider Management -->
                 <div class="ai-provider-sidebar" style="display: flex; flex-direction: column; gap: 20px;">
                   <div class="sidebar-header" style="margin-bottom: 4px;">
-                    <h3 style="font-size: 18px; font-weight: 600; color: var(--text-primary); margin: 0 0 4px 0;">供应商管理</h3>
+                    <h3 style="font-size: 18px; font-weight: 600; color: var(--text-primary); margin: 0 0 4px 0;">供应商管理
+                    </h3>
                     <p style="font-size: 13px; color: var(--text-secondary); margin: 0;">管理您的 AI 服务商</p>
                   </div>
-                  
+
                   <div class="ai-provider-cards" style="display: flex; flex-direction: column; gap: 12px;">
-                    <div v-for="provider in aiSettingsForm.providers" :key="provider.id"
-                      class="provider-card"
+                    <div v-for="provider in aiSettingsForm.providers" :key="provider.id" class="provider-card"
                       :class="{ active: editingProviderId === provider.id, default: aiSettingsForm.activeProviderId === provider.id }"
                       @click="selectAiProvider(provider.id)"
                       style="display: flex; align-items: center; justify-content: space-between; padding: 16px; border-radius: var(--radius-lg); background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); cursor: pointer; transition: all 0.2s;"
                       :style="editingProviderId === provider.id ? 'border-color: var(--accent-primary); box-shadow: 0 0 0 1px var(--accent-primary); background: rgba(255,255,255,0.04);' : ''">
-                      
+
                       <div style="display: flex; align-items: center; gap: 12px;">
                         <div class="provider-avatar" :style="getAvatarStyle(provider.id)"
                           style="width: 36px; height: 36px; border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 16px; color: white;">
                           {{ provider.name[0] }}
                         </div>
                         <div style="display: flex; flex-direction: column; gap: 2px;">
-                          <span style="font-size: 14px; font-weight: 600; color: var(--text-primary);">{{ provider.name }}</span>
-                          <span style="font-size: 12px; color: var(--text-secondary);">{{ provider.models.length }} 个模型</span>
+                          <span style="font-size: 14px; font-weight: 600; color: var(--text-primary);">{{ provider.name
+                          }}</span>
+                          <span style="font-size: 12px; color: var(--text-secondary);">{{ provider.models.length }}
+                            个模型</span>
                         </div>
                       </div>
-                      
+
                       <div style="display: flex; align-items: center; gap: 8px;">
                         <span class="status-badge" :class="{ active: provider.enabled }"
                           style="font-size: 11px; padding: 2px 6px; border-radius: 4px; display: flex; align-items: center; gap: 4px;"
@@ -926,7 +937,7 @@ onUnmounted(() => {
                         </span>
                       </div>
                     </div>
-                    
+
                     <button class="add-provider-btn" @click="addAiProvider"
                       style="display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; height: 40px; border-radius: var(--radius-md); border: 1px dashed rgba(255,255,255,0.15); background: transparent; color: var(--text-primary); font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s;">
                       <Plus :size="16" />
@@ -936,9 +947,11 @@ onUnmounted(() => {
                 </div>
 
                 <!-- Right Detail Column -->
-                <div class="ai-provider-detail-container" v-if="activeAiProvider" style="display: flex; flex-direction: column; gap: 24px; min-width: 0;">
+                <div class="ai-provider-detail-container" v-if="activeAiProvider"
+                  style="display: flex; flex-direction: column; gap: 24px; min-width: 0;">
                   <!-- Top Header Panel -->
-                  <div class="grand-panel" style="padding: 24px; display: flex; align-items: center; justify-content: space-between; position: relative;">
+                  <div class="grand-panel"
+                    style="padding: 24px; display: flex; align-items: center; justify-content: space-between; position: relative;">
                     <div style="display: flex; align-items: center; gap: 16px;">
                       <div class="provider-avatar large" :style="getAvatarStyle(activeAiProvider.id)"
                         style="width: 48px; height: 48px; border-radius: var(--radius-lg); display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 22px; color: white;">
@@ -946,7 +959,8 @@ onUnmounted(() => {
                       </div>
                       <div style="display: flex; flex-direction: column; gap: 6px;">
                         <div style="display: flex; align-items: center; gap: 8px;">
-                          <h4 style="font-size: 18px; font-weight: 600; color: var(--text-primary); margin: 0;">{{ activeAiProvider.name }}</h4>
+                          <h4 style="font-size: 18px; font-weight: 600; color: var(--text-primary); margin: 0;">{{
+                            activeAiProvider.name }}</h4>
                           <span class="status-badge" :class="{ active: activeAiProvider.enabled }"
                             style="font-size: 11px; padding: 2px 6px; border-radius: 4px;"
                             :style="activeAiProvider.enabled ? 'background: rgba(16,185,129,0.1); color: var(--success);' : 'background: rgba(255,255,255,0.05); color: var(--text-secondary);'">
@@ -954,39 +968,52 @@ onUnmounted(() => {
                           </span>
                         </div>
                         <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
-                          <span class="meta-pill" style="font-size: 11px; padding: 2px 8px; border-radius: 9999px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); color: var(--text-secondary);">
-                            {{ activeAiProvider.apiFormat === 'anthropic' ? 'Anthropic Messages API' : 'OpenAI Chat Completions' }}
+                          <span class="meta-pill"
+                            style="font-size: 11px; padding: 4px 10px; border-radius: 9999px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); color: var(--text-secondary); display: inline-flex; align-items: center; gap: 6px;">
+                            <Cpu :size="12" />
+                            <span>{{ activeAiProvider.apiFormat === 'anthropic' ? 'Anthropic Messages API' :
+                              'OpenAIChatCompletions' }}</span>
                           </span>
-                          <span class="meta-pill" style="font-size: 11px; padding: 2px 8px; border-radius: 9999px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); color: var(--text-secondary);">
-                            {{ activeAiProvider.apiKeySet ? '已配置 API Key' : '未配置 API Key' }}
+                          <span class="meta-pill"
+                            style="font-size: 11px; padding: 4px 10px; border-radius: 9999px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); color: var(--text-secondary); display: inline-flex; align-items: center; gap: 6px;">
+                            <Key :size="12" />
+                            <span>{{ activeAiProvider.apiKeySet ? '已配置 API Key' : '未配置 API Key' }}</span>
                           </span>
-                          <span class="meta-pill" style="font-size: 11px; padding: 2px 8px; border-radius: 9999px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); color: var(--text-secondary);">
-                            默认模型：{{ activeAiProvider.models[0]?.name || '无' }}
+                          <span class="meta-pill"
+                            style="font-size: 11px; padding: 4px 10px; border-radius: 9999px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); color: var(--text-secondary); display: inline-flex; align-items: center; gap: 6px;">
+                            <Sparkles :size="12" />
+                            <span>默认模型: {{ activeAiProvider.models[0]?.name || '无' }}</span>
                           </span>
-                          <span v-if="aiSettingsForm.activeProviderId === activeAiProvider.id" class="meta-pill" style="font-size: 11px; padding: 2px 8px; border-radius: 9999px; background: rgba(99,102,241,0.1); border: 1px solid rgba(99,102,241,0.2); color: #818cf8; font-weight: 500;">
-                            默认服务商
+                          <span v-if="aiSettingsForm.activeProviderId === activeAiProvider.id" class="meta-pill"
+                            style="font-size: 11px; padding: 4px 10px; border-radius: 9999px; background: rgba(99,102,241,0.1); border: 1px solid rgba(99,102,241,0.2); color: #818cf8; font-weight: 500; display: inline-flex; align-items: center; gap: 6px;">
+                            <Star :size="12" />
+                            <span>默认服务商</span>
                           </span>
                         </div>
                       </div>
                     </div>
-                    
+
                     <!-- Dropdown Wrapper -->
                     <div style="position: relative;">
-                      <button class="mini-button" @click.stop="toggleProviderDropdown" style="width: 36px; height: 36px; border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); color: var(--text-secondary); cursor: pointer;">
+                      <button class="provider-more-btn" @click.stop="toggleProviderDropdown"
+                        style="width: 36px; height: 36px; border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.12); color: var(--text-primary); cursor: pointer; transition: all 0.2s;">
                         <MoreHorizontal :size="18" />
                       </button>
-                      <div v-if="providerDropdownOpen" class="dropdown-menu shadow-lg" 
+                      <div v-if="providerDropdownOpen" class="dropdown-menu shadow-lg"
                         style="position: absolute; right: 0; top: 42px; background: #18181b; border: 1px solid rgba(255,255,255,0.08); border-radius: var(--radius-md); padding: 4px; display: flex; flex-direction: column; gap: 2px; min-width: 150px; z-index: 10;">
-                        <button @click="setAsDefaultProvider" style="display: flex; align-items: center; gap: 8px; padding: 8px 12px; font-size: 13px; background: transparent; border: none; color: var(--text-primary); text-align: left; cursor: pointer; border-radius: 4px; width: 100%;">
+                        <button @click="setAsDefaultProvider"
+                          style="display: flex; align-items: center; gap: 8px; padding: 8px 12px; font-size: 13px; background: transparent; border: none; color: var(--text-primary); text-align: left; cursor: pointer; border-radius: 4px; width: 100%;">
                           <Star :size="14" />
                           <span>设为默认供应商</span>
                         </button>
-                        <button @click="copyProviderConfig" style="display: flex; align-items: center; gap: 8px; padding: 8px 12px; font-size: 13px; background: transparent; border: none; color: var(--text-primary); text-align: left; cursor: pointer; border-radius: 4px; width: 100%;">
+                        <button @click="copyProviderConfig"
+                          style="display: flex; align-items: center; gap: 8px; padding: 8px 12px; font-size: 13px; background: transparent; border: none; color: var(--text-primary); text-align: left; cursor: pointer; border-radius: 4px; width: 100%;">
                           <Copy :size="14" />
                           <span>复制配置</span>
                         </button>
                         <hr style="border: none; border-top: 1px solid rgba(255,255,255,0.05); margin: 4px 0;" />
-                        <button @click="removeAiProvider(activeAiProvider.id)" class="danger" style="display: flex; align-items: center; gap: 8px; padding: 8px 12px; font-size: 13px; background: transparent; border: none; color: var(--danger); text-align: left; cursor: pointer; border-radius: 4px; width: 100%;">
+                        <button @click="removeAiProvider(activeAiProvider.id)" class="danger"
+                          style="display: flex; align-items: center; gap: 8px; padding: 8px 12px; font-size: 13px; background: transparent; border: none; color: var(--danger); text-align: left; cursor: pointer; border-radius: 4px; width: 100%;">
                           <Trash2 :size="14" />
                           <span>删除供应商</span>
                         </button>
@@ -995,25 +1022,32 @@ onUnmounted(() => {
                   </div>
 
                   <!-- Provider Form Fields Panel -->
-                  <div class="grand-panel settings-form" style="padding: 32px; display: flex; flex-direction: column; gap: 24px;">
+                  <div class="grand-panel settings-form"
+                    style="padding: 32px; display: flex; flex-direction: column; gap: 24px;">
                     <!-- 基础信息 -->
                     <div style="display: flex; flex-direction: column; gap: 16px;">
-                      <h4 style="font-size: 15px; font-weight: 600; color: var(--text-primary); border-left: 3px solid var(--accent-primary); padding-left: 8px; margin: 0;">基础信息</h4>
-                      
+                      <h4
+                        style="font-size: 15px; font-weight: 600; color: var(--text-primary); border-left: 3px solid var(--accent-primary); padding-left: 8px; margin: 0;">
+                        基础信息</h4>
+
                       <div style="display: grid; grid-template-columns: 1fr 120px; gap: 24px; align-items: end;">
                         <label style="display: flex; flex-direction: column; gap: 8px; margin: 0;">
                           <span style="font-size: 13px; color: var(--text-secondary); font-weight: 500;">供应商名称</span>
-                          <input v-model="activeAiProvider.name" style="width: 100%; height: 40px; border-radius: var(--radius-md); background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.08); color: var(--text-primary); padding: 0 12px; font-size: 14px;" />
+                          <input v-model="activeAiProvider.name"
+                            style="width: 100%; height: 40px; border-radius: var(--radius-md); background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.08); color: var(--text-primary); padding: 0 12px; font-size: 14px;" />
                         </label>
-                        
-                        <label style="display: flex; flex-direction: column; gap: 8px; margin: 0; align-items: flex-start;">
+
+                        <label
+                          style="display: flex; flex-direction: column; gap: 8px; margin: 0; align-items: flex-start;">
                           <span style="font-size: 13px; color: var(--text-secondary); font-weight: 500;">启用状态</span>
                           <div style="display: flex; align-items: center; height: 40px;">
                             <!-- Styled Switch Toggle -->
                             <div class="switch-toggle" @click="activeAiProvider.enabled = !activeAiProvider.enabled"
                               style="width: 48px; height: 26px; border-radius: 999px; padding: 2px; cursor: pointer; transition: background 0.2s; display: flex; align-items: center;"
                               :style="activeAiProvider.enabled ? 'background: var(--accent-primary); justify-content: flex-end;' : 'background: rgba(255,255,255,0.1); justify-content: flex-start;'">
-                              <div style="width: 22px; height: 22px; border-radius: 50%; background: white; box-shadow: 0 2px 4px rgba(0,0,0,0.2); transition: all 0.2s;"></div>
+                              <div
+                                style="width: 22px; height: 22px; border-radius: 50%; background: white; box-shadow: 0 2px 4px rgba(0,0,0,0.2); transition: all 0.2s;">
+                              </div>
                             </div>
                           </div>
                         </label>
@@ -1022,25 +1056,53 @@ onUnmounted(() => {
 
                     <!-- API 配置 -->
                     <div style="display: flex; flex-direction: column; gap: 16px;">
-                      <h4 style="font-size: 15px; font-weight: 600; color: var(--text-primary); border-left: 3px solid var(--accent-primary); padding-left: 8px; margin: 0;">API 配置</h4>
-                      
+                      <h4
+                        style="font-size: 15px; font-weight: 600; color: var(--text-primary); border-left: 3px solid var(--accent-primary); padding-left: 8px; margin: 0;">
+                        API 配置</h4>
+
                       <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
                         <label style="display: flex; flex-direction: column; gap: 8px; margin: 0;">
                           <span style="font-size: 13px; color: var(--text-secondary); font-weight: 500;">API 格式</span>
-                          <select v-model="activeAiProvider.apiFormat" style="width: 100%; height: 40px; border-radius: var(--radius-md); background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.08); color: var(--text-primary); padding: 0 12px; font-size: 14px;">
-                            <option value="openai">OpenAI Chat Completions</option>
-                            <option value="anthropic">Anthropic Messages</option>
-                          </select>
-                        </label>
-                        
-                        <label style="display: flex; flex-direction: column; gap: 8px; margin: 0;">
-                          <div style="display: flex; justify-content: space-between; align-items: center;">
-                            <span style="font-size: 13px; color: var(--text-secondary); font-weight: 500;">Temperature</span>
-                            <span style="font-size: 13px; color: var(--text-primary); font-weight: 600;">{{ activeAiProvider.temperature }}</span>
+                          <div style="position: relative; display: flex; align-items: center; width: 100%;">
+                            <select v-model="activeAiProvider.apiFormat"
+                              style="width: 100%; height: 40px; border-radius: var(--radius-md); background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.08); color: var(--text-primary); padding: 0 36px 0 12px; font-size: 14px; appearance: none; -webkit-appearance: none; cursor: pointer;">
+                              <option value="openai">OpenAI Chat Completions</option>
+                              <option value="anthropic">Anthropic Messages</option>
+                            </select>
+                            <div
+                              style="position: absolute; right: 12px; color: var(--text-secondary); pointer-events: none; display: flex; align-items: center;">
+                              <ChevronDown :size="16" />
+                            </div>
                           </div>
-                          <div style="display: flex; align-items: center; gap: 12px; height: 40px;">
-                            <input v-model.number="activeAiProvider.temperature" type="range" min="0" max="2" step="0.1" 
-                              style="flex: 1; accent-color: var(--accent-primary); height: 4px; background: rgba(255,255,255,0.1); border-radius: 99px; appearance: none; cursor: pointer;" />
+                        </label>
+
+                        <label style="display: flex; flex-direction: column; gap: 8px; margin: 0;">
+                          <div style="display: flex; align-items: center; gap: 6px;">
+                            <span
+                              style="font-size: 13px; color: var(--text-secondary); font-weight: 500;">Temperature</span>
+                            <span class="info-tooltip" title="控制模型生成文本的随机性。值越高越有创意，值越低越精确稳定。"
+                              style="color: var(--text-secondary); cursor: pointer; display: flex; align-items: center;">
+                              <Info :size="14" />
+                            </span>
+                          </div>
+                          <div style="display: flex; align-items: center; gap: 16px; height: 40px;">
+                            <!-- Number Input -->
+                            <input type="number" v-model.number="activeAiProvider.temperature" min="0" max="2"
+                              step="0.1"
+                              style="width: 70px; height: 40px; text-align: center; border-radius: var(--radius-md); background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.08); color: var(--text-primary); font-size: 14px; font-weight: 500;" />
+
+                            <!-- Range Slider and Marks -->
+                            <div
+                              style="flex: 1; display: flex; flex-direction: column; gap: 4px; justify-content: center; position: relative; padding-bottom: 12px; height: 100%;">
+                              <input v-model.number="activeAiProvider.temperature" type="range" min="0" max="2"
+                                step="0.1"
+                                style="width: 100%; accent-color: var(--accent-primary); height: 4px; background: rgba(255,255,255,0.1); border-radius: 99px; appearance: none; cursor: pointer; margin: 0;" />
+                              <div
+                                style="display: flex; justify-content: space-between; font-size: 11px; color: var(--text-secondary); position: absolute; bottom: -6px; left: 0; right: 0;">
+                                <span>0</span>
+                                <span>2</span>
+                              </div>
+                            </div>
                           </div>
                         </label>
                       </div>
@@ -1048,93 +1110,79 @@ onUnmounted(() => {
                       <label style="display: flex; flex-direction: column; gap: 8px; margin: 0;">
                         <span style="font-size: 13px; color: var(--text-secondary); font-weight: 500;">Base URL</span>
                         <input v-model="activeAiProvider.baseUrl"
-                          :placeholder="activeAiProvider.apiFormat === 'anthropic' ? 'https://api.anthropic.com' : 'https://api.openai.com/v1'" 
+                          :placeholder="activeAiProvider.apiFormat === 'anthropic' ? 'https://api.anthropic.com' : 'https://api.openai.com/v1'"
                           style="width: 100%; height: 40px; border-radius: var(--radius-md); background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.08); color: var(--text-primary); padding: 0 12px; font-size: 14px;" />
                       </label>
 
                       <label style="display: flex; flex-direction: column; gap: 8px; margin: 0;">
                         <span style="font-size: 13px; color: var(--text-secondary); font-weight: 500;">API Key</span>
                         <div style="position: relative; display: flex; align-items: center;">
-                          <input :type="showApiKey ? 'text' : 'password'" v-model="activeAiProvider.apiKey" 
-                            :placeholder="activeAiProvider.apiKeySet ? `留空保留 ${activeAiProvider.apiKeyPreview}` : '请输入 API Key'"
-                            autocomplete="off" 
+                          <input :type="showApiKey ? 'text' : 'password'" v-model="activeAiProvider.apiKey"
+                            :placeholder="activeAiProvider.apiKeySet ? activeAiProvider.apiKeyPreview : '请输入 API Key'"
+                            autocomplete="off"
                             style="width: 100%; height: 40px; border-radius: var(--radius-md); background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.08); color: var(--text-primary); padding: 0 80px 0 12px; font-size: 14px;" />
                           <div style="position: absolute; right: 8px; display: flex; gap: 4px;">
-                            <button type="button" @click="showApiKey = !showApiKey" style="background: transparent; border: none; color: var(--text-secondary); width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; cursor: pointer; border-radius: 4px;">
+                            <button type="button" @click="showApiKey = !showApiKey"
+                              style="background: transparent; border: none; color: var(--text-secondary); width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; cursor: pointer; border-radius: 4px;">
                               <Eye v-if="!showApiKey" :size="16" />
                               <EyeOff v-else :size="16" />
                             </button>
-                            <button type="button" @click="copyApiKeyToClipboard" style="background: transparent; border: none; color: var(--text-secondary); width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; cursor: pointer; border-radius: 4px;">
+                            <button type="button" @click="copyApiKeyToClipboard"
+                              style="background: transparent; border: none; color: var(--text-secondary); width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; cursor: pointer; border-radius: 4px;">
                               <Copy :size="16" />
                             </button>
                           </div>
                         </div>
                       </label>
-                      
-                      <!-- Test Connection Button & Status -->
-                      <div style="display: flex; align-items: center; gap: 16px; margin-top: 4px;">
-                        <button type="button" @click="testProviderConnection" :disabled="testStatus === 'testing'"
-                          style="display: flex; align-items: center; gap: 8px; padding: 0 16px; height: 36px; border-radius: var(--radius-md); background: var(--accent-primary); border: none; color: white; font-weight: 600; font-size: 13px; cursor: pointer; transition: all 0.2s;">
-                          <Loader2 v-if="testStatus === 'testing'" class="spin" :size="14" />
-                          <Zap v-else :size="14" />
-                          <span>测试连接</span>
-                        </button>
-                        
-                        <div v-if="testStatus !== 'idle'" style="display: flex; align-items: center; gap: 6px; font-size: 13px;">
-                          <span v-if="testStatus === 'success'" style="color: var(--success); display: flex; align-items: center; gap: 4px; font-weight: 500;">
-                            <Check :size="16" />
-                            <span>连接正常</span>
-                          </span>
-                          <span v-else-if="testStatus === 'failed'" style="color: var(--danger); display: flex; align-items: center; gap: 4px; font-weight: 500;">
-                            <AlertCircle :size="16" />
-                            <span>{{ testMessage }}</span>
-                          </span>
-                        </div>
-                      </div>
+
+
                     </div>
 
                     <!-- 模型列表 -->
                     <div style="display: flex; flex-direction: column; gap: 16px;">
                       <div style="display: flex; flex-direction: column; gap: 4px;">
-                        <h4 style="font-size: 15px; font-weight: 600; color: var(--text-primary); border-left: 3px solid var(--accent-primary); padding-left: 8px; margin: 0;">模型列表</h4>
-                        <p style="font-size: 12px; color: var(--text-secondary); margin: 0 0 0 11px;">拖动模型调整优先级，排在第一位的模型作为默认模型使用。</p>
+                        <h4
+                          style="font-size: 15px; font-weight: 600; color: var(--text-primary); border-left: 3px solid var(--accent-primary); padding-left: 8px; margin: 0;">
+                          模型列表</h4>
+                        <p style="font-size: 12px; color: var(--text-secondary); margin: 0 0 0 11px;">
+                          拖动模型调整优先级，排在第一位的模型作为默认模型使用。</p>
                       </div>
 
                       <div class="ai-model-list" style="display: flex; flex-direction: column; gap: 12px;">
                         <div v-for="(model, index) in activeAiProvider.models" :key="model.id" class="ai-model-row"
-                          :class="{ active: index === 0 }"
-                          draggable="true"
-                          @dragstart="onModelDragStart(index)"
-                          @dragenter="onModelDragEnter(index)"
-                          @dragend="onModelDragEnd"
-                          @dragover.prevent
+                          :class="{ active: index === 0 }" draggable="true" @dragstart="onModelDragStart(index)"
+                          @dragenter="onModelDragEnter(index)" @dragend="onModelDragEnd" @dragover.prevent
                           style="display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border-radius: var(--radius-md); background: rgba(255,255,255,0.01); border: 1px solid rgba(255,255,255,0.04); cursor: default; transition: all 0.2s;"
                           :style="index === 0 ? 'border-color: rgba(99,102,241,0.2); background: rgba(99,102,241,0.02);' : ''">
-                          
+
                           <div style="display: flex; align-items: center; gap: 12px;">
-                            <div style="cursor: grab; display: flex; align-items: center; color: var(--text-secondary);">
+                            <div
+                              style="cursor: grab; display: flex; align-items: center; color: var(--text-secondary);">
                               <GripVertical :size="16" />
                             </div>
                             <div style="display: flex; flex-direction: column; gap: 4px;">
                               <div style="display: flex; align-items: center; gap: 8px;">
-                                <span style="font-size: 14px; font-weight: 600; color: var(--text-primary);">{{ model.name }}</span>
-                                <span v-if="index === 0" style="font-size: 11px; padding: 1px 6px; border-radius: 4px; background: rgba(99,102,241,0.1); color: #818cf8; font-weight: 500;">默认</span>
+                                <span style="font-size: 14px; font-weight: 600; color: var(--text-primary);">{{
+                                  model.name
+                                }}</span>
+                                <span v-if="index === 0"
+                                  style="font-size: 11px; padding: 1px 6px; border-radius: 4px; background: rgba(99,102,241,0.1); color: #818cf8; font-weight: 500;">默认</span>
                               </div>
-                              <div style="display: flex; align-items: center; gap: 12px; font-size: 12px; color: var(--text-secondary);">
+                              <div
+                                style="display: flex; align-items: center; gap: 12px; font-size: 12px; color: var(--text-secondary);">
                                 <span>Context: {{ model.maxTokens.toLocaleString() }} tokens</span>
                                 <span>模型 ID: {{ model.id }}</span>
                               </div>
                             </div>
                           </div>
-                          
+
                           <div style="display: flex; align-items: center; gap: 8px;">
-                            <button type="button" @click="openEditAiModelModal(model)"
-                              style="display: flex; align-items: center; gap: 6px; padding: 0 12px; height: 32px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.1); background: transparent; color: var(--text-primary); font-size: 12px; font-weight: 500; cursor: pointer; transition: all 0.2s;">
+                            <button type="button" class="btn-model-edit" @click="openEditAiModelModal(model)">
                               <Edit2 :size="12" />
                               <span>编辑</span>
                             </button>
-                            <button type="button" @click="removeAiModel(activeAiProvider, model.id)"
-                              style="display: flex; align-items: center; gap: 6px; padding: 0 12px; height: 32px; border-radius: 6px; border: 1px solid rgba(239,68,68,0.2); background: transparent; color: var(--danger); font-size: 12px; font-weight: 500; cursor: pointer; transition: all 0.2s;">
+                            <button type="button" class="btn-model-delete"
+                              @click="removeAiModel(activeAiProvider, model.id)">
                               <Trash2 :size="12" />
                               <span>删除</span>
                             </button>
@@ -1143,26 +1191,27 @@ onUnmounted(() => {
                       </div>
 
                       <button type="button" class="outline-btn" @click="openAddAiModelModal"
-                        style="display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; height: 38px; border-radius: var(--radius-md); border: 1px dashed rgba(255,255,255,0.15); background: transparent; color: var(--text-primary); font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s;">
+                        style="display: flex; align-items: center; justify-content: center; gap: 8px; width: fit-content; padding: 0 20px; height: 38px; border-radius: var(--radius-md); border: 1px dashed rgba(255,255,255,0.15); background: transparent; color: var(--text-primary); font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s; align-self: flex-start;">
                         <Plus :size="16" />
                         <span>添加模型</span>
                       </button>
                     </div>
 
                     <!-- Bottom Actions Bar -->
-                    <div style="display: flex; align-items: center; justify-content: space-between; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 24px; margin-top: 8px;">
+                    <div
+                      style="display: flex; align-items: center; justify-content: space-between; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 24px; margin-top: 8px;">
                       <span style="font-size: 13px; color: var(--text-secondary);">上次保存：{{ lastSavedTime }}</span>
-                      
+
                       <div style="display: flex; align-items: center; gap: 12px;">
                         <button type="button" @click="loadAiSettings"
                           style="display: flex; align-items: center; gap: 6px; padding: 0 16px; height: 40px; border-radius: var(--radius-md); border: 1px solid rgba(255,255,255,0.1); background: transparent; color: var(--text-primary); font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s;">
-                          <RefreshCw :size="14" />
+                          <RotateCcw :size="14" />
                           <span>重置修改</span>
                         </button>
                         <button type="button" :disabled="isAiSettingsSaving" @click="saveAiSettings"
-                          style="display: flex; align-items: center; gap: 8px; padding: 0 20px; height: 40px; border-radius: var(--radius-md); background: var(--accent-gradient); border: none; color: white; font-weight: 600; font-size: 14px; cursor: pointer; transition: all 0.2s; box-shadow: var(--shadow-sm);">
+                          style="display: flex; align-items: center; gap: 8px; padding: 0 20px; height: 40px; border-radius: var(--radius-md); background: var(--accent-primary); border: none; color: white; font-weight: 600; font-size: 14px; cursor: pointer; transition: all 0.2s; box-shadow: var(--shadow-sm);">
                           <Loader2 v-if="isAiSettingsSaving" class="spin" :size="16" />
-                          <Settings v-else :size="16" />
+                          <Save v-else :size="16" />
                           <span>保存默认设置</span>
                         </button>
                       </div>
@@ -1180,17 +1229,16 @@ onUnmounted(() => {
                     <h3>书签管理</h3>
                     <p>在此修改已收藏书签的名称、地址、图标和分类。</p>
                   </div>
-                    <button class="btn-primary icon-btn" title="添加书签" style="margin-bottom: 24px;"
-                      @click="showAddBookmarkModal = true">
-                      <Plus :size="20" />
-                    </button>
+                  <button class="btn-primary icon-btn" title="添加书签" style="margin-bottom: 24px;"
+                    @click="showAddBookmarkModal = true">
+                    <Plus :size="20" />
+                  </button>
                 </div>
 
                 <div class="bookmark-manage-list">
                   <div v-for="bookmark in bookmarks" :key="bookmark.id" class="bookmark-manage-item">
                     <div class="bookmark-manage-info">
-                      <img v-if="bookmark.faviconUrl" :src="bookmark.faviconUrl" alt=""
-                        class="bookmark-manage-icon" />
+                      <img v-if="bookmark.faviconUrl" :src="bookmark.faviconUrl" alt="" class="bookmark-manage-icon" />
                       <div v-else class="bookmark-manage-icon-placeholder">
                         <Link2 :size="16" />
                       </div>
@@ -1271,13 +1319,11 @@ onUnmounted(() => {
               </label>
               <label>
                 <span>标题</span>
-                <input v-model="editBookmarkData.title" placeholder="可选，不填则自动抓取"
-                  @keyup.enter="saveEditedBookmark" />
+                <input v-model="editBookmarkData.title" placeholder="可选，不填则自动抓取" @keyup.enter="saveEditedBookmark" />
               </label>
               <label>
                 <span>图标链接</span>
-                <input v-model="editBookmarkData.faviconUrl" placeholder="可选"
-                  @keyup.enter="saveEditedBookmark" />
+                <input v-model="editBookmarkData.faviconUrl" placeholder="可选" @keyup.enter="saveEditedBookmark" />
               </label>
               <label>
                 <span>分类</span>
