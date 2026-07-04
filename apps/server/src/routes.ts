@@ -1,7 +1,7 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { z } from "zod";
 import { config } from "./config.js";
-import { generateAssistantReply, streamAssistantReply } from "./services/ai.js";
+import { generateAssistantReply, streamAssistantReply, testAiConnection } from "./services/ai.js";
 import { addAssistantMessage, buildConversationContext, createAssistantConversation, deleteAssistantConversations, ensureAssistantConversation, getAssistantConversation, listAssistantConversations } from "./services/assistant.js";
 import { createBookmark, deleteBookmark, getBookmarkById, listBookmarks, updateBookmark } from "./services/bookmarks.js";
 import { createCategory, deleteCategory, listCategories, updateCategory } from "./services/categories.js";
@@ -58,6 +58,22 @@ const aiSettingsSchema = z.object({
   providers: z.array(aiProviderSchema).min(1)
 });
 
+const testAiConnectionSchema = z.object({
+  provider: z.object({
+    id: z.string().trim().min(1),
+    name: z.string().trim().min(1),
+    apiFormat: z.enum(["openai", "anthropic"]),
+    baseUrl: z.string().trim().url(),
+    apiKey: z.string().optional(),
+    temperature: z.number().min(0).max(2)
+  }),
+  model: z.object({
+    id: z.string().trim().min(1),
+    name: z.string().trim().min(1),
+    maxTokens: z.number().int().min(64)
+  })
+});
+
 async function requireApiToken(request: FastifyRequest, reply: FastifyReply) {
   if (!config.apiToken) {
     return;
@@ -111,6 +127,23 @@ export async function registerRoutes(app: FastifyInstance) {
     const settings = saveAiSettings(payload.data);
 
     return { settings };
+  });
+
+  app.post("/api/settings/ai/test", async (request, reply) => {
+    const payload = testAiConnectionSchema.safeParse(request.body);
+    if (!payload.success) {
+      return reply.code(400).send({ message: "请输入有效的测试配置" });
+    }
+
+    try {
+      const response = await testAiConnection(payload.data.provider, payload.data.model);
+      return { success: true, response };
+    } catch (error) {
+      return reply.code(502).send({
+        success: false,
+        message: error instanceof Error ? error.message : "连接失败"
+      });
+    }
   });
 
   app.post("/api/categories", async (request, reply) => {

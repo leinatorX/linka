@@ -174,3 +174,24 @@ export function saveAiSettings(payload: AiSettingsPayload): Promise<{ settings: 
     body: JSON.stringify(payload)
   });
 }
+
+export function testAiConnection(payload: {
+  provider: {
+    id: string;
+    name: string;
+    apiFormat: "openai" | "anthropic";
+    baseUrl: string;
+    apiKey?: string;
+    temperature: number;
+  };
+  model: {
+    id: string;
+    name: string;
+    maxTokens: number;
+  };
+}): Promise<{ success: boolean; response: string }> {
+  return request("/api/settings/ai/test", {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}

@@ -597,3 +597,35 @@ export async function* streamAssistantReply(options: {
     { role: "user", content: prompt }
   ], options.model, options.effort);
 }
+
+export async function testAiConnection(provider: {
+  id: string;
+  name: string;
+  apiFormat: "openai" | "anthropic";
+  baseUrl: string;
+  apiKey?: string;
+  temperature: number;
+}, model: {
+  id: string;
+  name: string;
+  maxTokens: number;
+}) {
+  const activeConfig = {
+    provider: {
+      ...provider,
+      enabled: true,
+      apiKey: provider.apiKey ?? "",
+      activeModelId: model.id,
+      models: [model]
+    },
+    model
+  } as ActiveAiConfig;
+  
+  const messages = [{ role: "user" as const, content: "say ok" }];
+  
+  if (provider.apiFormat === "anthropic") {
+    return await requestAnthropic(activeConfig, messages);
+  } else {
+    return await requestOpenAi(activeConfig, messages, false);
+  }
+}

@@ -3,9 +3,10 @@ import { computed, onMounted, onUnmounted, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import {
   Archive, ChevronDown, ExternalLink, Link2, Loader2,
-  Pin, Plus, Search, Send, Settings, Trash2, X, Bot, Edit2, List, Mic, History, ArrowLeft, GripVertical
+  Pin, Plus, Search, Send, Settings, Trash2, X, Bot, Edit2, List, Mic, History, ArrowLeft, GripVertical, Zap,
+  MoreHorizontal, Copy, Eye, EyeOff, Star, RefreshCw, Check, AlertCircle
 } from "@lucide/vue";
-import { createAssistantConversation, createBookmark, createCategory, deleteAssistantConversations, deleteBookmark, deleteCategory, getAiSettings as fetchAiSettings, getAssistantConversation, listAssistantConversations, listBookmarks, listCategories, saveAiSettings as updateAiSettings, streamAssistantMessage, updateBookmark, updateCategory } from "./api";
+import { createAssistantConversation, createBookmark, createCategory, deleteAssistantConversations, deleteBookmark, deleteCategory, getAiSettings as fetchAiSettings, getAssistantConversation, listAssistantConversations, listBookmarks, listCategories, saveAiSettings as updateAiSettings, streamAssistantMessage, updateBookmark, updateCategory, testAiConnection } from "./api";
 import type { AiApiFormat, AiProviderConfig, AssistantConversation, Bookmark, Category } from "./types";
 
 const bookmarks = ref<Bookmark[]>([]);
@@ -64,6 +65,113 @@ const aiSettingsForm = ref({
 const newAiModelName = ref("");
 const newAiModelMaxTokens = ref(1000);
 
+const editingProviderId = ref("openai");
+const showApiKey = ref(false);
+const providerDropdownOpen = ref(false);
+const testStatus = ref<'idle' | 'testing' | 'success' | 'failed'>('idle');
+const testMessage = ref('');
+
+function toggleProviderDropdown() {
+  providerDropdownOpen.value = !providerDropdownOpen.value;
+}
+
+function setAsDefaultProvider() {
+  if (activeAiProvider.value) {
+    aiSettingsForm.value.activeProviderId = activeAiProvider.value.id;
+    providerDropdownOpen.value = false;
+    alert(`已将 ${activeAiProvider.value.name} 设为默认供应商`);
+  }
+}
+
+function copyProviderConfig() {
+  if (activeAiProvider.value) {
+    const configToCopy = {
+      name: activeAiProvider.value.name,
+      apiFormat: activeAiProvider.value.apiFormat,
+      baseUrl: activeAiProvider.value.baseUrl,
+      temperature: activeAiProvider.value.temperature,
+      models: activeAiProvider.value.models
+    };
+    navigator.clipboard.writeText(JSON.stringify(configToCopy, null, 2))
+      .then(() => {
+        providerDropdownOpen.value = false;
+        alert("配置已复制到剪贴板");
+      })
+      .catch(err => {
+        alert("复制失败: " + err);
+      });
+  }
+}
+
+async function testProviderConnection() {
+  const provider = activeAiProvider.value;
+  if (!provider) return;
+  const defaultModel = provider.models[0];
+  if (!defaultModel) {
+    testStatus.value = 'failed';
+    testMessage.value = '测试失败：该供应商下没有模型';
+    return;
+  }
+  
+  testStatus.value = 'testing';
+  try {
+    const res = await testAiConnection({
+      provider: {
+        id: provider.id,
+        name: provider.name,
+        apiFormat: provider.apiFormat,
+        baseUrl: provider.baseUrl,
+        apiKey: provider.apiKey,
+        temperature: provider.temperature
+      },
+      model: {
+        id: defaultModel.id,
+        name: defaultModel.name,
+        maxTokens: defaultModel.maxTokens
+      }
+    });
+    testStatus.value = 'success';
+    testMessage.value = '连接正常';
+  } catch (error: any) {
+    testStatus.value = 'failed';
+    testMessage.value = error.message || '连接失败';
+  }
+}
+
+function selectAiProvider(id: string) {
+  editingProviderId.value = id;
+  testStatus.value = 'idle';
+  testMessage.value = '';
+}
+
+const lastSavedTime = ref(localStorage.getItem('ai_last_saved') || '暂无保存记录');
+
+function formatDate(date: Date) {
+  const pad = (n: number) => n.toString().padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
+}
+
+function getAvatarStyle(providerId: string) {
+  const gradients: Record<string, string> = {
+    openai: 'background: linear-gradient(135deg, #10b981 0%, #059669 100%);',
+    anthropic: 'background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);',
+    minimax: 'background: linear-gradient(135deg, #a855f7 0%, #7e22ce 100%);',
+    deepseek: 'background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);'
+  };
+  return gradients[providerId] || 'background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%);';
+}
+
+function copyApiKeyToClipboard() {
+  const provider = activeAiProvider.value;
+  if (provider && provider.apiKey) {
+    navigator.clipboard.writeText(provider.apiKey)
+      .then(() => alert("API Key 已复制到剪贴板"))
+      .catch(err => alert("复制失败: " + err));
+  } else {
+    alert("API Key 为空");
+  }
+}
+
 const draggedModelIndex = ref<number | null>(null);
 
 function onModelDragStart(index: number) {
@@ -82,6 +190,35 @@ function onModelDragEnter(index: number) {
 function onModelDragEnd() {
   draggedModelIndex.value = null;
 }
+
+const testingModelId = ref<string | null>(null);
+
+async function testModel(provider: any, model: any) {
+  testingModelId.value = model.id;
+  try {
+    const res = await testAiConnection({
+      provider: {
+        id: provider.id,
+        name: provider.name,
+        apiFormat: provider.apiFormat,
+        baseUrl: provider.baseUrl,
+        apiKey: provider.apiKey,
+        temperature: provider.temperature
+      },
+      model: {
+        id: model.id,
+        name: model.name,
+        maxTokens: model.maxTokens
+      }
+    });
+    alert(`测试连接成功！\n\n测试模型：${model.name}\n返回响应：${res.response}`);
+  } catch (error: any) {
+    alert(`测试连接失败！\n\n测试模型：${model.name}\n错误信息：${error.message || error}`);
+  } finally {
+    testingModelId.value = null;
+  }
+}
+
 const editingCategoryNames = ref<Record<string, string>>({});
 const editingBookmarkId = ref<string | null>(null);
 const editBookmarkData = ref({
@@ -129,7 +266,7 @@ const router = useRouter();
 const categories = ref<Category[]>([]);
 const visibleBookmarks = computed(() => bookmarks.value);
 const isSettingsPage = computed(() => route.path === "/settings");
-const activeAiProvider = computed(() => aiSettingsForm.value.providers.find((provider) => provider.id === aiSettingsForm.value.activeProviderId) ?? aiSettingsForm.value.providers[0]);
+const activeAiProvider = computed(() => aiSettingsForm.value.providers.find((provider) => provider.id === editingProviderId.value) ?? aiSettingsForm.value.providers[0]);
 const activeConversation = computed(() => assistantConversations.value.find((conversation) => conversation.id === activeConversationId.value));
 const filteredAssistantConversations = computed(() => {
   const keyword = historySearchInput.value.trim().toLowerCase();
@@ -184,6 +321,7 @@ const availableModels = computed(() => {
 async function loadAiSettings() {
   const result = await fetchAiSettings();
   aiSettingsForm.value = result.settings;
+  editingProviderId.value = result.settings.activeProviderId || result.settings.providers[0]?.id || "openai";
   if (availableModels.value.length > 0 && !assistantModel.value) {
     assistantModel.value = availableModels.value[0].name;
   }
@@ -284,11 +422,6 @@ function createAiProvider(name: string, apiFormat: AiApiFormat = "anthropic"): A
   };
 }
 
-function selectAiProvider(providerId: string) {
-  aiSettingsForm.value.activeProviderId = providerId;
-  aiSettingsMessage.value = "";
-}
-
 function addAiProvider() {
   const provider = createAiProvider(newAiProviderName.value.trim() || "自定义供应商");
   provider.models = [
@@ -300,13 +433,14 @@ function addAiProvider() {
     }
   ];
   aiSettingsForm.value.providers.push(provider);
-  aiSettingsForm.value.activeProviderId = provider.id;
+  editingProviderId.value = provider.id;
   newAiProviderName.value = "";
 }
 
 function removeAiProvider(providerId: string) {
   if (aiSettingsForm.value.providers.length <= 1) {
-    aiSettingsMessage.value = "至少保留一个供应商。";
+    alert("至少保留一个供应商。");
+    providerDropdownOpen.value = false;
     return;
   }
 
@@ -315,6 +449,10 @@ function removeAiProvider(providerId: string) {
   if (aiSettingsForm.value.activeProviderId === providerId) {
     aiSettingsForm.value.activeProviderId = aiSettingsForm.value.providers[0].id;
   }
+  if (editingProviderId.value === providerId) {
+    editingProviderId.value = aiSettingsForm.value.providers[0].id;
+  }
+  providerDropdownOpen.value = false;
 }
 
 function openAddAiModelModal() {
@@ -382,6 +520,9 @@ async function saveAiSettings() {
 
     aiSettingsForm.value = result.settings;
     aiSettingsMessage.value = "AI 配置已保存。";
+    const nowStr = formatDate(new Date());
+    localStorage.setItem('ai_last_saved', nowStr);
+    lastSavedTime.value = nowStr;
   } catch (error) {
     aiSettingsMessage.value = error instanceof Error ? error.message : "AI 配置保存失败";
   } finally {
@@ -747,133 +888,288 @@ onUnmounted(() => {
             </section>
 
             <section v-else-if="settingsTab === 'ai'">
-              <div class="section-title" style="max-width: 1000px; margin: 0 auto 24px auto;">
-                <h3>模型设置</h3>
-                <p>管理自定义模型供应商。启用的供应商和模型会用于收藏摘要、自动分类和 AI 助手。</p>
-              </div>
-
-              <div class="ai-provider-layout" style="max-width: 1000px; margin: 0 auto; grid-template-columns: 220px 1fr; gap: 24px;">
-                <div class="ai-provider-sidebar">
-                  <div class="ai-provider-segments" style="background: transparent; border: none; padding: 0;">
-                    <button v-for="provider in aiSettingsForm.providers" :key="provider.id" class="segment-btn"
-                      :class="{ active: aiSettingsForm.activeProviderId === provider.id }"
-                      @click="selectAiProvider(provider.id)">
-                      <span class="segment-name">{{ provider.name }}</span>
-                      <span class="status-dot" :class="{ enabled: provider.enabled }"></span>
-                    </button>
-                    <button class="segment-btn add-btn" title="添加服务商" @click="addAiProvider" style="justify-content: center; margin-top: 8px;">
-                      <Plus :size="16" style="margin-right: 4px;" />
-                      <span>添加服务商</span>
+              <div class="ai-provider-layout" style="width: 100%; display: grid; grid-template-columns: 280px 1fr; gap: 32px; align-items: start;">
+                
+                <!-- Left Sidebar: Provider Management -->
+                <div class="ai-provider-sidebar" style="display: flex; flex-direction: column; gap: 20px;">
+                  <div class="sidebar-header" style="margin-bottom: 4px;">
+                    <h3 style="font-size: 18px; font-weight: 600; color: var(--text-primary); margin: 0 0 4px 0;">供应商管理</h3>
+                    <p style="font-size: 13px; color: var(--text-secondary); margin: 0;">管理您的 AI 服务商</p>
+                  </div>
+                  
+                  <div class="ai-provider-cards" style="display: flex; flex-direction: column; gap: 12px;">
+                    <div v-for="provider in aiSettingsForm.providers" :key="provider.id"
+                      class="provider-card"
+                      :class="{ active: editingProviderId === provider.id, default: aiSettingsForm.activeProviderId === provider.id }"
+                      @click="selectAiProvider(provider.id)"
+                      style="display: flex; align-items: center; justify-content: space-between; padding: 16px; border-radius: var(--radius-lg); background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); cursor: pointer; transition: all 0.2s;"
+                      :style="editingProviderId === provider.id ? 'border-color: var(--accent-primary); box-shadow: 0 0 0 1px var(--accent-primary); background: rgba(255,255,255,0.04);' : ''">
+                      
+                      <div style="display: flex; align-items: center; gap: 12px;">
+                        <div class="provider-avatar" :style="getAvatarStyle(provider.id)"
+                          style="width: 36px; height: 36px; border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 16px; color: white;">
+                          {{ provider.name[0] }}
+                        </div>
+                        <div style="display: flex; flex-direction: column; gap: 2px;">
+                          <span style="font-size: 14px; font-weight: 600; color: var(--text-primary);">{{ provider.name }}</span>
+                          <span style="font-size: 12px; color: var(--text-secondary);">{{ provider.models.length }} 个模型</span>
+                        </div>
+                      </div>
+                      
+                      <div style="display: flex; align-items: center; gap: 8px;">
+                        <span class="status-badge" :class="{ active: provider.enabled }"
+                          style="font-size: 11px; padding: 2px 6px; border-radius: 4px; display: flex; align-items: center; gap: 4px;"
+                          :style="provider.enabled ? 'background: rgba(16,185,129,0.1); color: var(--success);' : 'background: rgba(255,255,255,0.05); color: var(--text-secondary);'">
+                          {{ provider.enabled ? '已启用' : '已禁用' }}
+                          <span style="width: 6px; height: 6px; border-radius: 50%; display: inline-block;"
+                            :style="provider.enabled ? 'background: var(--success);' : 'background: var(--text-secondary);'"></span>
+                        </span>
+                      </div>
+                    </div>
+                    
+                    <button class="add-provider-btn" @click="addAiProvider"
+                      style="display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; height: 40px; border-radius: var(--radius-md); border: 1px dashed rgba(255,255,255,0.15); background: transparent; color: var(--text-primary); font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s;">
+                      <Plus :size="16" />
+                      <span>添加供应商</span>
                     </button>
                   </div>
                 </div>
 
-                <div class="grand-panel ai-provider-detail settings-form" v-if="activeAiProvider" style="padding: 32px;">
-                    <div class="ai-detail-title">
-                      <div>
-                        <h4>{{ activeAiProvider.name }}</h4>
-                        <p>{{ activeAiProvider.enabled ? '已启用' : '已禁用' }}</p>
+                <!-- Right Detail Column -->
+                <div class="ai-provider-detail-container" v-if="activeAiProvider" style="display: flex; flex-direction: column; gap: 24px; min-width: 0;">
+                  <!-- Top Header Panel -->
+                  <div class="grand-panel" style="padding: 24px; display: flex; align-items: center; justify-content: space-between; position: relative;">
+                    <div style="display: flex; align-items: center; gap: 16px;">
+                      <div class="provider-avatar large" :style="getAvatarStyle(activeAiProvider.id)"
+                        style="width: 48px; height: 48px; border-radius: var(--radius-lg); display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 22px; color: white;">
+                        {{ activeAiProvider.name[0] }}
                       </div>
-                      <button class="mini-button danger" @click="removeAiProvider(activeAiProvider.id)">
-                        <Trash2 :size="14" />
-                        删除
-                      </button>
-                    </div>
-
-                    <label>
-                      <span>供应商名称</span>
-                      <input v-model="activeAiProvider.name" />
-                    </label>
-
-                    <div class="form-grid-two">
-                      <label>
-                        <span>API 格式</span>
-                        <select v-model="activeAiProvider.apiFormat">
-                          <option value="openai">OpenAI Chat Completions</option>
-                          <option value="anthropic">Anthropic Messages</option>
-                        </select>
-                      </label>
-                      <label>
-                        <span>Temperature</span>
-                        <input v-model.number="activeAiProvider.temperature" type="number" min="0" max="2" step="0.1" />
-                      </label>
-                    </div>
-
-                    <label>
-                      <span>Base URL</span>
-                      <input v-model="activeAiProvider.baseUrl"
-                        :placeholder="activeAiProvider.apiFormat === 'anthropic' ? 'https://api.anthropic.com' : 'https://api.openai.com/v1'" />
-                    </label>
-
-                    <label>
-                      <span>API Key</span>
-                      <input v-model="activeAiProvider.apiKey" type="password"
-                        :placeholder="activeAiProvider.apiKeySet ? `留空保留 ${activeAiProvider.apiKeyPreview}` : '请输入 API Key'"
-                        autocomplete="off" />
-                    </label>
-
-                    <label class="ai-toggle-row">
-                      <input v-model="activeAiProvider.enabled" type="checkbox" />
-                      <span>启用该供应商</span>
-                    </label>
-
-                    <div class="ai-model-panel">
-                      <div class="ai-model-panel-header">
-                        <div>
-                          <h4>模型列表</h4>
-                          <p>拖拽排序模型列表，排在第一位的将作为该供应商的默认模型使用。</p>
+                      <div style="display: flex; flex-direction: column; gap: 6px;">
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                          <h4 style="font-size: 18px; font-weight: 600; color: var(--text-primary); margin: 0;">{{ activeAiProvider.name }}</h4>
+                          <span class="status-badge" :class="{ active: activeAiProvider.enabled }"
+                            style="font-size: 11px; padding: 2px 6px; border-radius: 4px;"
+                            :style="activeAiProvider.enabled ? 'background: rgba(16,185,129,0.1); color: var(--success);' : 'background: rgba(255,255,255,0.05); color: var(--text-secondary);'">
+                            {{ activeAiProvider.enabled ? '已启用' : '已禁用' }}
+                          </span>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                          <span class="meta-pill" style="font-size: 11px; padding: 2px 8px; border-radius: 9999px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); color: var(--text-secondary);">
+                            {{ activeAiProvider.apiFormat === 'anthropic' ? 'Anthropic Messages API' : 'OpenAI Chat Completions' }}
+                          </span>
+                          <span class="meta-pill" style="font-size: 11px; padding: 2px 8px; border-radius: 9999px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); color: var(--text-secondary);">
+                            {{ activeAiProvider.apiKeySet ? '已配置 API Key' : '未配置 API Key' }}
+                          </span>
+                          <span class="meta-pill" style="font-size: 11px; padding: 2px 8px; border-radius: 9999px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); color: var(--text-secondary);">
+                            默认模型：{{ activeAiProvider.models[0]?.name || '无' }}
+                          </span>
+                          <span v-if="aiSettingsForm.activeProviderId === activeAiProvider.id" class="meta-pill" style="font-size: 11px; padding: 2px 8px; border-radius: 9999px; background: rgba(99,102,241,0.1); border: 1px solid rgba(99,102,241,0.2); color: #818cf8; font-weight: 500;">
+                            默认服务商
+                          </span>
                         </div>
                       </div>
+                    </div>
+                    
+                    <!-- Dropdown Wrapper -->
+                    <div style="position: relative;">
+                      <button class="mini-button" @click.stop="toggleProviderDropdown" style="width: 36px; height: 36px; border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); color: var(--text-secondary); cursor: pointer;">
+                        <MoreHorizontal :size="18" />
+                      </button>
+                      <div v-if="providerDropdownOpen" class="dropdown-menu shadow-lg" 
+                        style="position: absolute; right: 0; top: 42px; background: #18181b; border: 1px solid rgba(255,255,255,0.08); border-radius: var(--radius-md); padding: 4px; display: flex; flex-direction: column; gap: 2px; min-width: 150px; z-index: 10;">
+                        <button @click="setAsDefaultProvider" style="display: flex; align-items: center; gap: 8px; padding: 8px 12px; font-size: 13px; background: transparent; border: none; color: var(--text-primary); text-align: left; cursor: pointer; border-radius: 4px; width: 100%;">
+                          <Star :size="14" />
+                          <span>设为默认供应商</span>
+                        </button>
+                        <button @click="copyProviderConfig" style="display: flex; align-items: center; gap: 8px; padding: 8px 12px; font-size: 13px; background: transparent; border: none; color: var(--text-primary); text-align: left; cursor: pointer; border-radius: 4px; width: 100%;">
+                          <Copy :size="14" />
+                          <span>复制配置</span>
+                        </button>
+                        <hr style="border: none; border-top: 1px solid rgba(255,255,255,0.05); margin: 4px 0;" />
+                        <button @click="removeAiProvider(activeAiProvider.id)" class="danger" style="display: flex; align-items: center; gap: 8px; padding: 8px 12px; font-size: 13px; background: transparent; border: none; color: var(--danger); text-align: left; cursor: pointer; border-radius: 4px; width: 100%;">
+                          <Trash2 :size="14" />
+                          <span>删除供应商</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
 
-                      <div class="ai-model-list">
+                  <!-- Provider Form Fields Panel -->
+                  <div class="grand-panel settings-form" style="padding: 32px; display: flex; flex-direction: column; gap: 24px;">
+                    <!-- 基础信息 -->
+                    <div style="display: flex; flex-direction: column; gap: 16px;">
+                      <h4 style="font-size: 15px; font-weight: 600; color: var(--text-primary); border-left: 3px solid var(--accent-primary); padding-left: 8px; margin: 0;">基础信息</h4>
+                      
+                      <div style="display: grid; grid-template-columns: 1fr 120px; gap: 24px; align-items: end;">
+                        <label style="display: flex; flex-direction: column; gap: 8px; margin: 0;">
+                          <span style="font-size: 13px; color: var(--text-secondary); font-weight: 500;">供应商名称</span>
+                          <input v-model="activeAiProvider.name" style="width: 100%; height: 40px; border-radius: var(--radius-md); background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.08); color: var(--text-primary); padding: 0 12px; font-size: 14px;" />
+                        </label>
+                        
+                        <label style="display: flex; flex-direction: column; gap: 8px; margin: 0; align-items: flex-start;">
+                          <span style="font-size: 13px; color: var(--text-secondary); font-weight: 500;">启用状态</span>
+                          <div style="display: flex; align-items: center; height: 40px;">
+                            <!-- Styled Switch Toggle -->
+                            <div class="switch-toggle" @click="activeAiProvider.enabled = !activeAiProvider.enabled"
+                              style="width: 48px; height: 26px; border-radius: 999px; padding: 2px; cursor: pointer; transition: background 0.2s; display: flex; align-items: center;"
+                              :style="activeAiProvider.enabled ? 'background: var(--accent-primary); justify-content: flex-end;' : 'background: rgba(255,255,255,0.1); justify-content: flex-start;'">
+                              <div style="width: 22px; height: 22px; border-radius: 50%; background: white; box-shadow: 0 2px 4px rgba(0,0,0,0.2); transition: all 0.2s;"></div>
+                            </div>
+                          </div>
+                        </label>
+                      </div>
+                    </div>
+
+                    <!-- API 配置 -->
+                    <div style="display: flex; flex-direction: column; gap: 16px;">
+                      <h4 style="font-size: 15px; font-weight: 600; color: var(--text-primary); border-left: 3px solid var(--accent-primary); padding-left: 8px; margin: 0;">API 配置</h4>
+                      
+                      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
+                        <label style="display: flex; flex-direction: column; gap: 8px; margin: 0;">
+                          <span style="font-size: 13px; color: var(--text-secondary); font-weight: 500;">API 格式</span>
+                          <select v-model="activeAiProvider.apiFormat" style="width: 100%; height: 40px; border-radius: var(--radius-md); background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.08); color: var(--text-primary); padding: 0 12px; font-size: 14px;">
+                            <option value="openai">OpenAI Chat Completions</option>
+                            <option value="anthropic">Anthropic Messages</option>
+                          </select>
+                        </label>
+                        
+                        <label style="display: flex; flex-direction: column; gap: 8px; margin: 0;">
+                          <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <span style="font-size: 13px; color: var(--text-secondary); font-weight: 500;">Temperature</span>
+                            <span style="font-size: 13px; color: var(--text-primary); font-weight: 600;">{{ activeAiProvider.temperature }}</span>
+                          </div>
+                          <div style="display: flex; align-items: center; gap: 12px; height: 40px;">
+                            <input v-model.number="activeAiProvider.temperature" type="range" min="0" max="2" step="0.1" 
+                              style="flex: 1; accent-color: var(--accent-primary); height: 4px; background: rgba(255,255,255,0.1); border-radius: 99px; appearance: none; cursor: pointer;" />
+                          </div>
+                        </label>
+                      </div>
+
+                      <label style="display: flex; flex-direction: column; gap: 8px; margin: 0;">
+                        <span style="font-size: 13px; color: var(--text-secondary); font-weight: 500;">Base URL</span>
+                        <input v-model="activeAiProvider.baseUrl"
+                          :placeholder="activeAiProvider.apiFormat === 'anthropic' ? 'https://api.anthropic.com' : 'https://api.openai.com/v1'" 
+                          style="width: 100%; height: 40px; border-radius: var(--radius-md); background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.08); color: var(--text-primary); padding: 0 12px; font-size: 14px;" />
+                      </label>
+
+                      <label style="display: flex; flex-direction: column; gap: 8px; margin: 0;">
+                        <span style="font-size: 13px; color: var(--text-secondary); font-weight: 500;">API Key</span>
+                        <div style="position: relative; display: flex; align-items: center;">
+                          <input :type="showApiKey ? 'text' : 'password'" v-model="activeAiProvider.apiKey" 
+                            :placeholder="activeAiProvider.apiKeySet ? `留空保留 ${activeAiProvider.apiKeyPreview}` : '请输入 API Key'"
+                            autocomplete="off" 
+                            style="width: 100%; height: 40px; border-radius: var(--radius-md); background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.08); color: var(--text-primary); padding: 0 80px 0 12px; font-size: 14px;" />
+                          <div style="position: absolute; right: 8px; display: flex; gap: 4px;">
+                            <button type="button" @click="showApiKey = !showApiKey" style="background: transparent; border: none; color: var(--text-secondary); width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; cursor: pointer; border-radius: 4px;">
+                              <Eye v-if="!showApiKey" :size="16" />
+                              <EyeOff v-else :size="16" />
+                            </button>
+                            <button type="button" @click="copyApiKeyToClipboard" style="background: transparent; border: none; color: var(--text-secondary); width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; cursor: pointer; border-radius: 4px;">
+                              <Copy :size="16" />
+                            </button>
+                          </div>
+                        </div>
+                      </label>
+                      
+                      <!-- Test Connection Button & Status -->
+                      <div style="display: flex; align-items: center; gap: 16px; margin-top: 4px;">
+                        <button type="button" @click="testProviderConnection" :disabled="testStatus === 'testing'"
+                          style="display: flex; align-items: center; gap: 8px; padding: 0 16px; height: 36px; border-radius: var(--radius-md); background: var(--accent-primary); border: none; color: white; font-weight: 600; font-size: 13px; cursor: pointer; transition: all 0.2s;">
+                          <Loader2 v-if="testStatus === 'testing'" class="spin" :size="14" />
+                          <Zap v-else :size="14" />
+                          <span>测试连接</span>
+                        </button>
+                        
+                        <div v-if="testStatus !== 'idle'" style="display: flex; align-items: center; gap: 6px; font-size: 13px;">
+                          <span v-if="testStatus === 'success'" style="color: var(--success); display: flex; align-items: center; gap: 4px; font-weight: 500;">
+                            <Check :size="16" />
+                            <span>连接正常</span>
+                          </span>
+                          <span v-else-if="testStatus === 'failed'" style="color: var(--danger); display: flex; align-items: center; gap: 4px; font-weight: 500;">
+                            <AlertCircle :size="16" />
+                            <span>{{ testMessage }}</span>
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- 模型列表 -->
+                    <div style="display: flex; flex-direction: column; gap: 16px;">
+                      <div style="display: flex; flex-direction: column; gap: 4px;">
+                        <h4 style="font-size: 15px; font-weight: 600; color: var(--text-primary); border-left: 3px solid var(--accent-primary); padding-left: 8px; margin: 0;">模型列表</h4>
+                        <p style="font-size: 12px; color: var(--text-secondary); margin: 0 0 0 11px;">拖动模型调整优先级，排在第一位的模型作为默认模型使用。</p>
+                      </div>
+
+                      <div class="ai-model-list" style="display: flex; flex-direction: column; gap: 12px;">
                         <div v-for="(model, index) in activeAiProvider.models" :key="model.id" class="ai-model-row"
                           :class="{ active: index === 0 }"
                           draggable="true"
                           @dragstart="onModelDragStart(index)"
                           @dragenter="onModelDragEnter(index)"
                           @dragend="onModelDragEnd"
-                          @dragover.prevent>
-                          <div class="ai-model-info" style="flex-direction: row; align-items: center; gap: 12px;">
+                          @dragover.prevent
+                          style="display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border-radius: var(--radius-md); background: rgba(255,255,255,0.01); border: 1px solid rgba(255,255,255,0.04); cursor: default; transition: all 0.2s;"
+                          :style="index === 0 ? 'border-color: rgba(99,102,241,0.2); background: rgba(99,102,241,0.02);' : ''">
+                          
+                          <div style="display: flex; align-items: center; gap: 12px;">
                             <div style="cursor: grab; display: flex; align-items: center; color: var(--text-secondary);">
                               <GripVertical :size="16" />
                             </div>
-                            <div style="display: flex; flex-direction: column;">
-                              <span class="ai-model-name">{{ model.name }}</span>
-                              <span class="ai-model-tokens">{{ model.maxTokens }} tokens</span>
+                            <div style="display: flex; flex-direction: column; gap: 4px;">
+                              <div style="display: flex; align-items: center; gap: 8px;">
+                                <span style="font-size: 14px; font-weight: 600; color: var(--text-primary);">{{ model.name }}</span>
+                                <span v-if="index === 0" style="font-size: 11px; padding: 1px 6px; border-radius: 4px; background: rgba(99,102,241,0.1); color: #818cf8; font-weight: 500;">默认</span>
+                              </div>
+                              <div style="display: flex; align-items: center; gap: 12px; font-size: 12px; color: var(--text-secondary);">
+                                <span>Context: {{ model.maxTokens.toLocaleString() }} tokens</span>
+                                <span>模型 ID: {{ model.id }}</span>
+                              </div>
                             </div>
                           </div>
-                          <div class="ai-model-actions">
-                            <span v-if="index === 0" style="font-size: 12px; color: var(--accent-primary); margin-right: 8px;">默认</span>
-                            <button class="mini-button" @click="openEditAiModelModal(model)">
-                              <Edit2 :size="14" />
+                          
+                          <div style="display: flex; align-items: center; gap: 8px;">
+                            <button type="button" @click="openEditAiModelModal(model)"
+                              style="display: flex; align-items: center; gap: 6px; padding: 0 12px; height: 32px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.1); background: transparent; color: var(--text-primary); font-size: 12px; font-weight: 500; cursor: pointer; transition: all 0.2s;">
+                              <Edit2 :size="12" />
+                              <span>编辑</span>
                             </button>
-                            <button class="mini-button danger" @click="removeAiModel(activeAiProvider, model.id)">
-                              <Trash2 :size="14" />
+                            <button type="button" @click="removeAiModel(activeAiProvider, model.id)"
+                              style="display: flex; align-items: center; gap: 6px; padding: 0 12px; height: 32px; border-radius: 6px; border: 1px solid rgba(239,68,68,0.2); background: transparent; color: var(--danger); font-size: 12px; font-weight: 500; cursor: pointer; transition: all 0.2s;">
+                              <Trash2 :size="12" />
+                              <span>删除</span>
                             </button>
                           </div>
                         </div>
                       </div>
 
-                      <button class="ai-model-add-btn icon-btn" title="添加模型" @click="openAddAiModelModal">
-                        <Plus :size="20" />
+                      <button type="button" class="outline-btn" @click="openAddAiModelModal"
+                        style="display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; height: 38px; border-radius: var(--radius-md); border: 1px dashed rgba(255,255,255,0.15); background: transparent; color: var(--text-primary); font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s;">
+                        <Plus :size="16" />
+                        <span>添加模型</span>
                       </button>
                     </div>
 
-                    <div class="ai-settings-status">
-                      <span :class="{ active: activeAiProvider.apiKeySet }">{{ activeAiProvider.apiKeySet ? '已配置 API Key' : '尚未配置 API Key' }}</span>
-                      <span>{{ activeAiProvider.apiFormat === 'anthropic' ? 'Anthropic Messages API' : 'OpenAI Chat Completions' }}</span>
-                      <span>当前模型：{{ activeAiProvider.models[0]?.name || '未选择' }}</span>
+                    <!-- Bottom Actions Bar -->
+                    <div style="display: flex; align-items: center; justify-content: space-between; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 24px; margin-top: 8px;">
+                      <span style="font-size: 13px; color: var(--text-secondary);">上次保存：{{ lastSavedTime }}</span>
+                      
+                      <div style="display: flex; align-items: center; gap: 12px;">
+                        <button type="button" @click="loadAiSettings"
+                          style="display: flex; align-items: center; gap: 6px; padding: 0 16px; height: 40px; border-radius: var(--radius-md); border: 1px solid rgba(255,255,255,0.1); background: transparent; color: var(--text-primary); font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s;">
+                          <RefreshCw :size="14" />
+                          <span>重置修改</span>
+                        </button>
+                        <button type="button" :disabled="isAiSettingsSaving" @click="saveAiSettings"
+                          style="display: flex; align-items: center; gap: 8px; padding: 0 20px; height: 40px; border-radius: var(--radius-md); background: var(--accent-gradient); border: none; color: white; font-weight: 600; font-size: 14px; cursor: pointer; transition: all 0.2s; box-shadow: var(--shadow-sm);">
+                          <Loader2 v-if="isAiSettingsSaving" class="spin" :size="16" />
+                          <Settings v-else :size="16" />
+                          <span>保存默认设置</span>
+                        </button>
+                      </div>
                     </div>
-
-                    <button class="btn-primary settings-submit" :disabled="isAiSettingsSaving" @click="saveAiSettings">
-                      <Loader2 v-if="isAiSettingsSaving" class="spin" :size="18" />
-                      <Settings v-else :size="18" />
-                      <span>保存模型设置</span>
-                    </button>
-
-                    <p v-if="aiSettingsMessage" class="settings-message">{{ aiSettingsMessage }}</p>
                   </div>
                 </div>
+              </div>
             </section>
 
             <section v-else-if="settingsTab === 'manage_bookmarks'">
