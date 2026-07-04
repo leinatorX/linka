@@ -31,3 +31,48 @@ export interface AssistantResponse {
   bookmark?: Bookmark;
   results?: Bookmark[];
 }
+
+export interface AssistantConversation {
+  id: string;
+  title: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AssistantMessage {
+  id: string;
+  conversationId: string;
+  role: "user" | "assistant";
+  content: string;
+  createdAt: string;
+}
+
+export type AiApiFormat = "openai" | "anthropic";
+
+export interface AiModelConfig {
+  id: string;
+  name: string;
+  maxTokens: number;
+  enabled: boolean;
+}
+
+export interface AiProviderConfig {
+  id: string;
+  name: string;
+  apiFormat: AiApiFormat;
+  baseUrl: string;
+  apiKey: string;
+  enabled: boolean;
+  temperature: number;
+  activeModelId: string;
+  models: AiModelConfig[];
+  apiKeySet: boolean;
+  apiKeyPreview: string;
+}
+
+export interface AiSettings {
+  activeProviderId: string;
+  providers: AiProviderConfig[];
+}
+
+export type AiSettingsPayload = AiSettings;

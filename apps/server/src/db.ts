@@ -30,6 +30,21 @@ export interface CategoryRecord {
   updated_at: string;
 }
 
+export interface AssistantConversationRecord {
+  id: string;
+  title: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AssistantMessageRecord {
+  id: string;
+  conversation_id: string;
+  role: "user" | "assistant";
+  content: string;
+  created_at: string;
+}
+
 fs.mkdirSync(path.dirname(config.dbPath), { recursive: true });
 
 export const db = new Database(config.dbPath);
@@ -68,6 +83,32 @@ db.exec(`
   );
 
   CREATE INDEX IF NOT EXISTS idx_categories_sort_order ON categories(sort_order);
+
+  CREATE TABLE IF NOT EXISTS settings (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  );
+
+  CREATE TABLE IF NOT EXISTS assistant_conversations (
+    id TEXT PRIMARY KEY,
+    title TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_assistant_conversations_updated_at ON assistant_conversations(updated_at);
+
+  CREATE TABLE IF NOT EXISTS assistant_messages (
+    id TEXT PRIMARY KEY,
+    conversation_id TEXT NOT NULL,
+    role TEXT NOT NULL CHECK(role IN ('user', 'assistant')),
+    content TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    FOREIGN KEY(conversation_id) REFERENCES assistant_conversations(id) ON DELETE CASCADE
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_assistant_messages_conversation_id ON assistant_messages(conversation_id, created_at);
 `);
 
 export function toBookmark(record: BookmarkRecord) {
@@ -87,5 +128,24 @@ export function toBookmark(record: BookmarkRecord) {
     source: record.source,
     createdAt: record.created_at,
     updatedAt: record.updated_at
+  };
+}
+
+export function toAssistantConversation(record: AssistantConversationRecord) {
+  return {
+    id: record.id,
+    title: record.title,
+    createdAt: record.created_at,
+    updatedAt: record.updated_at
+  };
+}
+
+export function toAssistantMessage(record: AssistantMessageRecord) {
+  return {
+    id: record.id,
+    conversationId: record.conversation_id,
+    role: record.role,
+    content: record.content,
+    createdAt: record.created_at
   };
 }
