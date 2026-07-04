@@ -3,7 +3,7 @@ import { computed, onMounted, onUnmounted, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import {
   Archive, ChevronDown, ExternalLink, Link2, Loader2,
-  Pin, Plus, Search, Send, Settings, Trash2, X, Bot, Edit2, List, Mic, History, ArrowLeft
+  Pin, Plus, Search, Send, Settings, Trash2, X, Bot, Edit2, List, Mic, History, ArrowLeft, GripVertical
 } from "@lucide/vue";
 import { createAssistantConversation, createBookmark, createCategory, deleteAssistantConversations, deleteBookmark, deleteCategory, getAiSettings as fetchAiSettings, getAssistantConversation, listAssistantConversations, listBookmarks, listCategories, saveAiSettings as updateAiSettings, streamAssistantMessage, updateBookmark, updateCategory } from "./api";
 import type { AiApiFormat, AiProviderConfig, AssistantConversation, Bookmark, Category } from "./types";
@@ -63,6 +63,25 @@ const aiSettingsForm = ref({
 });
 const newAiModelName = ref("");
 const newAiModelMaxTokens = ref(1000);
+
+const draggedModelIndex = ref<number | null>(null);
+
+function onModelDragStart(index: number) {
+  draggedModelIndex.value = index;
+}
+
+function onModelDragEnter(index: number) {
+  if (draggedModelIndex.value === null || draggedModelIndex.value === index) return;
+  const provider = activeAiProvider.value;
+  if (!provider) return;
+  const draggedItem = provider.models.splice(draggedModelIndex.value, 1)[0];
+  provider.models.splice(index, 0, draggedItem);
+  draggedModelIndex.value = index;
+}
+
+function onModelDragEnd() {
+  draggedModelIndex.value = null;
+}
 const editingCategoryNames = ref<Record<string, string>>({});
 const editingBookmarkId = ref<string | null>(null);
 const editBookmarkData = ref({
@@ -350,6 +369,13 @@ function removeAiModel(provider: AiProviderConfig, modelId: string) {
 async function saveAiSettings() {
   isAiSettingsSaving.value = true;
   aiSettingsMessage.value = "";
+
+  aiSettingsForm.value.providers.forEach(p => {
+    p.models.forEach(m => m.enabled = true);
+    if (p.models.length > 0) {
+      p.activeModelId = p.models[0].id;
+    }
+  });
 
   try {
     const result = await updateAiSettings(aiSettingsForm.value);
@@ -794,27 +820,29 @@ onUnmounted(() => {
                       <div class="ai-model-panel-header">
                         <div>
                           <h4>模型列表</h4>
-                          <p>选择一个模型作为当前供应商的默认模型。</p>
+                          <p>拖拽排序模型列表，排在第一位的将作为该供应商的默认模型使用。</p>
                         </div>
                       </div>
 
                       <div class="ai-model-list">
-                        <div v-for="model in activeAiProvider.models" :key="model.id" class="ai-model-row"
-                          :class="{ active: activeAiProvider.activeModelId === model.id }">
-                          <div class="ai-model-info">
-                            <span class="ai-model-name">{{ model.name }}</span>
-                            <span class="ai-model-tokens">{{ model.maxTokens }} tokens</span>
+                        <div v-for="(model, index) in activeAiProvider.models" :key="model.id" class="ai-model-row"
+                          :class="{ active: index === 0 }"
+                          draggable="true"
+                          @dragstart="onModelDragStart(index)"
+                          @dragenter="onModelDragEnter(index)"
+                          @dragend="onModelDragEnd"
+                          @dragover.prevent>
+                          <div class="ai-model-info" style="flex-direction: row; align-items: center; gap: 12px;">
+                            <div style="cursor: grab; display: flex; align-items: center; color: var(--text-secondary);">
+                              <GripVertical :size="16" />
+                            </div>
+                            <div style="display: flex; flex-direction: column;">
+                              <span class="ai-model-name">{{ model.name }}</span>
+                              <span class="ai-model-tokens">{{ model.maxTokens }} tokens</span>
+                            </div>
                           </div>
                           <div class="ai-model-actions">
-                            <label class="ai-model-check">
-                              <input v-model="model.enabled" type="checkbox" />
-                              <span>启用</span>
-                            </label>
-                            <button class="mini-button"
-                              :class="{ highlight: activeAiProvider.activeModelId === model.id }"
-                              @click="activeAiProvider.activeModelId = model.id">
-                              使用
-                            </button>
+                            <span v-if="index === 0" style="font-size: 12px; color: var(--accent-primary); margin-right: 8px;">默认</span>
                             <button class="mini-button" @click="openEditAiModelModal(model)">
                               <Edit2 :size="14" />
                             </button>
@@ -833,7 +861,7 @@ onUnmounted(() => {
                     <div class="ai-settings-status">
                       <span :class="{ active: activeAiProvider.apiKeySet }">{{ activeAiProvider.apiKeySet ? '已配置 API Key' : '尚未配置 API Key' }}</span>
                       <span>{{ activeAiProvider.apiFormat === 'anthropic' ? 'Anthropic Messages API' : 'OpenAI Chat Completions' }}</span>
-                      <span>当前模型：{{activeAiProvider.models.find((model) => model.id === activeAiProvider.activeModelId)?.name || '未选择'}}</span>
+                      <span>当前模型：{{ activeAiProvider.models[0]?.name || '未选择' }}</span>
                     </div>
 
                     <button class="btn-primary settings-submit" :disabled="isAiSettingsSaving" @click="saveAiSettings">
