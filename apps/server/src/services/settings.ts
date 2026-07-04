@@ -130,7 +130,8 @@ function normalizeModel(value: Partial<AiModelConfig>, fallbackName: string): Ai
   const name = String(value.name || fallbackName).trim() || fallbackName;
 
   return {
-    id: normalizeId(value.id, name || randomUUID()),
+    // 模型 ID 始终用 UUID，不与模型名绑定（模型名只是展示标签，随时可改）
+    id: normalizeId(value.id, randomUUID()),
     name,
     maxTokens: normalizeNumber(value.maxTokens, 1000, 64, 2000000),
     enabled: normalizeBoolean(value.enabled, true)
@@ -139,11 +140,13 @@ function normalizeModel(value: Partial<AiModelConfig>, fallbackName: string): Ai
 
 function normalizeProvider(value: Partial<AiProviderConfig>, fallback?: AiProviderConfig): AiProviderConfig {
   const apiFormat = normalizeApiFormat(value.apiFormat ?? fallback?.apiFormat);
-  const fallbackBaseUrl = apiFormat === "anthropic" ? "https://api.anthropic.com" : "https://api.openai.com/v1";
-  const fallbackName = apiFormat === "anthropic" ? "Anthropic" : "OpenAI";
+  const fallbackBaseUrl = fallback?.baseUrl ?? "";
+  const fallbackName = fallback?.name ?? "";
   const rawModels = Array.isArray(value.models) && value.models.length ? value.models : fallback?.models;
-  const models = (rawModels?.length ? rawModels : [{ name: apiFormat === "anthropic" ? "claude-sonnet-4-5" : DEFAULT_OPENAI_MODEL }])
-    .map((model) => normalizeModel(model, apiFormat === "anthropic" ? "claude-sonnet-4-5" : DEFAULT_OPENAI_MODEL));
+  // 模型名兜底：用 fallback 里第一个模型名，实在没有就用空字符串
+  const fallbackModelName = fallback?.models?.[0]?.name ?? "";
+  const models = (rawModels?.length ? rawModels : [{ name: fallbackModelName }])
+    .map((model) => normalizeModel(model, fallbackModelName));
   const activeModelExists = models.some((model) => model.id === value.activeModelId);
   const activeModelId = activeModelExists ? String(value.activeModelId) : models.find((model) => model.enabled)?.id ?? models[0].id;
 
@@ -166,11 +169,13 @@ function migrateLegacySettings(value: Record<string, unknown>): AiSettings | nul
   }
 
   const apiFormat = normalizeApiFormat(value.provider);
-  const modelName = String(value.model || (apiFormat === "anthropic" ? "claude-sonnet-4-5" : DEFAULT_OPENAI_MODEL));
+  const fallbackModelName = apiFormat === "anthropic" ? "claude-sonnet-4-5" : DEFAULT_OPENAI_MODEL;
+  const modelName = String(value.model || fallbackModelName);
+  // 旧版迁移：不再把 apiFormat 当作供应商 id 持久化（防止 MiniMax/DeepSeek 等第三方供应商的 id 被固定为 "anthropic"/"openai"）
+  // normalizeProvider / normalizeModel 会自动生成 UUID 作为 id
   const provider = normalizeProvider({
-    id: apiFormat,
-    name: apiFormat === "anthropic" ? "Anthropic" : "OpenAI",
     apiFormat,
+    name: apiFormat === "anthropic" ? "Anthropic" : "OpenAI",
     baseUrl: String(value.baseUrl || ""),
     apiKey: String(value.apiKey || ""),
     enabled: true,
@@ -178,7 +183,7 @@ function migrateLegacySettings(value: Record<string, unknown>): AiSettings | nul
     activeModelId: modelName,
     models: [
       {
-        id: modelName,
+        id: "", // normalizeModel 会替换为 UUID
         name: modelName,
         maxTokens: Number(value.maxTokens ?? 1000),
         enabled: true

@@ -74,6 +74,26 @@ const revealingApiKeyProviderIds = ref<Set<string>>(new Set());
 const testStatus = ref<'idle' | 'testing' | 'success' | 'failed'>('idle');
 const testMessage = ref('');
 
+const showDeleteConfirmModal = ref(false);
+const providerIdToDelete = ref<string | null>(null);
+
+interface Toast {
+  id: number;
+  message: string;
+  type: 'info' | 'success' | 'warning' | 'error';
+}
+
+const toasts = ref<Toast[]>([]);
+let nextToastId = 0;
+
+function showToast(message: string, type: 'info' | 'success' | 'warning' | 'error' = 'info', duration = 3000) {
+  const id = nextToastId++;
+  toasts.value.push({ id, message, type });
+  setTimeout(() => {
+    toasts.value = toasts.value.filter(t => t.id !== id);
+  }, duration);
+}
+
 function isApiKeyRevealed(providerId: string): boolean {
   return revealedApiKeyProviderIds.value.has(providerId);
 }
@@ -98,7 +118,7 @@ async function toggleRevealApiKey(providerId: string) {
     revealedApiKeys.value[providerId] = res.apiKey;
   } catch (error: any) {
     revealedApiKeyProviderIds.value.delete(providerId);
-    alert("无法获取 API Key：" + (error.message || String(error)));
+    showToast("无法获取 API Key：" + (error.message || String(error)), "error");
   } finally {
     revealingApiKeyProviderIds.value.delete(providerId);
   }
@@ -110,14 +130,15 @@ function copyApiKeyValue(provider: any) {
     ? revealed
     : (provider.apiKey && provider.apiKey.length > 0 ? provider.apiKey : provider.apiKeyPreview);
   if (!value) {
-    alert("API Key 为空");
+    showToast("API Key 为空", "warning");
     return;
   }
   const isFull = !!revealed;
   navigator.clipboard.writeText(value)
-    .then(() => alert(isFull ? "API Key 已复制到剪贴板" : "已复制脱敏预览：" + value))
-    .catch(err => alert("复制失败: " + err));
+    .then(() => showToast(isFull ? "API Key 已复制到剪贴板" : "已复制脱敏预览：" + value, "success"))
+    .catch(err => showToast("复制失败: " + err, "error"));
 }
+
 
 async function testProviderConnection() {
   const provider = activeAiProvider.value;
@@ -167,14 +188,88 @@ function formatDate(date: Date) {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
 }
 
-function getAvatarStyle(providerId: string) {
+function getAvatarStyle(provider: { id: string; name: string }) {
   const gradients: Record<string, string> = {
     openai: 'background: linear-gradient(135deg, #10b981 0%, #059669 100%);',
     anthropic: 'background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);',
     minimax: 'background: linear-gradient(135deg, #a855f7 0%, #7e22ce 100%);',
-    deepseek: 'background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);'
+    deepseek: 'background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);',
+    moonshot: 'background: linear-gradient(135deg, #18181b 0%, #3f3f46 100%);',
+    kimi: 'background: linear-gradient(135deg, #18181b 0%, #3f3f46 100%);',
+    zhipu: 'background: linear-gradient(135deg, #0ea5e9 0%, #0369a1 100%);',
+    glm: 'background: linear-gradient(135deg, #0ea5e9 0%, #0369a1 100%);',
+    xiaomi: 'background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);',
+    mimo: 'background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);',
+    qwen: 'background: linear-gradient(135deg, #615ced 0%, #4338ca 100%);',
+    doubao: 'background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);',
+    wenxin: 'background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);',
+    gemini: 'background: linear-gradient(135deg, #4285f4 0%, #9b72cb 50%, #d96570 100%);',
+    mistral: 'background: linear-gradient(135deg, #facc15 0%, #ca8a04 100%);',
+    cohere: 'background: linear-gradient(135deg, #ef4444 0%, #b91c1c 100%);',
+    meta: 'background: linear-gradient(135deg, #0866ff 0%, #0050cc 100%);',
+    grok: 'background: linear-gradient(135deg, #111827 0%, #1f2937 100%);',
+    perplexity: 'background: linear-gradient(135deg, #20b2aa 0%, #0f766e 100%);'
   };
-  return gradients[providerId] || 'background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%);';
+  // 优先按供应商名称匹配（大小写不敏感）；回退按 ID 匹配
+  return gradients[provider.name.trim().toLowerCase()] ?? gradients[provider.id] ?? 'background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%);';
+}
+
+// 品牌名 → 图标文件名的映射表（apps/client/public/provider-icons/）
+// 图标全部来自 lobe-icons 仓库（MIT 协议），本地化以避免 CDN 拦截与加载失败
+// provider.name 大小写不敏感匹配，优先级高于 provider.id
+const BRAND_ICON_MAP: Record<string, string> = {
+  minimax: "minimax",
+  deepseek: "deepseek",
+  openai: "openai",
+  anthropic: "anthropic",
+  moonshot: "moonshot",
+  kimi: "kimi",
+  zhipu: "zhipu",
+  qwen: "qwen",
+  doubao: "doubao",
+  wenxin: "wenxin",
+  gemini: "gemini",
+  mistral: "mistral",
+  cohere: "cohere",
+  meta: "meta",
+  grok: "grok",
+  perplexity: "perplexity",
+  cursor: "cursor"
+};
+
+// 加载失败的供应商 ID 集合：用来回退到首字母头像
+const failedProviderIconIds = ref<Set<string>>(new Set());
+
+function resolveBrandSlug(provider: { id: string; name: string }): string | null {
+  // 优先按供应商名称匹配（大小写不敏感）
+  const nameKey = provider.name.trim().toLowerCase();
+  if (nameKey && BRAND_ICON_MAP[nameKey] !== undefined) {
+    return BRAND_ICON_MAP[nameKey];
+  }
+  // 回退按 ID 匹配
+  if (provider.id && BRAND_ICON_MAP[provider.id] !== undefined) {
+    return BRAND_ICON_MAP[provider.id];
+  }
+  return null;
+}
+
+function getProviderIconUrl(provider: { id: string; name: string }): string | null {
+  const slug = resolveBrandSlug(provider);
+  if (!slug) {
+    return null;
+  }
+  return `/provider-icons/${slug}.svg`;
+}
+
+function showProviderIcon(provider: { id: string; name: string }): boolean {
+  if (failedProviderIconIds.value.has(provider.id)) {
+    return false;
+  }
+  return Boolean(getProviderIconUrl(provider));
+}
+
+function onProviderIconError(provider: { id: string; name: string }) {
+  failedProviderIconIds.value.add(provider.id);
 }
 
 const draggedModelIndex = ref<number | null>(null);
@@ -451,9 +546,16 @@ function addAiProvider() {
 
 function removeAiProvider(providerId: string) {
   if (aiSettingsForm.value.providers.length <= 1) {
-    alert("至少保留一个供应商。");
+    showToast("至少保留一个供应商。", "warning");
     return;
   }
+  providerIdToDelete.value = providerId;
+  showDeleteConfirmModal.value = true;
+}
+
+async function confirmDeleteProvider() {
+  const providerId = providerIdToDelete.value;
+  if (!providerId) return;
 
   aiSettingsForm.value.providers = aiSettingsForm.value.providers.filter((provider) => provider.id !== providerId);
 
@@ -463,7 +565,14 @@ function removeAiProvider(providerId: string) {
   if (editingProviderId.value === providerId) {
     editingProviderId.value = aiSettingsForm.value.providers[0].id;
   }
+
+  showDeleteConfirmModal.value = false;
+  providerIdToDelete.value = null;
+
+  // 立即保存配置到数据库
+  await saveAiSettings();
 }
+
 
 function openAddAiModelModal() {
   editingAiModel.value = null;
@@ -534,11 +643,14 @@ async function saveAiSettings() {
 
     aiSettingsForm.value = result.settings;
     aiSettingsMessage.value = "AI 配置已保存。";
+    showToast("AI 配置已保存。", "success");
     const nowStr = formatDate(new Date());
     localStorage.setItem('ai_last_saved', nowStr);
     lastSavedTime.value = nowStr;
   } catch (error) {
-    aiSettingsMessage.value = error instanceof Error ? error.message : "AI 配置保存失败";
+    const errMsg = error instanceof Error ? error.message : "AI 配置保存失败";
+    aiSettingsMessage.value = errMsg;
+    showToast(errMsg, "error");
   } finally {
     isAiSettingsSaving.value = false;
   }
@@ -928,9 +1040,12 @@ onUnmounted(() => {
                       :style="editingProviderId === provider.id ? 'border-color: var(--accent-primary); box-shadow: 0 0 0 1px var(--accent-primary); background: rgba(255,255,255,0.04);' : ''">
 
                       <div style="display: flex; align-items: center; gap: 12px;">
-                        <div class="provider-avatar" :style="getAvatarStyle(provider.id)"
-                          style="width: 36px; height: 36px; border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 16px; color: white;">
-                          {{ provider.name[0] }}
+                        <div class="provider-avatar" :style="getAvatarStyle(provider)"
+                          style="width: 36px; height: 36px; border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 16px; color: white; overflow: hidden;">
+                          <img v-if="showProviderIcon(provider)" :src="getProviderIconUrl(provider) ?? ''"
+                            :alt="provider.name" @error="onProviderIconError(provider)"
+                            style="width: 22px; height: 22px; object-fit: contain; filter: brightness(0) invert(1);" />
+                          <span v-else>{{ provider.name[0] }}</span>
                         </div>
                         <div style="display: flex; flex-direction: column; gap: 2px;">
                           <span style="font-size: 14px; font-weight: 600; color: var(--text-primary);">{{ provider.name
@@ -966,9 +1081,12 @@ onUnmounted(() => {
                   <div class="grand-panel"
                     style="padding: 24px; display: flex; align-items: center; justify-content: space-between; position: relative;">
                     <div style="display: flex; align-items: center; gap: 16px;">
-                      <div class="provider-avatar large" :style="getAvatarStyle(activeAiProvider.id)"
-                        style="width: 48px; height: 48px; border-radius: var(--radius-lg); display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 22px; color: white;">
-                        {{ activeAiProvider.name[0] }}
+                      <div class="provider-avatar large" :style="getAvatarStyle(activeAiProvider)"
+                        style="width: 48px; height: 48px; border-radius: var(--radius-lg); display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 22px; color: white; overflow: hidden;">
+                        <img v-if="showProviderIcon(activeAiProvider)" :src="getProviderIconUrl(activeAiProvider) ?? ''"
+                          :alt="activeAiProvider.name" @error="onProviderIconError(activeAiProvider)"
+                          style="width: 30px; height: 30px; object-fit: contain; filter: brightness(0) invert(1);" />
+                        <span v-else>{{ activeAiProvider.name[0] }}</span>
                       </div>
                       <div style="display: flex; flex-direction: column; gap: 6px;">
                         <div style="display: flex; align-items: center; gap: 8px;">
@@ -1117,7 +1235,7 @@ onUnmounted(() => {
                             type="text" value="正在加载…" readonly tabindex="-1"
                             style="width: 100%; height: 40px; border-radius: var(--radius-md); background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.08); color: var(--text-secondary); padding: 0 80px 0 12px; font-size: 14px;" />
                           <input v-else-if="isApiKeyRevealed(activeAiProvider.id)"
-                            :type="showApiKey ? 'text' : 'password'" v-model="revealedApiKeys[activeAiProvider.id]"
+                            type="text" v-model="revealedApiKeys[activeAiProvider.id]"
                             placeholder="请输入新的 API Key 覆盖现有值" autocomplete="off"
                             style="width: 100%; height: 40px; border-radius: var(--radius-md); background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.08); color: var(--text-primary); padding: 0 80px 0 12px; font-size: 14px;" />
                           <input v-else :type="showApiKey ? 'text' : 'password'" v-model="activeAiProvider.apiKey"
@@ -1173,7 +1291,7 @@ onUnmounted(() => {
                         <div v-for="(model, index) in activeAiProvider.models" :key="model.id" class="ai-model-row"
                           :class="{ active: index === 0 }" draggable="true" @dragstart="onModelDragStart(index)"
                           @dragenter="onModelDragEnter(index)" @dragend="onModelDragEnd" @dragover.prevent
-                          style="display: flex; flex-direction: column; gap: 8px; padding: 12px 16px; border-radius: var(--radius-md); background: rgba(255,255,255,0.01); border: 1px solid rgba(255,255,255,0.04); cursor: default; transition: all 0.2s;"
+                          style="display: flex; flex-direction: column; align-items: stretch; gap: 8px; padding: 12px 16px; border-radius: var(--radius-md); background: rgba(255,255,255,0.01); border: 1px solid rgba(255,255,255,0.04); cursor: default; transition: all 0.2s;"
                           :style="index === 0 ? 'border-color: rgba(99,102,241,0.2); background: rgba(99,102,241,0.02);' : ''">
 
                           <div style="display: flex; align-items: center; gap: 12px;">
@@ -1549,6 +1667,39 @@ onUnmounted(() => {
         <button class="btn-primary" @click="saveAiModelModal(activeAiProvider!)">保存</button>
       </footer>
     </div>
+  </div>
+
+  <!-- Delete Provider Confirm Modal -->
+  <div v-if="showDeleteConfirmModal" class="modal-overlay" @click.self="showDeleteConfirmModal = false">
+    <div class="modal-card" style="max-width: 400px;">
+      <header class="modal-header">
+        <h3>确认删除</h3>
+        <button class="btn-close" @click="showDeleteConfirmModal = false">
+          <X :size="20" />
+        </button>
+      </header>
+      <div class="modal-body">
+        <p style="color: var(--text-secondary); font-size: 14px; margin: 0; line-height: 1.5;">
+          确定要删除该供应商吗？删除后所有相关的模型配置和 API Key 将被清除，此操作无法撤销。
+        </p>
+      </div>
+      <footer class="modal-footer">
+        <button class="btn-secondary" @click="showDeleteConfirmModal = false">取消</button>
+        <button class="btn-primary" style="background: var(--danger); box-shadow: 0 0 12px rgba(239, 68, 68, 0.4);" @click="confirmDeleteProvider">确认删除</button>
+      </footer>
+    </div>
+  </div>
+
+  <!-- Toast Notifications -->
+  <div class="toast-container">
+    <TransitionGroup name="toast">
+      <div v-for="toast in toasts" :key="toast.id" :class="['toast-item', toast.type]">
+        <Check v-if="toast.type === 'success'" :size="16" />
+        <AlertCircle v-else-if="toast.type === 'error' || toast.type === 'warning'" :size="16" />
+        <Info v-else :size="16" />
+        <span>{{ toast.message }}</span>
+      </div>
+    </TransitionGroup>
   </div>
 
 </template>
