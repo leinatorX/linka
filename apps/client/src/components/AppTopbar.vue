@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Archive, ChevronDown, Link2, Search, Settings } from "@lucide/vue";
+import { Archive, ChevronDown, Search, Settings } from "@lucide/vue";
 
 defineProps<{
   showArchived: boolean;
@@ -19,11 +19,11 @@ defineEmits<{
   <header class="topbar" v-if="!isSettingsPage">
     <a class="brand" href="/" aria-label="Linka 首页">
       <div class="brand-icon">
-        <Link2 :size="24" :stroke-width="2.5" />
+        <img class="brand-logo" src="/logo.svg" alt="" />
       </div>
       <div class="brand-text">
         <strong>Linka</strong>
-        <span>AI Bookmarks</span>
+        <span>只管收藏，AI 自动归档。</span>
       </div>
     </a>
 
