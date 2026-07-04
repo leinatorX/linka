@@ -19,6 +19,7 @@ export interface AssistantUiMessage {
 
 interface UseAssistantOptions {
   loadBookmarks: () => Promise<void>;
+  loadCategories?: () => Promise<void>;
 }
 
 export function useAssistant(options: UseAssistantOptions) {
@@ -185,8 +186,11 @@ export function useAssistant(options: UseAssistantOptions) {
               ...assistantConversations.value.filter((conversation) => conversation.id !== response.conversation?.id)
             ];
           }
-          if (response.type === "bookmark_saved") {
+          if (response.type === "bookmark_saved" || response.changed) {
             options.loadBookmarks();
+          }
+          if (response.categoriesChanged) {
+            options.loadCategories?.();
           }
         },
         onError(messageText) {

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed, onMounted, onUnmounted, ref } from "vue";
 import { ChevronDown, History, Loader2, Mic, Plus, Search, Send, X } from "@lucide/vue";
 import type { AssistantUiMessage } from "../../composables/useAssistant";
 import type { AiModelConfig, AssistantConversation } from "../../types";
@@ -25,6 +25,63 @@ const renderedMessages = computed(() =>
     html: message.role === "assistant" ? renderAssistantMarkdown(message.text) : ""
   }))
 );
+const assistantPanelWidth = ref(420);
+const isResizingAssistant = ref(false);
+const panelWidthStyle = computed(() => ({
+  width: `${assistantPanelWidth.value}px`
+}));
+
+const panelWidthStorageKey = "linka-assistant-panel-width";
+
+function clampPanelWidth(width: number) {
+  const maxWidth = Math.min(window.innerWidth - 72, 860);
+  return Math.min(Math.max(width, 340), Math.max(340, maxWidth));
+}
+
+function onAssistantResizeMove(event: PointerEvent) {
+  if (!isResizingAssistant.value) {
+    return;
+  }
+
+  assistantPanelWidth.value = clampPanelWidth(window.innerWidth - event.clientX);
+}
+
+function stopAssistantResize() {
+  if (!isResizingAssistant.value) {
+    return;
+  }
+
+  isResizingAssistant.value = false;
+  document.body.style.cursor = "";
+  document.body.style.userSelect = "";
+  window.localStorage.setItem(panelWidthStorageKey, String(assistantPanelWidth.value));
+  window.removeEventListener("pointermove", onAssistantResizeMove);
+  window.removeEventListener("pointerup", stopAssistantResize);
+}
+
+function startAssistantResize(event: PointerEvent) {
+  if (window.innerWidth <= 768) {
+    return;
+  }
+
+  event.preventDefault();
+  isResizingAssistant.value = true;
+  document.body.style.cursor = "ew-resize";
+  document.body.style.userSelect = "none";
+  window.addEventListener("pointermove", onAssistantResizeMove);
+  window.addEventListener("pointerup", stopAssistantResize);
+}
+
+onMounted(() => {
+  const savedWidth = Number(window.localStorage.getItem(panelWidthStorageKey));
+  if (Number.isFinite(savedWidth) && savedWidth > 0) {
+    assistantPanelWidth.value = clampPanelWidth(savedWidth);
+  }
+});
+
+onUnmounted(() => {
+  stopAssistantResize();
+});
 
 const assistantOpen = defineModel<boolean>("assistantOpen", { required: true });
 const assistantHistoryOpen = defineModel<boolean>("assistantHistoryOpen", { required: true });
@@ -56,7 +113,10 @@ defineEmits<{
   </button>
 
   <transition name="fade">
-    <aside v-if="assistantOpen && !isSettingsPage" class="assistant-panel">
+    <aside v-if="assistantOpen && !isSettingsPage" class="assistant-panel" :style="panelWidthStyle"
+      :class="{ resizing: isResizingAssistant }">
+      <div class="assistant-resize-handle" title="拖拽调整宽度" aria-label="拖拽调整助手面板宽度"
+        @pointerdown="startAssistantResize"></div>
       <div class="assistant-header">
         <div class="brand-icon assistant-brand-icon">
           <img src="/assistant-bot.png" alt="Linka AI" />
@@ -131,7 +191,13 @@ defineEmits<{
                 class="stream-cursor"></span></p>
           </div>
           <!-- assistant 消息走 markdown 渲染（已经过 XSS 过滤），user 消息保持纯文本。 -->
-          <div v-if="message.role === 'assistant' && (message.text || !message.reasoning)" class="markdown-body"
+          <div v-if="message.role === 'assistant' && message.streaming && !message.text && !message.reasoning"
+            class="assistant-waiting" aria-label="Linka AI 正在处理">
+            <span></span>
+            <span></span>
+            <span></span>
+          </div>
+          <div v-else-if="message.role === 'assistant' && (message.text || !message.reasoning)" class="markdown-body"
             v-html="message.html || message.text"></div>
           <p v-else-if="message.text || !message.reasoning">{{ message.text }}<span v-if="message.streaming"
               class="stream-cursor"></span></p>

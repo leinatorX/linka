@@ -4,8 +4,12 @@ import { getActiveAiConfig } from "./settings.js";
 import type { ActiveAiConfig } from "./settings.js";
 import {
   ASSISTANT_CHAT_SYSTEM_PROMPT,
+  ASSISTANT_TOOL_RESULT_SYSTEM_PROMPT,
+  ASSISTANT_TOOL_SYSTEM_PROMPT,
   CLASSIFY_BOOKMARK_SYSTEM_PROMPT,
+  buildAssistantToolResultPrompt,
   buildAssistantUserPrompt,
+  buildAssistantToolUserPrompt,
   buildClassifyBookmarkUserPrompt
 } from "./prompts.js";
 
@@ -35,6 +39,26 @@ interface AssistantResult {
 export interface AssistantHistoryMessage {
   role: "user" | "assistant";
   content: string;
+}
+
+export interface AssistantToolPlan {
+  tool:
+    | "none"
+    | "list_bookmarks"
+    | "create_bookmark"
+    | "update_bookmark"
+    | "delete_bookmark"
+    | "list_categories"
+    | "create_category"
+    | "update_category"
+    | "delete_category"
+    | "move_bookmarks_to_category"
+    | "archive_bookmark"
+    | "pin_bookmark";
+  arguments: Record<string, unknown>;
+  confidence: number;
+  requiresConfirmation: boolean;
+  reason: string;
 }
 
 function inferCategory(metadata: PageMetadata): string {
@@ -550,6 +574,68 @@ export async function* streamAssistantReply(options: {
     { role: "system", content: ASSISTANT_CHAT_SYSTEM_PROMPT },
     { role: "user", content: prompt }
   ], options.model, options.effort);
+}
+
+export async function planAssistantToolCall(options: {
+  message: string;
+  categories: string[];
+  history?: AssistantHistoryMessage[];
+  bookmarkHints: Array<Pick<ReturnType<typeof toBookmark>, "id" | "title" | "category" | "url" | "domain">>;
+}): Promise<AssistantToolPlan | null> {
+  const prompt = buildAssistantToolUserPrompt(options);
+
+  try {
+    const content = await requestAi([
+      { role: "system", content: ASSISTANT_TOOL_SYSTEM_PROMPT },
+      { role: "user", content: prompt }
+    ], { jsonMode: true });
+    const parsed = JSON.parse(extractJsonObject(content)) as Partial<AssistantToolPlan>;
+    const tool = typeof parsed.tool === "string" ? parsed.tool : "none";
+    const allowedTools = new Set<AssistantToolPlan["tool"]>([
+      "none",
+      "list_bookmarks",
+      "create_bookmark",
+      "update_bookmark",
+      "delete_bookmark",
+      "list_categories",
+      "create_category",
+      "update_category",
+      "delete_category",
+      "move_bookmarks_to_category",
+      "archive_bookmark",
+      "pin_bookmark"
+    ]);
+
+    if (!allowedTools.has(tool as AssistantToolPlan["tool"])) {
+      return null;
+    }
+
+    return {
+      tool: tool as AssistantToolPlan["tool"],
+      arguments: typeof parsed.arguments === "object" && parsed.arguments !== null ? parsed.arguments : {},
+      confidence: Number(parsed.confidence ?? 0),
+      requiresConfirmation: Boolean(parsed.requiresConfirmation),
+      reason: String(parsed.reason ?? "")
+    };
+  } catch {
+    return null;
+  }
+}
+
+export async function generateAssistantToolResultReply(options: {
+  message: string;
+  resultMessage: string;
+  type: string;
+  changed?: boolean;
+  categoriesChanged?: boolean;
+}): Promise<string> {
+  const prompt = buildAssistantToolResultPrompt(options);
+  const content = await requestAi([
+    { role: "system", content: ASSISTANT_TOOL_RESULT_SYSTEM_PROMPT },
+    { role: "user", content: prompt }
+  ]);
+
+  return content.trim() || options.resultMessage;
 }
 
 export async function testAiConnection(provider: {

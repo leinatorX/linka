@@ -29,6 +29,7 @@ const isSettingsPage = computed(() => route.path === "/settings");
 const { toasts, showToast } = useToast();
 
 let addAssistantNotice: (message: string) => void = () => {};
+let reloadCategoriesFromAssistant: () => Promise<void> = async () => {};
 
 const {
   bookmarks,
@@ -92,7 +93,10 @@ const {
   removeSelectedConversations,
   askAssistant,
   toggleReasoningCollapsed
-} = useAssistant({ loadBookmarks });
+} = useAssistant({
+  loadBookmarks,
+  loadCategories: () => reloadCategoriesFromAssistant()
+});
 
 addAssistantNotice = appendAssistantNotice;
 
@@ -153,6 +157,8 @@ const {
   selectedCategory,
   loadBookmarks
 });
+
+reloadCategoriesFromAssistant = loadCategories;
 
 function openSettings() {
   router.push("/settings");

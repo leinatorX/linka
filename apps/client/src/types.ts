@@ -26,10 +26,12 @@ export interface Category {
 }
 
 export interface AssistantResponse {
-  type: "bookmark_saved" | "search_results" | "message";
+  type: "bookmark_saved" | "search_results" | "message" | "tool_result";
   message: string;
   bookmark?: Bookmark;
   results?: Bookmark[];
+  changed?: boolean;
+  categoriesChanged?: boolean;
 }
 
 export interface AssistantConversation {

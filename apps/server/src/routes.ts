@@ -1,12 +1,13 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { z } from "zod";
 import { config } from "./config.js";
-import { generateAssistantReply, streamAssistantReply, testAiConnection } from "./services/ai.js";
+import { generateAssistantReply, generateAssistantToolResultReply, planAssistantToolCall, streamAssistantReply, testAiConnection } from "./services/ai.js";
 import { addAssistantMessage, buildConversationContext, createAssistantConversation, deleteAssistantConversations, ensureAssistantConversation, getAssistantConversation, listAssistantConversations } from "./services/assistant.js";
+import { executeAssistantToolPlan } from "./services/assistantTools.js";
 import { createBookmark, deleteBookmark, getBookmarkById, listBookmarks, updateBookmark } from "./services/bookmarks.js";
 import { createCategory, deleteCategory, listCategories, reorderCategories, updateCategory } from "./services/categories.js";
 import { getPublicAiSettings, getProviderApiKey, reorderAiProviders, saveAiSettings } from "./services/settings.js";
-import { extractFirstUrl, isValidUrl } from "./utils/url.js";
+import { isValidUrl } from "./utils/url.js";
 
 // 将 Zod 格式 schema 转换为 Fastify 原生 JSON Schema，保证 Swagger 能渲染出请求参数模型
 function zodToJSON(schema: any): any {
@@ -144,6 +145,32 @@ async function requireApiToken(request: FastifyRequest, reply: FastifyReply) {
 function writeSse(raw: FastifyReply["raw"], event: string, data: unknown) {
   raw.write(`event: ${event}\n`);
   raw.write(`data: ${JSON.stringify(data)}\n\n`);
+}
+
+function assistantModelUnavailableMessage() {
+  return "AI 助手暂时不可用，请先在设置里配置可用模型。";
+}
+
+function isConfirmationOnly(message: string) {
+  return /^(确认执行|确认删除|确认操作|确定删除|确定执行)[\s。！!]*$/.test(message.trim());
+}
+
+async function renderAssistantToolMessage(message: string, toolResult: Awaited<ReturnType<typeof executeAssistantToolPlan>>) {
+  if (!toolResult) {
+    return "";
+  }
+
+  try {
+    return await generateAssistantToolResultReply({
+      message,
+      resultMessage: toolResult.message,
+      type: toolResult.type,
+      changed: toolResult.changed,
+      categoriesChanged: toolResult.categoriesChanged
+    });
+  } catch {
+    return toolResult.message;
+  }
 }
 
 export async function registerRoutes(app: FastifyInstance) {
@@ -598,17 +625,33 @@ export async function registerRoutes(app: FastifyInstance) {
       return reply.code(400).send({ message: "请输入消息内容" });
     }
 
-    const url = extractFirstUrl(payload.data.message);
-    if (url) {
-      const result = await createBookmark({ url, source: "assistant" });
+    const results = listBookmarks({ q: payload.data.message }).slice(0, 8);
+    const toolPlan = await planAssistantToolCall({
+      message: payload.data.message,
+      categories: listCategories().map((category) => category.name),
+      bookmarkHints: results.map((bookmark) => ({
+        id: bookmark.id,
+        title: bookmark.title,
+        category: bookmark.category,
+        url: bookmark.url,
+        domain: bookmark.domain
+      }))
+    });
+    const toolResult = toolPlan ? await executeAssistantToolPlan(toolPlan, payload.data.message) : null;
+
+    if (toolResult) {
       return {
-        type: "bookmark_saved",
-        message: result.status === "exists" ? "这个链接已经在收藏夹里。" : `已收藏，并归类到「${result.bookmark.category}」。`,
-        bookmark: result.bookmark
+        ...toolResult,
+        message: await renderAssistantToolMessage(payload.data.message, toolResult)
       };
     }
 
-    const results = listBookmarks({ q: payload.data.message }).slice(0, 8);
+    if (isConfirmationOnly(payload.data.message)) {
+      return {
+        type: "message",
+        message: "没有找到可执行的待确认操作。请把要操作的书签或分类名称一起说清楚。"
+      };
+    }
 
     try {
       const answer = await generateAssistantReply(payload.data.message, results);
@@ -619,9 +662,8 @@ export async function registerRoutes(app: FastifyInstance) {
       };
     } catch {
       return {
-        type: "search_results",
-        message: results.length ? `找到 ${results.length} 条相关收藏。` : "暂时没有找到相关收藏，可以换个关键词试试，或先在设置里配置 AI 服务。",
-        results
+        type: "message",
+        message: assistantModelUnavailableMessage()
       };
     }
   });
@@ -652,24 +694,42 @@ export async function registerRoutes(app: FastifyInstance) {
     writeSse(reply.raw, "meta", { conversation });
     addAssistantMessage(conversation.id, "user", message);
 
-    const url = extractFirstUrl(message);
-    if (url) {
-      try {
-        const result = await createBookmark({ url, source: "assistant" });
-        const text = result.status === "exists" ? "这个链接已经在收藏夹里。" : `已收藏，并归类到「${result.bookmark.category}」。`;
-        addAssistantMessage(conversation.id, "assistant", text);
-        writeSse(reply.raw, "delta", { text });
-        writeSse(reply.raw, "done", { type: "bookmark_saved", message: text, bookmark: result.bookmark, conversation });
-      } catch (error) {
-        const text = error instanceof Error ? error.message : "收藏失败";
-        writeSse(reply.raw, "error", { message: text });
-      } finally {
-        reply.raw.end();
-      }
+    const results = listBookmarks({ q: message }).slice(0, 8);
+    const toolPlan = await planAssistantToolCall({
+      message,
+      categories: listCategories().map((category) => category.name),
+      history,
+      bookmarkHints: results.map((bookmark) => ({
+        id: bookmark.id,
+        title: bookmark.title,
+        category: bookmark.category,
+        url: bookmark.url,
+        domain: bookmark.domain
+      }))
+    });
+    const toolResult = toolPlan ? await executeAssistantToolPlan(toolPlan, message) : null;
+
+    if (toolResult) {
+      const text = await renderAssistantToolMessage(message, toolResult);
+      addAssistantMessage(conversation.id, "assistant", text);
+      writeSse(reply.raw, "delta", { text });
+      writeSse(reply.raw, "done", { ...toolResult, message: text, conversation });
+      reply.raw.end();
       return;
     }
 
-    const results = listBookmarks({ q: message }).slice(0, 8);
+    if (isConfirmationOnly(message)) {
+      const text = "没有找到可执行的待确认操作。请把要操作的书签或分类名称一起说清楚。";
+      addAssistantMessage(conversation.id, "assistant", text);
+      writeSse(reply.raw, "delta", { text });
+      writeSse(reply.raw, "done", {
+        type: "message",
+        message: text,
+        conversation
+      });
+      reply.raw.end();
+      return;
+    }
 
     try {
       let fullText = "";
@@ -692,13 +752,12 @@ export async function registerRoutes(app: FastifyInstance) {
         conversation
       });
     } catch {
-      const fallbackText = results.length ? `找到 ${results.length} 条相关收藏。` : "暂时没有找到相关收藏，可以换个关键词试试，或先在设置里配置 AI 服务。";
-      addAssistantMessage(conversation.id, "assistant", fallbackText);
-      writeSse(reply.raw, "delta", { text: fallbackText });
+      const text = assistantModelUnavailableMessage();
+      addAssistantMessage(conversation.id, "assistant", text);
+      writeSse(reply.raw, "delta", { text });
       writeSse(reply.raw, "done", {
-        type: "search_results",
-        message: fallbackText,
-        results,
+        type: "message",
+        message: text,
         conversation
       });
     } finally {
