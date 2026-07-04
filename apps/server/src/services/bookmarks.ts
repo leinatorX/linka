@@ -9,6 +9,7 @@ export interface BookmarkInput {
   url: string;
   title?: string;
   category?: string;
+  faviconUrl?: string;
   source?: string;
 }
 
@@ -114,7 +115,7 @@ export async function createBookmark(input: BookmarkInput) {
     description: metadata.description,
     summary: ai.summary,
     domain: metadata.domain,
-    favicon_url: metadata.faviconUrl,
+    favicon_url: input.faviconUrl?.trim() || metadata.faviconUrl,
     cover_image_url: metadata.coverImageUrl,
     category,
     pinned: 0,

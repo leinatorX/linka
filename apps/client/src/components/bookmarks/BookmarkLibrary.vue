@@ -27,7 +27,7 @@ function getFallbackIconText(bookmark: Bookmark) {
   <template v-if="true">
     <nav class="filter-rail" aria-label="收藏筛选">
       <div class="filter-group">
-        <span class="filter-label">分类</span>
+
         <button class="filter-btn" :class="{ active: selectedCategory === '全部' }" @click="$emit('setCategory', '全部')">
           全部
         </button>
@@ -42,7 +42,8 @@ function getFallbackIconText(bookmark: Bookmark) {
       <transition-group name="fade" tag="div" class="card-grid" v-if="bookmarks.length">
         <article v-for="bookmark in bookmarks" :key="bookmark.id" class="bookmark-card">
           <div class="card-header">
-            <div class="site-icon" :style="{ backgroundImage: bookmark.coverImageUrl ? `url(${bookmark.coverImageUrl})` : '' }">
+            <div class="site-icon"
+              :style="{ backgroundImage: bookmark.coverImageUrl ? `url(${bookmark.coverImageUrl})` : '' }">
               <img v-if="bookmark.faviconUrl && !failedIconIds.has(bookmark.id)" :src="bookmark.faviconUrl" alt=""
                 @error="$emit('markIconFailed', bookmark.id)" />
               <span v-else>{{ getFallbackIconText(bookmark) }}</span>

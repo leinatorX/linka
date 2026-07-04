@@ -39,6 +39,7 @@ const {
   settingsBookmarkUrl,
   settingsBookmarkTitle,
   settingsBookmarkCategory,
+  settingsBookmarkFaviconUrl,
   settingsMessage,
   isSettingsSaving,
   editingBookmarkId,
@@ -293,6 +294,7 @@ onUnmounted(() => {
     v-model:url="settingsBookmarkUrl"
     v-model:title="settingsBookmarkTitle"
     v-model:category="settingsBookmarkCategory"
+    v-model:favicon-url="settingsBookmarkFaviconUrl"
     :categories="categories"
     :is-saving="isSettingsSaving"
     :message="settingsMessage"

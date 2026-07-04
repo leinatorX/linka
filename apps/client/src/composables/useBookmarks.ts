@@ -16,6 +16,7 @@ export function useBookmarks(options: UseBookmarksOptions = {}) {
   const settingsBookmarkUrl = ref("");
   const settingsBookmarkTitle = ref("");
   const settingsBookmarkCategory = ref("");
+  const settingsBookmarkFaviconUrl = ref("");
   const settingsMessage = ref("");
   const isLoading = ref(false);
   const isSettingsSaving = ref(false);
@@ -92,11 +93,13 @@ export function useBookmarks(options: UseBookmarksOptions = {}) {
         url,
         title: settingsBookmarkTitle.value.trim() || undefined,
         category: settingsBookmarkCategory.value || undefined,
+        faviconUrl: settingsBookmarkFaviconUrl.value.trim() || undefined,
         source: "settings"
       });
       settingsBookmarkUrl.value = "";
       settingsBookmarkTitle.value = "";
       settingsBookmarkCategory.value = "";
+      settingsBookmarkFaviconUrl.value = "";
       settingsMessage.value = result.status === "exists" ? "这个链接已经收藏过了。" : `已添加，并归类到「${result.bookmark.category}」。`;
       await loadBookmarks();
       if (result.status !== "exists") {
@@ -174,6 +177,7 @@ export function useBookmarks(options: UseBookmarksOptions = {}) {
     settingsBookmarkUrl,
     settingsBookmarkTitle,
     settingsBookmarkCategory,
+    settingsBookmarkFaviconUrl,
     settingsMessage,
     isLoading,
     isSettingsSaving,

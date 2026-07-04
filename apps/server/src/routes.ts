@@ -12,6 +12,7 @@ const createBookmarkSchema = z.object({
   url: z.string().url(),
   title: z.string().optional(),
   category: z.string().optional(),
+  faviconUrl: z.string().optional(),
   source: z.string().optional()
 });
 

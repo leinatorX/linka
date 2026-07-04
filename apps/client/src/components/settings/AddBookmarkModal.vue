@@ -1,6 +1,8 @@
 <script setup lang="ts">
-import { Loader2, Plus, X } from "@lucide/vue";
+import { ImagePlus, Loader2, Plus, X } from "@lucide/vue";
+import { ref } from "vue";
 import type { Category } from "../../types";
+import { readIconFileAsDataUrl } from "../../utils/imageInput";
 
 defineProps<{
   categories: Category[];
@@ -12,10 +14,34 @@ const visible = defineModel<boolean>("visible", { required: true });
 const url = defineModel<string>("url", { required: true });
 const title = defineModel<string>("title", { required: true });
 const category = defineModel<string>("category", { required: true });
+const faviconUrl = defineModel<string>("faviconUrl", { required: true });
 
 defineEmits<{
   submit: [];
 }>();
+
+const fileInput = ref<HTMLInputElement | null>(null);
+const uploadError = ref("");
+
+function openFilePicker() {
+  fileInput.value?.click();
+}
+
+async function onIconFileChange(event: Event) {
+  const input = event.target as HTMLInputElement;
+  const file = input.files?.[0];
+  input.value = "";
+  if (!file) {
+    return;
+  }
+
+  uploadError.value = "";
+  try {
+    faviconUrl.value = await readIconFileAsDataUrl(file);
+  } catch (error) {
+    uploadError.value = error instanceof Error ? error.message : "图片读取失败。";
+  }
+}
 </script>
 
 <template>
@@ -36,6 +62,18 @@ defineEmits<{
           <label>
             <span>标题</span>
             <input v-model="title" placeholder="可选，不填则自动抓取" @keyup.enter="$emit('submit')" />
+          </label>
+          <label>
+            <span>图标</span>
+            <div class="icon-input-row">
+              <input v-model="faviconUrl" placeholder="可选，不填则自动抓取" @keyup.enter="$emit('submit')" />
+              <button type="button" class="btn-secondary icon-upload-btn" @click="openFilePicker">
+                <ImagePlus :size="16" />
+                <span>上传</span>
+              </button>
+              <input ref="fileInput" class="visually-hidden" type="file" accept="image/*" @change="onIconFileChange" />
+            </div>
+            <small v-if="uploadError" class="field-error">{{ uploadError }}</small>
           </label>
           <label>
             <span>分类</span>

@@ -1,8 +1,10 @@
 <script setup lang="ts">
-import { X } from "@lucide/vue";
+import { ImagePlus, X } from "@lucide/vue";
+import { ref } from "vue";
 import type { Category } from "../../types";
+import { readIconFileAsDataUrl } from "../../utils/imageInput";
 
-defineProps<{
+const props = defineProps<{
   categories: Category[];
   editData: {
     title: string;
@@ -17,6 +19,29 @@ const editingBookmarkId = defineModel<string | null>("editingBookmarkId", { requ
 defineEmits<{
   submit: [];
 }>();
+
+const fileInput = ref<HTMLInputElement | null>(null);
+const uploadError = ref("");
+
+function openFilePicker() {
+  fileInput.value?.click();
+}
+
+async function onIconFileChange(event: Event) {
+  const input = event.target as HTMLInputElement;
+  const file = input.files?.[0];
+  input.value = "";
+  if (!file) {
+    return;
+  }
+
+  uploadError.value = "";
+  try {
+    props.editData.faviconUrl = await readIconFileAsDataUrl(file);
+  } catch (error) {
+    uploadError.value = error instanceof Error ? error.message : "图片读取失败。";
+  }
+}
 </script>
 
 <template>
@@ -40,7 +65,15 @@ defineEmits<{
           </label>
           <label>
             <span>图标链接</span>
-            <input v-model="editData.faviconUrl" placeholder="可选" @keyup.enter="$emit('submit')" />
+            <div class="icon-input-row">
+              <input v-model="editData.faviconUrl" placeholder="可选，支持在线地址或本地上传" @keyup.enter="$emit('submit')" />
+              <button type="button" class="btn-secondary icon-upload-btn" @click="openFilePicker">
+                <ImagePlus :size="16" />
+                <span>上传</span>
+              </button>
+              <input ref="fileInput" class="visually-hidden" type="file" accept="image/*" @change="onIconFileChange" />
+            </div>
+            <small v-if="uploadError" class="field-error">{{ uploadError }}</small>
           </label>
           <label>
             <span>分类</span>

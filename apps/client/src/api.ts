@@ -21,7 +21,7 @@ export function listBookmarks(params: URLSearchParams): Promise<{ bookmarks: Boo
   return request(`/api/bookmarks?${params.toString()}`);
 }
 
-export function createBookmark(payload: { url: string; title?: string; category?: string; source?: string }): Promise<{ status: string; bookmark: Bookmark }> {
+export function createBookmark(payload: { url: string; title?: string; category?: string; faviconUrl?: string; source?: string }): Promise<{ status: string; bookmark: Bookmark }> {
   return request("/api/bookmarks", {
     method: "POST",
     body: JSON.stringify(payload)
