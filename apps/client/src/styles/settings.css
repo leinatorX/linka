@@ -351,6 +351,69 @@
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
 
+/* 拖拽相关视觉态。 */
+.category-item[draggable="true"] {
+  cursor: default;
+}
+
+.category-item .drag-handle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  color: var(--text-secondary);
+  opacity: 0.55;
+  cursor: grab;
+  transition: opacity var(--transition-fast), background var(--transition-fast);
+  flex-shrink: 0;
+}
+
+.category-item:hover .drag-handle,
+.category-item:focus-within .drag-handle {
+  opacity: 1;
+}
+
+.category-item .drag-handle:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.category-item .drag-handle:active {
+  cursor: grabbing;
+}
+
+.category-item.is-dragging {
+  opacity: 0.4;
+  transform: scale(0.98);
+}
+
+/* 拖入目标高亮：用伪元素画一条 2px 紫线指示插入位置。 */
+.category-item.drop-before {
+  position: relative;
+}
+
+.category-item.drop-before::before,
+.category-item.drop-after::after {
+  content: '';
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  height: 2px;
+  background: var(--accent-primary);
+  border-radius: 2px;
+  box-shadow: 0 0 8px var(--accent-glow);
+  pointer-events: none;
+}
+
+.category-item.drop-before::before {
+  top: -1px;
+}
+
+.category-item.drop-after::after {
+  bottom: -1px;
+}
+
 .settings-inline-input {
   flex: 1;
   background: transparent;

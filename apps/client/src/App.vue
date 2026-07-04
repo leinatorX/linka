@@ -90,7 +90,8 @@ const {
   toggleAssistantHistory,
   toggleConversationSelected,
   removeSelectedConversations,
-  askAssistant
+  askAssistant,
+  toggleReasoningCollapsed
 } = useAssistant({ loadBookmarks });
 
 addAssistantNotice = appendAssistantNotice;
@@ -132,7 +133,8 @@ const {
   openEditAiModelModal,
   saveAiModelModal,
   removeAiModel,
-  saveAiSettings
+  saveAiSettings,
+  reorderProviders
 } = useAiSettings({
   assistantModel,
   showToast
@@ -145,7 +147,8 @@ const {
   loadCategories,
   addCategory,
   saveCategory,
-  removeCategory
+  removeCategory,
+  reorderCategories
 } = useCategories({
   selectedCategory,
   loadBookmarks
@@ -219,6 +222,7 @@ onUnmounted(() => {
         @add-category="addCategory"
         @save-category="saveCategory"
         @remove-category="removeCategory"
+        @reorder-categories="reorderCategories"
       />
 
       <AiProviderSettings
@@ -249,6 +253,7 @@ onUnmounted(() => {
         @clear-model-test-result="clearModelTestResult"
         @load-ai-settings="loadAiSettings"
         @save-ai-settings="saveAiSettings"
+        @reorder-providers="reorderProviders"
       />
 
       <BookmarkSettings
@@ -286,6 +291,7 @@ onUnmounted(() => {
       @remove-selected-conversations="removeSelectedConversations"
       @toggle-model-select="toggleModelSelect"
       @toggle-effort-select="toggleEffortSelect"
+      @toggle-reasoning-collapsed="toggleReasoningCollapsed"
     />
   </main>
 

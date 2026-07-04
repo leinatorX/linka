@@ -273,6 +273,23 @@ export function saveAiSettings(value: AiSettingsInput): PublicAiSettings {
   return getPublicAiSettings();
 }
 
+// 按 orderedIds 调整供应商的数组顺序，并保持所有 provider 字段不变。
+// 缺失或重复的 id 会被忽略，剩余供应商按末尾补齐，保证不丢数据。
+export function reorderAiProviders(orderedIds: string[]): PublicAiSettings {
+  const current = getAiSettings();
+  const known = new Set(current.providers.map((provider) => provider.id));
+  const headIds = orderedIds.filter((id, index) => known.has(id) && orderedIds.indexOf(id) === index);
+  const byId = new Map(current.providers.map((provider) => [provider.id, provider]));
+  const reordered: AiProviderConfig[] = [
+    ...headIds.map((id) => byId.get(id)).filter((p): p is AiProviderConfig => Boolean(p)),
+    ...current.providers.filter((provider) => !headIds.includes(provider.id))
+  ];
+  return saveAiSettings({
+    activeProviderId: current.activeProviderId,
+    providers: reordered
+  });
+}
+
 export function getActiveAiConfig(modelName?: string): ActiveAiConfig {
   const settings = getAiSettings();
   const providerByModel = modelName

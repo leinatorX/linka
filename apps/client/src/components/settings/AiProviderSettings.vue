@@ -3,11 +3,12 @@ import {
   Activity, Check, ChevronDown, Copy, Cpu, Edit2, Eye, EyeOff, GripVertical,
   Info, Key, Loader2, Plus, RotateCcw, Save, Sparkles, Trash2, X
 } from "@lucide/vue";
+import { ref } from "vue";
 import { useProviderIcons } from "../../composables/useProviderIcons";
 import type { ModelTestResult } from "../../composables/useAiSettings";
 import type { AiApiFormat, AiProviderConfig, AiModelConfig } from "../../types";
 
-defineProps<{
+const props = defineProps<{
   aiSettingsForm: {
     providers: AiProviderConfig[];
   };
@@ -24,7 +25,7 @@ defineProps<{
 
 const showApiKey = defineModel<boolean>("showApiKey", { required: true });
 
-defineEmits<{
+const emit = defineEmits<{
   selectAiProvider: [providerId: string];
   addAiProvider: [];
   removeAiProvider: [providerId: string];
@@ -40,7 +41,68 @@ defineEmits<{
   clearModelTestResult: [modelId: string];
   loadAiSettings: [];
   saveAiSettings: [];
+  reorderProviders: [orderedIds: string[]];
 }>();
+
+// 供应商卡片拖拽：HTML5 原生 drag-and-drop，零依赖。
+// 注意：整张卡片既可拖动也响应 click 切换，两者事件不冲突。
+const draggedProviderId = ref<string | null>(null);
+const dropTargetProviderId = ref<string | null>(null);
+const dropProviderPosition = ref<"before" | "after">("before");
+
+function onProviderDragStart(event: DragEvent, id: string) {
+  if (!event.dataTransfer) {
+    return;
+  }
+  draggedProviderId.value = id;
+  event.dataTransfer.effectAllowed = "move";
+  event.dataTransfer.setData("text/plain", id);
+}
+
+function onProviderDragOver(event: DragEvent, targetId: string) {
+  if (!draggedProviderId.value || draggedProviderId.value === targetId) {
+    return;
+  }
+  event.preventDefault();
+  if (event.dataTransfer) {
+    event.dataTransfer.dropEffect = "move";
+  }
+  const target = event.currentTarget as HTMLElement;
+  const rect = target.getBoundingClientRect();
+  dropProviderPosition.value = event.clientY - rect.top < rect.height / 2 ? "before" : "after";
+  dropTargetProviderId.value = targetId;
+}
+
+function onProviderDragLeave(targetId: string) {
+  if (dropTargetProviderId.value === targetId) {
+    dropTargetProviderId.value = null;
+  }
+}
+
+function onProviderDragEnd() {
+  draggedProviderId.value = null;
+  dropTargetProviderId.value = null;
+}
+
+function onProviderDrop(event: DragEvent, targetId: string) {
+  event.preventDefault();
+  const sourceId = draggedProviderId.value ?? event.dataTransfer?.getData("text/plain") ?? "";
+  onProviderDragEnd();
+  if (!sourceId || sourceId === targetId) {
+    return;
+  }
+  const ids = props.aiSettingsForm.providers.map((provider) => provider.id);
+  const fromIndex = ids.indexOf(sourceId);
+  const toIndex = ids.indexOf(targetId);
+  if (fromIndex < 0 || toIndex < 0) {
+    return;
+  }
+  const next = ids.slice();
+  next.splice(fromIndex, 1);
+  const insertAt = dropProviderPosition.value === "before" ? toIndex : toIndex + 1;
+  next.splice(insertAt > fromIndex ? insertAt - 1 : insertAt, 0, sourceId);
+  emit("reorderProviders", next);
+}
 
 const {
   getAvatarStyle,
@@ -70,8 +132,28 @@ function getApiFormatLabel(format: AiApiFormat) {
 
         <div class="ai-provider-cards">
           <div v-for="provider in aiSettingsForm.providers" :key="provider.id" class="provider-card"
-            :class="{ active: editingProviderId === provider.id }"
-            @click="$emit('selectAiProvider', provider.id)">
+            :class="{
+              active: editingProviderId === provider.id,
+              'is-dragging': draggedProviderId === provider.id,
+              'drop-before': dropTargetProviderId === provider.id && dropProviderPosition === 'before',
+              'drop-after': dropTargetProviderId === provider.id && dropProviderPosition === 'after'
+            }"
+            draggable="true"
+            @click="$emit('selectAiProvider', provider.id)"
+            @dragstart="onProviderDragStart($event, provider.id)"
+            @dragover="onProviderDragOver($event, provider.id)"
+            @dragleave="onProviderDragLeave(provider.id)"
+            @dragend="onProviderDragEnd"
+            @drop="onProviderDrop($event, provider.id)">
+            <span class="provider-drag-handle" title="按住拖拽调整顺序" aria-label="拖拽调整顺序"
+              @click.stop>
+              <span class="grip-dot"></span>
+              <span class="grip-dot"></span>
+              <span class="grip-dot"></span>
+              <span class="grip-dot"></span>
+              <span class="grip-dot"></span>
+              <span class="grip-dot"></span>
+            </span>
             <div class="provider-card-main">
               <div class="provider-avatar" :style="getAvatarStyle(provider)">
                 <img v-if="showProviderIcon(provider)" :src="getProviderIconUrl(provider) ?? ''" :alt="provider.name"

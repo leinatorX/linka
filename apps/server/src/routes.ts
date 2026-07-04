@@ -4,8 +4,8 @@ import { config } from "./config.js";
 import { generateAssistantReply, streamAssistantReply, testAiConnection } from "./services/ai.js";
 import { addAssistantMessage, buildConversationContext, createAssistantConversation, deleteAssistantConversations, ensureAssistantConversation, getAssistantConversation, listAssistantConversations } from "./services/assistant.js";
 import { createBookmark, deleteBookmark, getBookmarkById, listBookmarks, updateBookmark } from "./services/bookmarks.js";
-import { createCategory, deleteCategory, listCategories, updateCategory } from "./services/categories.js";
-import { getPublicAiSettings, getProviderApiKey, saveAiSettings } from "./services/settings.js";
+import { createCategory, deleteCategory, listCategories, reorderCategories, updateCategory } from "./services/categories.js";
+import { getPublicAiSettings, getProviderApiKey, reorderAiProviders, saveAiSettings } from "./services/settings.js";
 import { extractFirstUrl, isValidUrl } from "./utils/url.js";
 
 const createBookmarkSchema = z.object({
@@ -33,6 +33,14 @@ const deleteConversationsSchema = z.object({
 
 const categorySchema = z.object({
   name: z.string().trim().min(1).max(32)
+});
+
+const reorderCategoriesSchema = z.object({
+  orderedIds: z.array(z.string().trim().min(1)).max(500)
+});
+
+const reorderAiProvidersSchema = z.object({
+  orderedIds: z.array(z.string().trim().min(1)).max(100)
 });
 
 const aiModelSchema = z.object({
@@ -145,6 +153,15 @@ export async function registerRoutes(app: FastifyInstance) {
     return { settings };
   });
 
+  app.post("/api/settings/ai/reorder", async (request, reply) => {
+    const payload = reorderAiProvidersSchema.safeParse(request.body);
+    if (!payload.success) {
+      return reply.code(400).send({ message: "排序参数无效" });
+    }
+    const settings = reorderAiProviders(payload.data.orderedIds);
+    return { settings };
+  });
+
   app.post("/api/settings/ai/test", async (request, reply) => {
     const payload = testAiConnectionSchema.safeParse(request.body);
     if (!payload.success) {
@@ -216,6 +233,14 @@ export async function registerRoutes(app: FastifyInstance) {
     }
 
     return { status: "deleted" };
+  });
+
+  app.post("/api/categories/reorder", async (request, reply) => {
+    const payload = reorderCategoriesSchema.safeParse(request.body);
+    if (!payload.success) {
+      return reply.code(400).send({ message: "排序参数无效" });
+    }
+    return { categories: reorderCategories(payload.data.orderedIds) };
   });
 
   app.post("/api/bookmarks", { preHandler: requireApiToken }, async (request, reply) => {

@@ -45,6 +45,7 @@ defineEmits<{
   removeSelectedConversations: [];
   toggleModelSelect: [event: Event];
   toggleEffortSelect: [event: Event];
+  toggleReasoningCollapsed: [index: number];
 }>();
 </script>
 
@@ -122,7 +123,7 @@ defineEmits<{
         <div v-for="(message, index) in renderedMessages" :key="index" class="message" :class="message.role">
           <div v-if="message.reasoning" class="message-reasoning" :class="{ collapsed: message.reasoningCollapsed }">
             <button class="message-reasoning-toggle" type="button"
-              @click="message.reasoningCollapsed = !message.reasoningCollapsed">
+              @click="$emit('toggleReasoningCollapsed', index)">
               <span>{{ message.streaming ? '思考中' : '思考完成' }}</span>
               <ChevronDown :size="14" />
             </button>

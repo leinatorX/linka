@@ -2,6 +2,7 @@ import { computed, ref, type Ref } from "vue";
 import {
   getAiSettings as fetchAiSettings,
   revealApiKey,
+  reorderAiProviders as apiReorderAiProviders,
   saveAiSettings as updateAiSettings,
   testAiConnection
 } from "../api";
@@ -353,6 +354,35 @@ export function useAiSettings(options: UseAiSettingsOptions) {
     }
   }
 
+  // 拖拽重排供应商：乐观更新 + 失败回滚。
+  async function reorderProviders(orderedIds: string[]) {
+    const previous = aiSettingsForm.value.providers.slice();
+    const previousActive = aiSettingsForm.value.activeProviderId;
+    const known = new Set(previous.map((provider) => provider.id));
+    const ids = orderedIds.filter((id, index) => known.has(id) && orderedIds.indexOf(id) === index);
+    if (ids.length !== previous.length) {
+      // 客户端 id 集合与服务端不一致时拒绝发送，避免脏数据
+      options.showToast("排序参数无效，已取消", "warning");
+      return false;
+    }
+    const byId = new Map(previous.map((provider) => [provider.id, provider]));
+    aiSettingsForm.value.providers = ids.map((id) => byId.get(id)!).filter(Boolean);
+
+    try {
+      const result = await apiReorderAiProviders(orderedIds);
+      aiSettingsForm.value = {
+        activeProviderId: result.settings.activeProviderId,
+        providers: result.settings.providers
+      };
+      return true;
+    } catch (error) {
+      aiSettingsForm.value.providers = previous;
+      aiSettingsForm.value.activeProviderId = previousActive;
+      options.showToast("供应商排序失败：" + (error instanceof Error ? error.message : String(error)), "error");
+      throw error;
+    }
+  }
+
   return {
     aiSettingsMessage,
     isAiSettingsSaving,
@@ -394,6 +424,7 @@ export function useAiSettings(options: UseAiSettingsOptions) {
     closeAiModelModal,
     saveAiModelModal,
     removeAiModel,
-    saveAiSettings
+    saveAiSettings,
+    reorderProviders
   };
 }

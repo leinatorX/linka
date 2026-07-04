@@ -208,6 +208,12 @@ export function useAssistant(options: UseAssistantOptions) {
     }
   }
 
+  function toggleReasoningCollapsed(index: number) {
+    if (assistantMessages.value[index]) {
+      assistantMessages.value[index].reasoningCollapsed = !assistantMessages.value[index].reasoningCollapsed;
+    }
+  }
+
   return {
     assistantInput,
     assistantOpen,
@@ -236,6 +242,7 @@ export function useAssistant(options: UseAssistantOptions) {
     toggleAssistantHistory,
     toggleConversationSelected,
     removeSelectedConversations,
-    askAssistant
+    askAssistant,
+    toggleReasoningCollapsed
   };
 }

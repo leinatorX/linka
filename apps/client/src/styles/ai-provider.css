@@ -64,13 +64,18 @@
 }
 
 .provider-card {
-  justify-content: space-between;
-  padding: 16px;
+  gap: 8px;
+  padding: 16px 16px 16px 8px;
   border-radius: var(--radius-lg);
   background: rgba(255, 255, 255, 0.02);
   border: 1px solid rgba(255, 255, 255, 0.05);
   cursor: pointer;
   transition: all 0.2s;
+  position: relative;
+}
+
+.provider-card .status-badge {
+  margin-left: auto;
 }
 
 .provider-card.active {
@@ -79,9 +84,105 @@
   background: rgba(255, 255, 255, 0.04);
 }
 
+/* 供应商卡片：拖拽手柄、拖拽中视觉态、插入位置指示。 */
+.provider-card[draggable="true"] {
+  position: relative;
+}
+
+/* 拖拽手柄：紧贴头像左侧，6 个圆点两行三列。始终可见，hover 时高亮。 */
+.provider-card .provider-drag-handle {
+  display: grid;
+  grid-template-columns: repeat(2, 3px);
+  grid-template-rows: repeat(3, 3px);
+  gap: 2.5px;
+  align-items: center;
+  justify-items: center;
+  width: 12px;
+  height: 18px;
+  margin-right: 0;
+  padding: 0;
+  flex-shrink: 0;
+  cursor: grab;
+  border-radius: 4px;
+  transition: background var(--transition-fast);
+  background: transparent;
+}
+
+.provider-card .provider-drag-handle:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.provider-card.active .provider-drag-handle {
+  background: rgba(122, 132, 255, 0.12);
+}
+
+.provider-card .provider-drag-handle:active {
+  cursor: grabbing;
+}
+
+.provider-drag-handle .grip-dot {
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: var(--text-secondary);
+  opacity: 0.55;
+  transition: background var(--transition-fast), opacity var(--transition-fast), transform var(--transition-fast);
+}
+
+.provider-drag-handle {
+  display: grid !important;
+  grid-template-columns: repeat(2, 3px);
+  grid-template-rows: repeat(3, 3px);
+  gap: 2.5px;
+  align-items: center;
+  justify-items: center;
+}
+
+.provider-card .provider-drag-handle:hover .grip-dot {
+  background: var(--accent-primary);
+  opacity: 1;
+}
+
+.provider-card.active .provider-drag-handle .grip-dot {
+  background: var(--accent-primary);
+  opacity: 0.85;
+}
+
+.provider-card.is-dragging {
+  opacity: 0.4;
+  transform: scale(0.98);
+}
+
+.provider-card.drop-before,
+.provider-card.drop-after {
+  position: relative;
+}
+
+.provider-card.drop-before::before,
+.provider-card.drop-after::after {
+  content: '';
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  height: 2px;
+  background: var(--accent-primary);
+  border-radius: 2px;
+  box-shadow: 0 0 8px var(--accent-glow);
+  pointer-events: none;
+  z-index: 2;
+}
+
+.provider-card.drop-before::before {
+  top: -1px;
+}
+
+.provider-card.drop-after::after {
+  bottom: -1px;
+}
+
 .provider-card-main,
 .provider-summary-main {
-  gap: 12px;
+  gap: 10px;
 }
 
 .provider-card-text {

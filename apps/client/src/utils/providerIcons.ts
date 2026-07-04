@@ -11,6 +11,7 @@ const PROVIDER_GRADIENTS: Record<string, string> = {
   glm: "background: linear-gradient(135deg, #0ea5e9 0%, #0369a1 100%);",
   xiaomi: "background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);",
   mimo: "background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);",
+  "xiaomi mimo": "background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);",
   qwen: "background: linear-gradient(135deg, #615ced 0%, #4338ca 100%);",
   doubao: "background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);",
   wenxin: "background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);",
@@ -23,6 +24,9 @@ const PROVIDER_GRADIENTS: Record<string, string> = {
 };
 
 const BRAND_ICON_MAP: Record<string, string> = {
+  "xiaomi mimo": "xiaomimimo",
+  xiaomi: "xiaomimimo",
+  mimo: "xiaomimimo",
   minimax: "minimax",
   deepseek: "deepseek",
   openai: "openai",

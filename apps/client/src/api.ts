@@ -1,4 +1,4 @@
-import type { AiSettings, AiSettingsPayload, AssistantConversation, AssistantMessage, AssistantResponse, Bookmark, Category } from "./types";
+import type { AiProviderConfig, AiSettings, AiSettingsPayload, AssistantConversation, AssistantMessage, AssistantResponse, Bookmark, Category } from "./types";
 
 async function request<T>(url: string, options?: RequestInit): Promise<T> {
   const response = await fetch(url, {
@@ -62,6 +62,13 @@ export function updateCategory(id: string, name: string): Promise<{ category: Ca
 export function deleteCategory(id: string): Promise<{ status: string }> {
   return request(`/api/categories/${id}`, {
     method: "DELETE"
+  });
+}
+
+export function reorderCategories(orderedIds: string[]): Promise<{ categories: Category[] }> {
+  return request("/api/categories/reorder", {
+    method: "POST",
+    body: JSON.stringify({ orderedIds })
   });
 }
 
@@ -200,5 +207,12 @@ export function revealApiKey(providerId: string): Promise<{ providerId: string; 
   return request("/api/settings/ai/reveal", {
     method: "POST",
     body: JSON.stringify({ providerId })
+  });
+}
+
+export function reorderAiProviders(orderedIds: string[]): Promise<{ settings: { activeProviderId: string; providers: AiProviderConfig[] } }> {
+  return request("/api/settings/ai/reorder", {
+    method: "POST",
+    body: JSON.stringify({ orderedIds })
   });
 }
