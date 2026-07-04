@@ -747,27 +747,27 @@ onUnmounted(() => {
             </section>
 
             <section v-else-if="settingsTab === 'ai'">
-              <div class="grand-panel">
-                <div class="section-title">
-                  <h3>模型设置</h3>
-                  <p>管理自定义模型供应商。启用的供应商和模型会用于收藏摘要、自动分类和 AI 助手。</p>
-                </div>
-
-                <div class="ai-provider-layout" v-if="activeAiProvider">
-                  <div class="ai-provider-segments">
+              <div class="ai-provider-layout" style="max-width: 1000px; margin: 0 auto; grid-template-columns: 220px 1fr;">
+                <div class="ai-provider-sidebar">
+                  <div class="section-title" style="margin-bottom: 24px;">
+                    <h3>模型设置</h3>
+                    <p style="font-size: 13px;">管理自定义模型供应商。启用的供应商和模型会用于收藏摘要、自动分类和 AI 助手。</p>
+                  </div>
+                  <div class="ai-provider-segments" style="background: transparent; border: none; padding: 0;">
                     <button v-for="provider in aiSettingsForm.providers" :key="provider.id" class="segment-btn"
                       :class="{ active: aiSettingsForm.activeProviderId === provider.id }"
                       @click="selectAiProvider(provider.id)">
                       <span class="segment-name">{{ provider.name }}</span>
                       <span class="status-dot" :class="{ enabled: provider.enabled }"></span>
                     </button>
-                    <button class="segment-btn add-btn" title="添加服务商" @click="addAiProvider" style="justify-content: center;">
+                    <button class="segment-btn add-btn" title="添加服务商" @click="addAiProvider" style="justify-content: center; margin-top: 8px;">
                       <Plus :size="16" style="margin-right: 4px;" />
                       <span>添加服务商</span>
                     </button>
                   </div>
+                </div>
 
-                  <div class="ai-provider-detail settings-form">
+                <div class="grand-panel ai-provider-detail settings-form" v-if="activeAiProvider" style="padding: 32px;">
                     <div class="ai-detail-title">
                       <div>
                         <h4>{{ activeAiProvider.name }}</h4>
@@ -873,7 +873,6 @@ onUnmounted(() => {
                     <p v-if="aiSettingsMessage" class="settings-message">{{ aiSettingsMessage }}</p>
                   </div>
                 </div>
-              </div>
             </section>
 
             <section v-else-if="settingsTab === 'manage_bookmarks'">
