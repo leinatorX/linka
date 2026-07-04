@@ -130,7 +130,7 @@ function normalizeModel(value: Partial<AiModelConfig>, fallbackName: string): Ai
   const name = String(value.name || fallbackName).trim() || fallbackName;
 
   return {
-    // 模型 ID 始终用 UUID，不与模型名绑定（模型名只是展示标签，随时可改）
+    // 模型内部标识始终用 UUID，不与模型名绑定（模型名只是展示标签，随时可改）
     id: normalizeId(value.id, randomUUID()),
     name,
     maxTokens: normalizeNumber(value.maxTokens, 1000, 64, 2000000),
@@ -285,9 +285,9 @@ export function getActiveAiConfig(modelName?: string): ActiveAiConfig {
     }
   }
 
-  const provider = settings.providers.find((item) => item.id === settings.activeProviderId && item.enabled);
+  const provider = settings.providers.find((item) => item.enabled && item.apiKey && item.baseUrl);
 
-  if (!provider || !provider.apiKey || !provider.baseUrl) {
+  if (!provider) {
     throw new Error("AI 配置不完整");
   }
 
