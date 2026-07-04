@@ -747,12 +747,13 @@ onUnmounted(() => {
             </section>
 
             <section v-else-if="settingsTab === 'ai'">
-              <div class="ai-provider-layout" style="max-width: 1000px; margin: 0 auto; grid-template-columns: 220px 1fr;">
+              <div class="section-title" style="max-width: 1000px; margin: 0 auto 24px auto;">
+                <h3>模型设置</h3>
+                <p>管理自定义模型供应商。启用的供应商和模型会用于收藏摘要、自动分类和 AI 助手。</p>
+              </div>
+
+              <div class="ai-provider-layout" style="max-width: 1000px; margin: 0 auto; grid-template-columns: 220px 1fr; gap: 24px;">
                 <div class="ai-provider-sidebar">
-                  <div class="section-title" style="margin-bottom: 24px;">
-                    <h3>模型设置</h3>
-                    <p style="font-size: 13px;">管理自定义模型供应商。启用的供应商和模型会用于收藏摘要、自动分类和 AI 助手。</p>
-                  </div>
                   <div class="ai-provider-segments" style="background: transparent; border: none; padding: 0;">
                     <button v-for="provider in aiSettingsForm.providers" :key="provider.id" class="segment-btn"
                       :class="{ active: aiSettingsForm.activeProviderId === provider.id }"
