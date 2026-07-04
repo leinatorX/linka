@@ -35,12 +35,8 @@ export function useAssistant(options: UseAssistantOptions) {
   const assistantHistoryManage = ref(false);
   const selectedConversationIds = ref<Set<string>>(new Set());
   const historySearchInput = ref("");
-  const assistantMessages = ref<AssistantUiMessage[]>([
-    {
-      role: "assistant",
-      text: "把链接发给我，我会帮你收藏、摘要和归档。也可以直接问我之前收藏过什么。"
-    }
-  ]);
+  // 留空：空状态由 AssistantPanel 中的欢迎页承担，避免在对话流中混入占位气泡。
+  const assistantMessages = ref<AssistantUiMessage[]>([]);
   const isAssistantLoading = ref(false);
 
   const activeConversation = computed(() => assistantConversations.value.find((conversation) => conversation.id === activeConversationId.value));
@@ -91,15 +87,11 @@ export function useAssistant(options: UseAssistantOptions) {
     activeConversationId.value = result.conversation.id;
     assistantHistoryOpen.value = false;
     assistantHistoryManage.value = false;
-    assistantMessages.value = result.messages.length
-      ? [...result.messages].reverse().map((message) => ({
-        role: message.role,
-        text: message.content
-      }))
-      : [{
-        role: "assistant",
-        text: "这是一个新对话。你可以继续提问，或直接发链接让我收藏。"
-      }];
+    // 空会话同样交给欢迎页展示，不写入占位气泡。
+    assistantMessages.value = [...result.messages].reverse().map((message) => ({
+      role: message.role,
+      text: message.content
+    }));
   }
 
   async function startNewAssistantConversation() {
@@ -108,10 +100,8 @@ export function useAssistant(options: UseAssistantOptions) {
     assistantConversations.value = [result.conversation, ...assistantConversations.value];
     assistantHistoryOpen.value = false;
     assistantHistoryManage.value = false;
-    assistantMessages.value = [{
-      role: "assistant",
-      text: "新对话已创建。"
-    }];
+    // 新建会话的欢迎页交给 AssistantPanel 渲染，这里保持消息列表为空。
+    assistantMessages.value = [];
     assistantOpen.value = true;
   }
 

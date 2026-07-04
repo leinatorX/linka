@@ -6,21 +6,23 @@
   z-index: 50;
   width: 64px;
   height: 64px;
-  border-radius: 20px;
-  background: var(--accent-gradient);
+  border-radius: 50%;
+  background: transparent;
   color: white;
   box-shadow: var(--shadow-glow), var(--shadow-md);
   display: flex;
   align-items: center;
   justify-content: center;
   transition: all var(--transition-spring);
+  padding: 0;
+  overflow: hidden;
 }
 
 .assistant-fab::before {
   content: '';
   position: absolute;
   inset: -4px;
-  border-radius: 24px;
+  border-radius: 50%;
   background: var(--accent-gradient);
   opacity: 0.4;
   filter: blur(8px);
@@ -38,14 +40,12 @@
   box-shadow: 0 0 30px var(--accent-glow), var(--shadow-md);
 }
 
-.assistant-fab svg {
-  width: 32px;
-  height: 32px;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 2.5;
-  stroke-linecap: round;
-  stroke-linejoin: round;
+.assistant-fab img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+  border-radius: 50%;
 }
 
 .assistant-panel {

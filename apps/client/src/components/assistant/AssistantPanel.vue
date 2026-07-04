@@ -1,9 +1,11 @@
 <script setup lang="ts">
-import { Bot, ChevronDown, History, Loader2, Mic, Plus, Search, Send, X } from "@lucide/vue";
+import { computed } from "vue";
+import { ChevronDown, History, Loader2, Mic, Plus, Search, Send, X } from "@lucide/vue";
 import type { AssistantUiMessage } from "../../composables/useAssistant";
 import type { AiModelConfig, AssistantConversation } from "../../types";
+import { renderAssistantMarkdown } from "../../utils/markdown";
 
-defineProps<{
+const props = defineProps<{
   isSettingsPage: boolean;
   activeConversation?: AssistantConversation;
   filteredConversations: AssistantConversation[];
@@ -14,6 +16,15 @@ defineProps<{
   assistantEffortOptions: string[];
   availableModels: AiModelConfig[];
 }>();
+
+// 流式场景下，文本会逐字追加，computed 会重新解析带最新片段的 markdown。
+// 用户消息保持纯文本——前端永远不应该把用户输入当 markdown 渲染。
+const renderedMessages = computed(() =>
+  props.assistantMessages.map((message) => ({
+    ...message,
+    html: message.role === "assistant" ? renderAssistantMarkdown(message.text) : ""
+  }))
+);
 
 const assistantOpen = defineModel<boolean>("assistantOpen", { required: true });
 const assistantHistoryOpen = defineModel<boolean>("assistantHistoryOpen", { required: true });
@@ -38,28 +49,29 @@ defineEmits<{
 </script>
 
 <template>
-  <button class="assistant-fab" title="唤起 AI 助手" @click="assistantOpen = true"
+  <button class="assistant-fab" title="唤起 Linka AI" @click="assistantOpen = true"
     v-show="!assistantOpen && !isSettingsPage">
-    <Bot />
+    <img src="/assistant-bot.png" alt="Linka AI" />
   </button>
 
   <transition name="fade">
     <aside v-if="assistantOpen && !isSettingsPage" class="assistant-panel">
       <div class="assistant-header">
         <div class="brand-icon assistant-brand-icon">
-          <Bot :size="20" />
+          <img src="/assistant-bot.png" alt="Linka AI" />
         </div>
         <div class="assistant-header-text">
-          <h2>AI 助手</h2>
-          <p>{{ activeConversation?.title || '随时为你整理和检索' }}</p>
+          <h2>Linka AI</h2>
         </div>
-        <button class="tool-btn" title="历史记录" :class="{ active: assistantHistoryOpen }"
-          @click="$emit('toggleAssistantHistory')">
-          <History :size="18" />
-        </button>
-        <button class="tool-btn" title="新建对话" @click="$emit('startNewAssistantConversation')">
-          <Plus :size="18" />
-        </button>
+        <div class="header-actions">
+          <button class="tool-btn" title="历史记录" :class="{ active: assistantHistoryOpen }"
+            @click="$emit('toggleAssistantHistory')">
+            <History :size="18" />
+          </button>
+          <button class="tool-btn" title="新建对话" @click="$emit('startNewAssistantConversation')">
+            <Plus :size="18" />
+          </button>
+        </div>
         <button class="btn-close" title="关闭" @click="assistantOpen = false">
           <X :size="20" />
         </button>
@@ -80,8 +92,7 @@ defineEmits<{
           <button v-for="conversation in filteredConversations" :key="conversation.id" class="history-item"
             :class="{ active: activeConversationId === conversation.id }"
             @click="assistantHistoryManage ? $emit('toggleConversationSelected', conversation.id) : $emit('openAssistantConversation', conversation.id)">
-            <input v-if="assistantHistoryManage" type="checkbox"
-              :checked="selectedConversationIds.has(conversation.id)"
+            <input v-if="assistantHistoryManage" type="checkbox" :checked="selectedConversationIds.has(conversation.id)"
               @click.stop="$emit('toggleConversationSelected', conversation.id)" />
             <div>
               <strong>{{ conversation.title }}</strong>
@@ -102,17 +113,26 @@ defineEmits<{
       </div>
 
       <div v-else class="message-list">
-        <div v-for="(message, index) in assistantMessages" :key="index" class="message" :class="message.role">
+        <div v-if="assistantMessages.length === 0" class="assistant-welcome">
+          <div class="welcome-avatar">
+            <img src="/assistant-bot.png" alt="Linka AI" />
+          </div>
+          <h3>你好！我是 Linka AI</h3>
+        </div>
+        <div v-for="(message, index) in renderedMessages" :key="index" class="message" :class="message.role">
           <div v-if="message.reasoning" class="message-reasoning" :class="{ collapsed: message.reasoningCollapsed }">
             <button class="message-reasoning-toggle" type="button"
               @click="message.reasoningCollapsed = !message.reasoningCollapsed">
               <span>{{ message.streaming ? '思考中' : '思考完成' }}</span>
               <ChevronDown :size="14" />
             </button>
-            <p v-if="!message.reasoningCollapsed">{{ message.reasoning }}<span
-                v-if="message.streaming && !message.text" class="stream-cursor"></span></p>
+            <p v-if="!message.reasoningCollapsed">{{ message.reasoning }}<span v-if="message.streaming && !message.text"
+                class="stream-cursor"></span></p>
           </div>
-          <p v-if="message.text || !message.reasoning">{{ message.text }}<span v-if="message.streaming"
+          <!-- assistant 消息走 markdown 渲染（已经过 XSS 过滤），user 消息保持纯文本。 -->
+          <div v-if="message.role === 'assistant' && (message.text || !message.reasoning)" class="markdown-body"
+            v-html="message.html || message.text"></div>
+          <p v-else-if="message.text || !message.reasoning">{{ message.text }}<span v-if="message.streaming"
               class="stream-cursor"></span></p>
           <div v-if="message.results?.length" class="result-list">
             <a v-for="result in message.results" :key="result.id" :href="result.url" target="_blank" rel="noreferrer">
@@ -124,7 +144,7 @@ defineEmits<{
       </div>
 
       <div class="assistant-input-wrapper" v-if="!assistantHistoryOpen">
-        <textarea v-model="assistantInput" placeholder="向 AI 提问，或输入 / 触发技能，@ 引用上下文"
+        <textarea v-model="assistantInput" placeholder="随心输入"
           @keydown.enter.exact.prevent="$emit('askAssistant')"></textarea>
         <div class="input-toolbar">
           <div class="toolbar-left">

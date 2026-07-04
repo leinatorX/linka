@@ -2,6 +2,12 @@ import { toBookmark } from "../db.js";
 import type { PageMetadata } from "./metadata.js";
 import { getActiveAiConfig } from "./settings.js";
 import type { ActiveAiConfig } from "./settings.js";
+import {
+  ASSISTANT_CHAT_SYSTEM_PROMPT,
+  CLASSIFY_BOOKMARK_SYSTEM_PROMPT,
+  buildAssistantUserPrompt,
+  buildClassifyBookmarkUserPrompt
+} from "./prompts.js";
 
 export interface AiClassification {
   title: string;
@@ -490,24 +496,11 @@ async function* streamAi(messages: ChatMessage[], modelName?: string, effort?: R
 }
 
 export async function classifyBookmark(metadata: PageMetadata, allowedCategories: string[]): Promise<AiClassification> {
-  const categoriesText = allowedCategories.join("、");
-  const prompt = [
-    "你是 Linka 的网页收藏整理助手。",
-    "请根据网页信息生成简体中文整理结果，只返回 JSON，不要输出 Markdown。",
-    "JSON 字段必须包含 title、summary、category、confidence。",
-    "summary 控制在一到三句话。",
-    `category 必须且只能从这些分类中选择：${categoriesText}。`,
-    "不确定时 category 使用“未分类”。",
-    "",
-    `标题：${metadata.title}`,
-    `域名：${metadata.domain}`,
-    `描述：${metadata.description}`,
-    `正文片段：${metadata.textSample}`
-  ].join("\n");
+  const prompt = buildClassifyBookmarkUserPrompt(metadata, allowedCategories);
 
   try {
     const content = await requestAi([
-      { role: "system", content: "你只输出严格 JSON。" },
+      { role: "system", content: CLASSIFY_BOOKMARK_SYSTEM_PROMPT },
       { role: "user", content: prompt }
     ], { jsonMode: true });
     const parsed = JSON.parse(extractJsonObject(content)) as Partial<AiClassification>;
@@ -528,59 +521,16 @@ export async function classifyBookmark(metadata: PageMetadata, allowedCategories
 }
 
 export async function generateAssistantReply(message: string, bookmarks: Array<ReturnType<typeof toBookmark>>): Promise<AssistantResult> {
-  const context = bookmarks.slice(0, 20).map((bookmark) => {
-    const item = bookmark;
-    return [
-      `标题：${item.title}`,
-      `分类：${item.category}`,
-      `摘要：${item.summary || item.description || "暂无摘要"}`,
-      `链接：${item.url}`
-    ].join("\n");
-  }).join("\n\n");
-
-  const prompt = [
-    "你是 Linka 的 AI 助理，回答要简洁、具体，默认使用简体中文。",
-    "如果用户在找收藏内容，请优先基于给出的收藏上下文回答；如果上下文不足，请说明没有找到足够线索。",
-    "如果用户是普通提问，可以直接回答，但不要编造不存在的收藏。",
-    "",
-    `用户消息：${message}`,
-    "",
-    context ? `收藏上下文：\n${context}` : "收藏上下文：当前没有匹配收藏。"
-  ].join("\n");
+  const prompt = buildAssistantUserPrompt({ message, bookmarks });
 
   const content = await requestAi([
-    { role: "system", content: "你是一个AI助理。" },
+    { role: "system", content: ASSISTANT_CHAT_SYSTEM_PROMPT },
     { role: "user", content: prompt }
   ]);
 
   return {
     message: content.trim() || "我暂时没有生成有效回复。"
   };
-}
-
-function buildAssistantPrompt(message: string, bookmarks: Array<ReturnType<typeof toBookmark>>, history: AssistantHistoryMessage[] = []) {
-  const context = bookmarks.slice(0, 20).map((bookmark) => {
-    const item = bookmark;
-    return [
-      `标题：${item.title}`,
-      `分类：${item.category}`,
-      `摘要：${item.summary || item.description || "暂无摘要"}`,
-      `链接：${item.url}`
-    ].join("\n");
-  }).join("\n\n");
-  const historyText = history.slice(-12).map((item) => `${item.role === "user" ? "用户" : "助手"}：${item.content}`).join("\n");
-
-  return [
-    "你是 Linka 的 AI 助理，回答要简洁、具体，默认使用简体中文。",
-    "如果用户在找收藏内容，请优先基于给出的收藏上下文回答；如果上下文不足，请说明没有找到足够线索。",
-    "如果用户是普通提问，可以直接回答，但不要编造不存在的收藏。",
-    "",
-    historyText ? `历史对话：\n${historyText}` : "历史对话：无",
-    "",
-    `用户消息：${message}`,
-    "",
-    context ? `收藏上下文：\n${context}` : "收藏上下文：当前没有匹配收藏。"
-  ].join("\n");
 }
 
 export async function* streamAssistantReply(options: {
@@ -590,10 +540,14 @@ export async function* streamAssistantReply(options: {
   model?: string;
   effort?: ReasoningEffort;
 }) {
-  const prompt = buildAssistantPrompt(options.message, options.bookmarks, options.history ?? []);
+  const prompt = buildAssistantUserPrompt({
+    message: options.message,
+    bookmarks: options.bookmarks,
+    history: options.history
+  });
 
   yield* streamAi([
-    { role: "system", content: "你是一个AI助理。" },
+    { role: "system", content: ASSISTANT_CHAT_SYSTEM_PROMPT },
     { role: "user", content: prompt }
   ], options.model, options.effort);
 }

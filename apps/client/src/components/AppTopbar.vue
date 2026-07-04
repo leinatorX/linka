@@ -29,7 +29,7 @@ defineEmits<{
 
     <div class="global-search">
       <Search :size="18" />
-      <input v-model="searchInput" placeholder="搜索书签或向 AI 提问..." @keyup.enter="$emit('search')" />
+      <input v-model="searchInput" placeholder="搜索书签..." @keyup.enter="$emit('search')" />
     </div>
 
     <div class="top-actions">
