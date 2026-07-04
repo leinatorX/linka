@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Archive, Bot, ExternalLink, Pin, Trash2 } from "@lucide/vue";
+import { Archive, Bot, Edit2, ExternalLink, Pin, Trash2 } from "@lucide/vue";
 import type { Bookmark, Category } from "../../types";
 
 defineProps<{
@@ -16,6 +16,7 @@ defineEmits<{
   toggleArchived: [bookmark: Bookmark];
   removeBookmark: [bookmark: Bookmark];
   markIconFailed: [bookmarkId: string];
+  editBookmark: [bookmark: Bookmark];
 }>();
 
 function getFallbackIconText(bookmark: Bookmark) {
@@ -41,6 +42,10 @@ function getFallbackIconText(bookmark: Bookmark) {
     <section class="library">
       <transition-group name="fade" tag="div" class="card-grid" v-if="bookmarks.length">
         <article v-for="bookmark in bookmarks" :key="bookmark.id" class="bookmark-card">
+          <a class="open-link-btn" :href="bookmark.url" target="_blank" rel="noreferrer" title="打开链接">
+            <ExternalLink :size="20" />
+          </a>
+
           <div class="card-header">
             <div class="site-icon"
               :style="{ backgroundImage: bookmark.coverImageUrl ? `url(${bookmark.coverImageUrl})` : '' }">
@@ -60,12 +65,13 @@ function getFallbackIconText(bookmark: Bookmark) {
           <p class="card-summary">{{ bookmark.summary || bookmark.description || "暂无摘要" }}</p>
 
           <div class="card-actions-overlay">
-            <a class="icon-action" :href="bookmark.url" target="_blank" rel="noreferrer" title="打开链接">
-              <ExternalLink :size="16" />
-            </a>
             <button class="icon-action secondary-action" :class="{ selected: bookmark.pinned }" title="置顶"
               @click="$emit('togglePinned', bookmark)">
               <Pin :size="16" />
+            </button>
+            <button class="icon-action secondary-action" title="编辑"
+              @click="$emit('editBookmark', bookmark)">
+              <Edit2 :size="16" />
             </button>
             <button class="icon-action secondary-action" :title="showArchived ? '恢复' : '归档'"
               @click="$emit('toggleArchived', bookmark)">

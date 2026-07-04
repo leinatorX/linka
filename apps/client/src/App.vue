@@ -206,6 +206,7 @@ onUnmounted(() => {
       @toggle-archived="toggleArchived"
       @remove-bookmark="removeBookmark"
       @mark-icon-failed="markIconFailed"
+      @edit-bookmark="startEditingBookmark"
     />
 
     <SettingsPage
