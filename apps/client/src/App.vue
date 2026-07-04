@@ -965,7 +965,7 @@ onUnmounted(() => {
               </label>
               <div style="display: flex; gap: 12px; margin-top: 16px;">
                 <button class="btn-secondary" style="flex: 1;" @click="editingBookmarkId = null">取消</button>
-                <button class="btn-primary settings-submit" style="flex: 1;" @click="saveEditedBookmark">
+                <button class="btn-primary" style="flex: 1;" @click="saveEditedBookmark">
                   <span>保存修改</span>
                 </button>
               </div>
