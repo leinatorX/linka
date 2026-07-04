@@ -735,8 +735,9 @@ onUnmounted(() => {
                       <span class="segment-name">{{ provider.name }}</span>
                       <span class="status-dot" :class="{ enabled: provider.enabled }"></span>
                     </button>
-                    <button class="segment-btn add-btn icon-btn" title="添加服务商" @click="addAiProvider">
-                      <Plus :size="20" />
+                    <button class="segment-btn add-btn" title="添加服务商" @click="addAiProvider" style="justify-content: center;">
+                      <Plus :size="16" style="margin-right: 4px;" />
+                      <span>添加服务商</span>
                     </button>
                   </div>
 

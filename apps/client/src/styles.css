@@ -994,27 +994,30 @@ input::placeholder, textarea::placeholder {
 
 /* Segmented Control for AI Providers */
 .ai-provider-layout {
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
+  display: grid;
+  grid-template-columns: 200px 1fr;
+  gap: 32px;
+  align-items: start;
 }
 
 .ai-provider-segments {
   display: flex;
+  flex-direction: column;
   gap: 8px;
-  padding: 6px;
+  padding: 12px;
   background: rgba(0, 0, 0, 0.3);
   border-radius: var(--radius-md);
   border: 1px solid rgba(255, 255, 255, 0.05);
-  overflow-x: auto;
 }
 
 .segment-btn {
   display: flex;
   align-items: center;
+  justify-content: space-between;
+  width: 100%;
   gap: 8px;
-  padding: 8px 16px;
-  height: 36px;
+  padding: 10px 16px;
+  height: 40px;
   border-radius: var(--radius-sm);
   background: transparent;
   color: var(--text-secondary);
