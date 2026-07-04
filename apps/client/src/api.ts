@@ -195,3 +195,10 @@ export function testAiConnection(payload: {
     body: JSON.stringify(payload)
   });
 }
+
+export function revealApiKey(providerId: string): Promise<{ providerId: string; apiKey: string }> {
+  return request("/api/settings/ai/reveal", {
+    method: "POST",
+    body: JSON.stringify({ providerId })
+  });
+}

@@ -7,7 +7,7 @@ import {
   Copy, Eye, EyeOff, Star, RefreshCw, Check, AlertCircle,
   BookOpen, Key, Sparkles, Cpu, Info, RotateCcw, Save, Activity
 } from "@lucide/vue";
-import { createAssistantConversation, createBookmark, createCategory, deleteAssistantConversations, deleteBookmark, deleteCategory, getAiSettings as fetchAiSettings, getAssistantConversation, listAssistantConversations, listBookmarks, listCategories, saveAiSettings as updateAiSettings, streamAssistantMessage, updateBookmark, updateCategory, testAiConnection } from "./api";
+import { createAssistantConversation, createBookmark, createCategory, deleteAssistantConversations, deleteBookmark, deleteCategory, getAiSettings as fetchAiSettings, getAssistantConversation, listAssistantConversations, listBookmarks, listCategories, revealApiKey, saveAiSettings as updateAiSettings, streamAssistantMessage, updateBookmark, updateCategory, testAiConnection } from "./api";
 import type { AiApiFormat, AiProviderConfig, AssistantConversation, Bookmark, Category } from "./types";
 
 const bookmarks = ref<Bookmark[]>([]);
@@ -69,6 +69,8 @@ const newAiModelMaxTokens = ref(1000);
 const editingProviderId = ref("openai");
 const showApiKey = ref(false);
 const revealedApiKeyProviderIds = ref<Set<string>>(new Set());
+const revealedApiKeys = ref<Record<string, string>>({});
+const revealingApiKeyProviderIds = ref<Set<string>>(new Set());
 const testStatus = ref<'idle' | 'testing' | 'success' | 'failed'>('idle');
 const testMessage = ref('');
 
@@ -76,27 +78,44 @@ function isApiKeyRevealed(providerId: string): boolean {
   return revealedApiKeyProviderIds.value.has(providerId);
 }
 
-function toggleRevealApiKey(providerId: string) {
+async function toggleRevealApiKey(providerId: string) {
   if (revealedApiKeyProviderIds.value.has(providerId)) {
     revealedApiKeyProviderIds.value.delete(providerId);
-  } else {
-    revealedApiKeyProviderIds.value.add(providerId);
+    delete revealedApiKeys.value[providerId];
+    return;
   }
+
+  revealedApiKeyProviderIds.value.add(providerId);
   showApiKey.value = false;
+
+  if (revealedApiKeys.value[providerId] !== undefined) {
+    return;
+  }
+
+  revealingApiKeyProviderIds.value.add(providerId);
+  try {
+    const res = await revealApiKey(providerId);
+    revealedApiKeys.value[providerId] = res.apiKey;
+  } catch (error: any) {
+    revealedApiKeyProviderIds.value.delete(providerId);
+    alert("无法获取 API Key：" + (error.message || String(error)));
+  } finally {
+    revealingApiKeyProviderIds.value.delete(providerId);
+  }
 }
 
 function copyApiKeyValue(provider: any) {
-  const value = provider.apiKey && provider.apiKey.length > 0
-    ? provider.apiKey
-    : provider.apiKeyPreview;
+  const revealed = revealedApiKeys.value[provider.id];
+  const value = revealed && revealed.length > 0
+    ? revealed
+    : (provider.apiKey && provider.apiKey.length > 0 ? provider.apiKey : provider.apiKeyPreview);
   if (!value) {
     alert("API Key 为空");
     return;
   }
+  const isFull = !!revealed;
   navigator.clipboard.writeText(value)
-    .then(() => alert(isApiKeyRevealed(provider.id) && provider.apiKey
-      ? "API Key 已复制到剪贴板"
-      : "已复制脱敏预览：" + value))
+    .then(() => alert(isFull ? "API Key 已复制到剪贴板" : "已复制脱敏预览：" + value))
     .catch(err => alert("复制失败: " + err));
 }
 
@@ -503,6 +522,10 @@ async function saveAiSettings() {
     p.models.forEach(m => m.enabled = true);
     if (p.models.length > 0) {
       p.activeModelId = p.models[0].id;
+    }
+    const overridden = revealedApiKeys.value[p.id];
+    if (typeof overridden === "string" && overridden.length > 0) {
+      p.apiKey = overridden;
     }
   });
 
@@ -1090,15 +1113,23 @@ onUnmounted(() => {
                             type="text" :value="'•'.repeat(Math.max(activeAiProvider.apiKeyPreview.length || 12, 12))"
                             readonly tabindex="-1"
                             style="width: 100%; height: 40px; border-radius: var(--radius-md); background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.08); color: var(--text-primary); padding: 0 80px 0 12px; font-size: 18px; letter-spacing: 2px; cursor: default;" />
+                          <input v-else-if="revealingApiKeyProviderIds.has(activeAiProvider.id)"
+                            type="text" value="正在加载…" readonly tabindex="-1"
+                            style="width: 100%; height: 40px; border-radius: var(--radius-md); background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.08); color: var(--text-secondary); padding: 0 80px 0 12px; font-size: 14px;" />
+                          <input v-else-if="isApiKeyRevealed(activeAiProvider.id)"
+                            :type="showApiKey ? 'text' : 'password'" v-model="revealedApiKeys[activeAiProvider.id]"
+                            placeholder="请输入新的 API Key 覆盖现有值" autocomplete="off"
+                            style="width: 100%; height: 40px; border-radius: var(--radius-md); background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.08); color: var(--text-primary); padding: 0 80px 0 12px; font-size: 14px;" />
                           <input v-else :type="showApiKey ? 'text' : 'password'" v-model="activeAiProvider.apiKey"
-                            :placeholder="activeAiProvider.apiKeySet ? '请输入新的 API Key 覆盖现有值' : '请输入 API Key'"
-                            autocomplete="off"
+                            placeholder="请输入 API Key" autocomplete="off"
                             style="width: 100%; height: 40px; border-radius: var(--radius-md); background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.08); color: var(--text-primary); padding: 0 80px 0 12px; font-size: 14px;" />
                           <div style="position: absolute; right: 8px; display: flex; gap: 4px;">
                             <button v-if="activeAiProvider.apiKeySet && !isApiKeyRevealed(activeAiProvider.id)"
-                              type="button" @click="toggleRevealApiKey(activeAiProvider.id)" title="解锁查看/修改"
+                              type="button" :disabled="revealingApiKeyProviderIds.has(activeAiProvider.id)"
+                              @click="toggleRevealApiKey(activeAiProvider.id)" title="解锁查看/修改"
                               style="background: transparent; border: none; color: var(--text-secondary); width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; cursor: pointer; border-radius: 4px;">
-                              <Eye :size="16" />
+                              <Loader2 v-if="revealingApiKeyProviderIds.has(activeAiProvider.id)" class="spin" :size="14" />
+                              <Eye v-else :size="16" />
                             </button>
                             <button v-else-if="activeAiProvider.apiKeySet" type="button"
                               @click="toggleRevealApiKey(activeAiProvider.id)" title="锁定"
@@ -1145,29 +1176,27 @@ onUnmounted(() => {
                           style="display: flex; flex-direction: column; gap: 8px; padding: 12px 16px; border-radius: var(--radius-md); background: rgba(255,255,255,0.01); border: 1px solid rgba(255,255,255,0.04); cursor: default; transition: all 0.2s;"
                           :style="index === 0 ? 'border-color: rgba(99,102,241,0.2); background: rgba(99,102,241,0.02);' : ''">
 
-                          <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px;">
-                            <div style="display: flex; align-items: center; gap: 12px;">
-                              <div
-                                style="cursor: grab; display: flex; align-items: center; color: var(--text-secondary);">
-                                <GripVertical :size="16" />
+                          <div style="display: flex; align-items: center; gap: 12px;">
+                            <div
+                              style="cursor: grab; display: flex; align-items: center; color: var(--text-secondary); flex-shrink: 0;">
+                              <GripVertical :size="16" />
+                            </div>
+                            <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px;">
+                              <div style="display: flex; align-items: center; gap: 8px;">
+                                <span style="font-size: 14px; font-weight: 600; color: var(--text-primary);">{{
+                                  model.name
+                                }}</span>
+                                <span v-if="index === 0"
+                                  style="font-size: 11px; padding: 1px 6px; border-radius: 4px; background: rgba(99,102,241,0.1); color: #818cf8; font-weight: 500;">默认</span>
                               </div>
-                              <div style="display: flex; flex-direction: column; gap: 4px;">
-                                <div style="display: flex; align-items: center; gap: 8px;">
-                                  <span style="font-size: 14px; font-weight: 600; color: var(--text-primary);">{{
-                                    model.name
-                                  }}</span>
-                                  <span v-if="index === 0"
-                                    style="font-size: 11px; padding: 1px 6px; border-radius: 4px; background: rgba(99,102,241,0.1); color: #818cf8; font-weight: 500;">默认</span>
-                                </div>
-                                <div
-                                  style="display: flex; align-items: center; gap: 12px; font-size: 12px; color: var(--text-secondary);">
-                                  <span>Context: {{ model.maxTokens.toLocaleString() }} tokens</span>
-                                  <span>模型 ID: {{ model.id }}</span>
-                                </div>
+                              <div
+                                style="display: flex; align-items: center; gap: 12px; font-size: 12px; color: var(--text-secondary); flex-wrap: wrap;">
+                                <span>Context: {{ model.maxTokens.toLocaleString() }} tokens</span>
+                                <span>模型 ID: {{ model.id }}</span>
                               </div>
                             </div>
 
-                            <div style="display: flex; align-items: center; gap: 6px;">
+                            <div style="display: flex; align-items: center; gap: 6px; flex-shrink: 0;">
                               <button type="button" class="btn-model-icon" title="测试连接"
                                 :disabled="testingModelId === model.id" @click="testModel(activeAiProvider, model)">
                                 <Loader2 v-if="testingModelId === model.id" class="spin" :size="14" />

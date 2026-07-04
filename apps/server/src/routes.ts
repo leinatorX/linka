@@ -118,6 +118,21 @@ export async function registerRoutes(app: FastifyInstance) {
     settings: getPublicAiSettings()
   }));
 
+  app.post("/api/settings/ai/reveal", async (request, reply) => {
+    const body = (request.body ?? {}) as { providerId?: string };
+    const providerId = typeof body.providerId === "string" ? body.providerId.trim() : "";
+    if (!providerId) {
+      return reply.code(400).send({ message: "缺少供应商 ID" });
+    }
+
+    const apiKey = getProviderApiKey(providerId);
+    if (!apiKey) {
+      return reply.code(404).send({ message: "该供应商尚未配置 API Key" });
+    }
+
+    return { providerId, apiKey };
+  });
+
   app.put("/api/settings/ai", async (request, reply) => {
     const payload = aiSettingsSchema.safeParse(request.body);
     if (!payload.success) {
