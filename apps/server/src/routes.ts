@@ -8,6 +8,51 @@ import { createCategory, deleteCategory, listCategories, reorderCategories, upda
 import { getPublicAiSettings, getProviderApiKey, reorderAiProviders, saveAiSettings } from "./services/settings.js";
 import { extractFirstUrl, isValidUrl } from "./utils/url.js";
 
+// 将 Zod 格式 schema 转换为 Fastify 原生 JSON Schema，保证 Swagger 能渲染出请求参数模型
+function zodToJSON(schema: any): any {
+  if (!schema) return {};
+  if (schema instanceof z.ZodObject) {
+    const properties: any = {};
+    const required: string[] = [];
+    for (const [key, value] of Object.entries(schema.shape)) {
+      properties[key] = zodToJSON(value);
+      if (!(value instanceof z.ZodOptional)) {
+        required.push(key);
+      }
+    }
+    return {
+      type: "object",
+      properties,
+      ...(required.length > 0 ? { required } : {})
+    };
+  }
+  if (schema instanceof z.ZodOptional) {
+    return zodToJSON(schema.unwrap());
+  }
+  if (schema instanceof z.ZodArray) {
+    return {
+      type: "array",
+      items: zodToJSON(schema.element)
+    };
+  }
+  if (schema instanceof z.ZodEnum) {
+    return {
+      type: "string",
+      enum: schema.options
+    };
+  }
+  if (schema instanceof z.ZodString) {
+    return { type: "string" };
+  }
+  if (schema instanceof z.ZodNumber) {
+    return { type: "number" };
+  }
+  if (schema instanceof z.ZodBoolean) {
+    return { type: "boolean" };
+  }
+  return { type: "string" };
+}
+
 const createBookmarkSchema = z.object({
   url: z.string().url(),
   title: z.string().optional(),
@@ -102,13 +147,31 @@ function writeSse(raw: FastifyReply["raw"], event: string, data: unknown) {
 }
 
 export async function registerRoutes(app: FastifyInstance) {
-  app.get("/api/health", async () => ({
+  app.get("/api/health", {
+    schema: {
+      description: "健康检查，获取当前服务状态、系统时间等",
+      tags: ["系统"]
+    }
+  }, async () => ({
     status: "ok",
     name: "Linka",
     time: new Date().toISOString()
   }));
 
-  app.get("/api/bookmarks", async (request) => {
+  app.get("/api/bookmarks", {
+    schema: {
+      description: "获取书签列表，支持按关键词、分类及归档状态进行查询",
+      tags: ["书签"],
+      querystring: {
+        type: "object",
+        properties: {
+          q: { type: "string", description: "搜索关键词（标题/描述/内容）" },
+          category: { type: "string", description: "所属分类名称" },
+          archived: { type: "string", enum: ["true", "false"], description: "是否已被归档" }
+        }
+      }
+    }
+  }, async (request) => {
     const query = request.query as Record<string, string | undefined>;
     return {
       bookmarks: listBookmarks({
@@ -119,15 +182,37 @@ export async function registerRoutes(app: FastifyInstance) {
     };
   });
 
-  app.get("/api/categories", async () => ({
+  app.get("/api/categories", {
+    schema: {
+      description: "获取所有书签分类列表",
+      tags: ["分类"]
+    }
+  }, async () => ({
     categories: listCategories()
   }));
 
-  app.get("/api/settings/ai", async () => ({
+  app.get("/api/settings/ai", {
+    schema: {
+      description: "获取 AI 接口配置（接口密钥已脱敏）",
+      tags: ["AI 设置"]
+    }
+  }, async () => ({
     settings: getPublicAiSettings()
   }));
 
-  app.post("/api/settings/ai/reveal", async (request, reply) => {
+  app.post("/api/settings/ai/reveal", {
+    schema: {
+      description: "获取指定 AI 服务商已保存的明文 API Key",
+      tags: ["AI 设置"],
+      body: {
+        type: "object",
+        required: ["providerId"],
+        properties: {
+          providerId: { type: "string", description: "服务商 ID" }
+        }
+      }
+    }
+  }, async (request, reply) => {
     const body = (request.body ?? {}) as { providerId?: string };
     const providerId = typeof body.providerId === "string" ? body.providerId.trim() : "";
     if (!providerId) {
@@ -142,7 +227,13 @@ export async function registerRoutes(app: FastifyInstance) {
     return { providerId, apiKey };
   });
 
-  app.put("/api/settings/ai", async (request, reply) => {
+  app.put("/api/settings/ai", {
+    schema: {
+      description: "保存/覆写 AI 服务商与模型参数配置",
+      tags: ["AI 设置"],
+      body: zodToJSON(aiSettingsSchema)
+    }
+  }, async (request, reply) => {
     const payload = aiSettingsSchema.safeParse(request.body);
     if (!payload.success) {
       return reply.code(400).send({ message: "请输入有效的 AI 配置" });
@@ -153,7 +244,13 @@ export async function registerRoutes(app: FastifyInstance) {
     return { settings };
   });
 
-  app.post("/api/settings/ai/reorder", async (request, reply) => {
+  app.post("/api/settings/ai/reorder", {
+    schema: {
+      description: "对 AI 供应商列表的渲染顺序进行批量排列",
+      tags: ["AI 设置"],
+      body: zodToJSON(reorderAiProvidersSchema)
+    }
+  }, async (request, reply) => {
     const payload = reorderAiProvidersSchema.safeParse(request.body);
     if (!payload.success) {
       return reply.code(400).send({ message: "排序参数无效" });
@@ -162,7 +259,13 @@ export async function registerRoutes(app: FastifyInstance) {
     return { settings };
   });
 
-  app.post("/api/settings/ai/test", async (request, reply) => {
+  app.post("/api/settings/ai/test", {
+    schema: {
+      description: "测试大模型及服务商接口连通性",
+      tags: ["AI 设置"],
+      body: zodToJSON(testAiConnectionSchema)
+    }
+  }, async (request, reply) => {
     const payload = testAiConnectionSchema.safeParse(request.body);
     if (!payload.success) {
       return reply.code(400).send({ message: "请输入有效的测试配置" });
@@ -194,7 +297,13 @@ export async function registerRoutes(app: FastifyInstance) {
     }
   });
 
-  app.post("/api/categories", async (request, reply) => {
+  app.post("/api/categories", {
+    schema: {
+      description: "创建新的分类",
+      tags: ["分类"],
+      body: zodToJSON(categorySchema)
+    }
+  }, async (request, reply) => {
     const payload = categorySchema.safeParse(request.body);
     if (!payload.success) {
       return reply.code(400).send({ message: "请输入有效的分类名称" });
@@ -207,7 +316,20 @@ export async function registerRoutes(app: FastifyInstance) {
     }
   });
 
-  app.patch("/api/categories/:id", async (request, reply) => {
+  app.patch("/api/categories/:id", {
+    schema: {
+      description: "更新指定分类名称",
+      tags: ["分类"],
+      params: {
+        type: "object",
+        required: ["id"],
+        properties: {
+          id: { type: "string", description: "分类 ID" }
+        }
+      },
+      body: zodToJSON(categorySchema)
+    }
+  }, async (request, reply) => {
     const { id } = request.params as { id: string };
     const payload = categorySchema.safeParse(request.body);
     if (!payload.success) {
@@ -226,7 +348,19 @@ export async function registerRoutes(app: FastifyInstance) {
     }
   });
 
-  app.delete("/api/categories/:id", async (request, reply) => {
+  app.delete("/api/categories/:id", {
+    schema: {
+      description: "删除指定分类",
+      tags: ["分类"],
+      params: {
+        type: "object",
+        required: ["id"],
+        properties: {
+          id: { type: "string", description: "分类 ID" }
+        }
+      }
+    }
+  }, async (request, reply) => {
     const { id } = request.params as { id: string };
     if (!deleteCategory(id)) {
       return reply.code(404).send({ message: "分类不存在或不可删除" });
@@ -235,7 +369,13 @@ export async function registerRoutes(app: FastifyInstance) {
     return { status: "deleted" };
   });
 
-  app.post("/api/categories/reorder", async (request, reply) => {
+  app.post("/api/categories/reorder", {
+    schema: {
+      description: "批量重新排列分类顺序",
+      tags: ["分类"],
+      body: zodToJSON(reorderCategoriesSchema)
+    }
+  }, async (request, reply) => {
     const payload = reorderCategoriesSchema.safeParse(request.body);
     if (!payload.success) {
       return reply.code(400).send({ message: "排序参数无效" });
@@ -243,7 +383,15 @@ export async function registerRoutes(app: FastifyInstance) {
     return { categories: reorderCategories(payload.data.orderedIds) };
   });
 
-  app.post("/api/bookmarks", { preHandler: requireApiToken }, async (request, reply) => {
+  app.post("/api/bookmarks", {
+    preHandler: requireApiToken,
+    schema: {
+      description: "创建书签并由 AI 自动填充元数据和分类，需 Headers 鉴权",
+      tags: ["书签"],
+      security: [{ apiKeyAuth: [] }],
+      body: zodToJSON(createBookmarkSchema)
+    }
+  }, async (request, reply) => {
     const payload = createBookmarkSchema.safeParse(request.body);
     if (!payload.success || !isValidUrl(payload.data.url)) {
       return reply.code(400).send({ message: "请输入有效的 URL" });
@@ -253,7 +401,29 @@ export async function registerRoutes(app: FastifyInstance) {
     return reply.code(result.status === "exists" ? 200 : 201).send(result);
   });
 
-  app.patch("/api/bookmarks/:id", async (request, reply) => {
+  app.patch("/api/bookmarks/:id", {
+    schema: {
+      description: "部分更新书签信息（如分类、标记置顶/归档等）",
+      tags: ["书签"],
+      params: {
+        type: "object",
+        required: ["id"],
+        properties: {
+          id: { type: "string", description: "书签 ID" }
+        }
+      },
+      body: {
+        type: "object",
+        properties: {
+          title: { type: "string", description: "标题" },
+          category: { type: "string", description: "所属分类" },
+          summary: { type: "string", description: "摘要" },
+          pinned: { type: "boolean", description: "是否置顶" },
+          archived: { type: "boolean", description: "是否归档" }
+        }
+      }
+    }
+  }, async (request, reply) => {
     const { id } = request.params as { id: string };
     const bookmark = updateBookmark(id, request.body as Record<string, unknown>);
 
@@ -264,7 +434,19 @@ export async function registerRoutes(app: FastifyInstance) {
     return { bookmark };
   });
 
-  app.delete("/api/bookmarks/:id", async (request, reply) => {
+  app.delete("/api/bookmarks/:id", {
+    schema: {
+      description: "删除指定书签",
+      tags: ["书签"],
+      params: {
+        type: "object",
+        required: ["id"],
+        properties: {
+          id: { type: "string", description: "书签 ID" }
+        }
+      }
+    }
+  }, async (request, reply) => {
     const { id } = request.params as { id: string };
     if (!deleteBookmark(id)) {
       return reply.code(404).send({ message: "收藏不存在" });
@@ -273,7 +455,19 @@ export async function registerRoutes(app: FastifyInstance) {
     return { status: "deleted" };
   });
 
-  app.get("/api/bookmarks/check", async (request) => {
+  app.get("/api/bookmarks/check", {
+    schema: {
+      description: "检查某个链接（URL）是否已被收藏",
+      tags: ["书签"],
+      querystring: {
+        type: "object",
+        required: ["url"],
+        properties: {
+          url: { type: "string", description: "待校验的完整 URL 链接" }
+        }
+      }
+    }
+  }, async (request) => {
     const query = request.query as Record<string, string | undefined>;
     const found = query.url ? listBookmarks({ archived: true }).find((bookmark) => bookmark.url === query.url || bookmark.normalizedUrl === query.url) : null;
 
@@ -283,7 +477,19 @@ export async function registerRoutes(app: FastifyInstance) {
     };
   });
 
-  app.get("/api/bookmarks/:id", async (request, reply) => {
+  app.get("/api/bookmarks/:id", {
+    schema: {
+      description: "根据 ID 获取单条书签详情",
+      tags: ["书签"],
+      params: {
+        type: "object",
+        required: ["id"],
+        properties: {
+          id: { type: "string", description: "书签 ID" }
+        }
+      }
+    }
+  }, async (request, reply) => {
     const { id } = request.params as { id: string };
     const bookmark = getBookmarkById(id);
 
@@ -294,18 +500,46 @@ export async function registerRoutes(app: FastifyInstance) {
     return { bookmark };
   });
 
-  app.get("/api/assistant/conversations", async () => ({
+  app.get("/api/assistant/conversations", {
+    schema: {
+      description: "获取大模型助手的历史会话列表",
+      tags: ["AI 助手"]
+    }
+  }, async () => ({
     conversations: listAssistantConversations()
   }));
 
-  app.post("/api/assistant/conversations", async (request, reply) => {
+  app.post("/api/assistant/conversations", {
+    schema: {
+      description: "新建对话会话",
+      tags: ["AI 助手"],
+      body: {
+        type: "object",
+        properties: {
+          title: { type: "string", description: "会话标题（非必填）" }
+        }
+      }
+    }
+  }, async (request, reply) => {
     const body = request.body as { title?: string } | undefined;
     return reply.code(201).send({
       conversation: createAssistantConversation(body?.title?.trim() || "新对话")
     });
   });
 
-  app.get("/api/assistant/conversations/:id", async (request, reply) => {
+  app.get("/api/assistant/conversations/:id", {
+    schema: {
+      description: "获取特定对话会话详情及历史聊天记录上下文",
+      tags: ["AI 助手"],
+      params: {
+        type: "object",
+        required: ["id"],
+        properties: {
+          id: { type: "string", description: "会话 ID" }
+        }
+      }
+    }
+  }, async (request, reply) => {
     const { id } = request.params as { id: string };
     const conversation = getAssistantConversation(id);
 
@@ -316,14 +550,32 @@ export async function registerRoutes(app: FastifyInstance) {
     return conversation;
   });
 
-  app.delete("/api/assistant/conversations/:id", async (request) => {
+  app.delete("/api/assistant/conversations/:id", {
+    schema: {
+      description: "删除单个会话历史",
+      tags: ["AI 助手"],
+      params: {
+        type: "object",
+        required: ["id"],
+        properties: {
+          id: { type: "string", description: "会话 ID" }
+        }
+      }
+    }
+  }, async (request) => {
     const { id } = request.params as { id: string };
     return {
       deleted: deleteAssistantConversations([id])
     };
   });
 
-  app.post("/api/assistant/conversations/delete", async (request, reply) => {
+  app.post("/api/assistant/conversations/delete", {
+    schema: {
+      description: "批量删除指定的对话会话",
+      tags: ["AI 助手"],
+      body: zodToJSON(deleteConversationsSchema)
+    }
+  }, async (request, reply) => {
     const payload = deleteConversationsSchema.safeParse(request.body);
     if (!payload.success) {
       return reply.code(400).send({ message: "请选择要删除的历史记录" });
@@ -334,7 +586,13 @@ export async function registerRoutes(app: FastifyInstance) {
     };
   });
 
-  app.post("/api/assistant/chat", async (request, reply) => {
+  app.post("/api/assistant/chat", {
+    schema: {
+      description: "发送消息给大模型助手（同步阻塞方式）",
+      tags: ["AI 助手"],
+      body: zodToJSON(assistantSchema)
+    }
+  }, async (request, reply) => {
     const payload = assistantSchema.safeParse(request.body);
     if (!payload.success) {
       return reply.code(400).send({ message: "请输入消息内容" });
@@ -366,10 +624,15 @@ export async function registerRoutes(app: FastifyInstance) {
         results
       };
     }
-
   });
 
-  app.post("/api/assistant/chat/stream", async (request, reply) => {
+  app.post("/api/assistant/chat/stream", {
+    schema: {
+      description: "与大模型助手交互（SSE 流式数据传输，支持多轮对话与推理思考流输出）",
+      tags: ["AI 助手"],
+      body: zodToJSON(assistantStreamSchema)
+    }
+  }, async (request, reply) => {
     const payload = assistantStreamSchema.safeParse(request.body);
     if (!payload.success) {
       return reply.code(400).send({ message: "请输入消息内容" });

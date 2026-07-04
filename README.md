@@ -28,6 +28,7 @@ npm run dev
 
 - 前端开发服务：http://localhost:5173
 - 后端 API：http://localhost:3030
+- 接口文档 (Swagger UI)：http://localhost:3030/documentation
 
 ## 环境变量
 
@@ -74,6 +75,15 @@ docker compose up -d --build
 ```
 
 数据会持久化到本地 `./data` 目录。群晖 NAS 部署时，建议把该目录映射到共享文件夹，便于备份。
+
+## 接口文档 (Swagger)
+
+项目集成了 OpenAPI / Swagger 接口文档规范。本地服务启动后，你可以通过以下端点查阅详细的 API 列表并直接进行调试：
+
+- **Swagger UI 交互界面**：[http://localhost:3030/documentation](http://localhost:3030/documentation)
+- **OpenAPI JSON 规范数据**：[http://localhost:3030/documentation/json](http://localhost:3030/documentation/json)
+
+主要包含健康检查、书签管理、分类管理、AI 参数配置以及 AI 助手对话（支持 SSE 流式）等核心模块。
 
 ## API 示例
 

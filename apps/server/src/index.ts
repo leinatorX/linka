@@ -8,6 +8,9 @@ import { config } from "./config.js";
 import { registerRoutes } from "./routes.js";
 import { initializeCategories } from "./services/categories.js";
 
+import swagger from "@fastify/swagger";
+import swaggerUi from "@fastify/swagger-ui";
+
 const app = Fastify({
   logger: true
 });
@@ -16,6 +19,44 @@ initializeCategories();
 
 await app.register(cors, {
   origin: true
+});
+
+// 注册 Swagger OpenAPI 规范生成器
+await app.register(swagger, {
+  openapi: {
+    info: {
+      title: "Linka API 文档",
+      description: "Linka 书签管理与 AI 助手后端接口文档",
+      version: "0.1.0"
+    },
+    servers: [
+      {
+        url: `http://${config.host}:${config.port}`,
+        description: "本地服务"
+      }
+    ],
+    components: {
+      securitySchemes: {
+        apiKeyAuth: {
+          type: "apiKey",
+          in: "header",
+          name: "Authorization",
+          description: "请输入 'Bearer <apiToken>'（若配置了 API_TOKEN）"
+        }
+      }
+    }
+  }
+});
+
+// 注册 Swagger UI 静态页面托管，公开端点为 /documentation
+await app.register(swaggerUi, {
+  routePrefix: "/documentation",
+  uiConfig: {
+    docExpansion: "list",
+    deepLinking: false
+  },
+  staticCSP: true,
+  transformStaticCSP: (header) => header
 });
 
 await registerRoutes(app);
