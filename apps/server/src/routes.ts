@@ -9,6 +9,7 @@ import { clearSessionCookie, getSessionFromRequest, login, logout, requireAuth, 
 import { createBookmark, deleteBookmark, getBookmarkById, listBookmarks, updateBookmark } from "./services/bookmarks.js";
 import { createCategory, deleteCategory, listCategories, reorderCategories, updateCategory } from "./services/categories.js";
 import { getPublicAiSettings, getProviderApiKey, reorderAiProviders, saveAiSettings } from "./services/settings.js";
+import { getPublicWeatherSettings, saveWeatherSettings, fetchCurrentWeather } from "./services/weather.js";
 import { isValidUrl } from "./utils/url.js";
 
 // 将 Zod 格式 schema 转换为 Fastify 原生 JSON Schema，保证 Swagger 能渲染出请求参数模型
@@ -519,6 +520,33 @@ export async function registerRoutes(app: FastifyInstance) {
     }
     const settings = reorderAiProviders(payload.data.orderedIds);
     return { settings };
+  });
+
+  app.get("/api/settings/weather", async (request, reply) => {
+    if (!requireAuth(request, reply)) return;
+    return { settings: getPublicWeatherSettings() };
+  });
+
+  app.put("/api/settings/weather", async (request, reply) => {
+    if (!requireAuth(request, reply)) return;
+    
+    const payload = z.object({
+      enabled: z.boolean().optional(),
+      apiKey: z.string().optional(),
+      location: z.string().optional(),
+      showDate: z.boolean().optional(),
+      dateFormat: z.string().optional()
+    }).safeParse(request.body);
+
+    if (!payload.success) {
+      return reply.code(400).send({ message: "参数格式错误" });
+    }
+    const settings = saveWeatherSettings(payload.data);
+    return { settings };
+  });
+
+  app.get("/api/weather", async () => {
+    return await fetchCurrentWeather();
   });
 
   app.post("/api/settings/ai/test", {

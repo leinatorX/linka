@@ -98,3 +98,12 @@ export interface AiSettings {
 }
 
 export type AiSettingsPayload = AiSettings;
+
+export interface WeatherSettings {
+  enabled: boolean;
+  apiKeySet?: boolean;
+  apiKey?: string;
+  location: string;
+  showDate: boolean;
+  dateFormat: string;
+}

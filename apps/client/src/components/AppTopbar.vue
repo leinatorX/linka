@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { Archive, Moon, Search, Sun } from "@lucide/vue";
-import { computed } from "vue";
+import { computed, ref, onMounted, onUnmounted } from "vue";
 import { RouterLink } from "vue-router";
 import { useI18n } from "vue-i18n";
 import type { AuthUser, Category } from "../types";
 import type { ThemeMode } from "../composables/useTheme";
+import { getWeatherSettings, getCurrentWeather } from "../api";
 
 const props = defineProps<{
   showArchived: boolean;
@@ -24,7 +25,50 @@ const emit = defineEmits<{
   changeTheme: [theme: ThemeMode];
 }>();
 
-const { t } = useI18n();
+const { t, locale } = useI18n();
+const weather = ref<{ temp_c: number, condition: { text: string, icon: string } } | null>(null);
+const showDateConfig = ref(false);
+const dateFormatConfig = ref('full');
+const currentTime = ref(new Date());
+let timeInterval: number;
+
+onMounted(async () => {
+  timeInterval = window.setInterval(() => {
+    currentTime.value = new Date();
+  }, 1000);
+
+  if (props.isSettingsPage) return;
+  try {
+    const { settings } = await getWeatherSettings();
+    showDateConfig.value = settings.showDate;
+    dateFormatConfig.value = settings.dateFormat || 'full';
+    if (settings.enabled && settings.apiKeySet) {
+      const data = await getCurrentWeather();
+      weather.value = data.current;
+    }
+  } catch (e) {
+    console.error("Failed to fetch weather:", e);
+  }
+});
+
+onUnmounted(() => {
+  window.clearInterval(timeInterval);
+});
+
+const formattedDatetime = computed(() => {
+  const d = currentTime.value;
+  if (dateFormatConfig.value === 'time') {
+    return new Intl.DateTimeFormat(locale.value, { hour: '2-digit', minute: '2-digit', hour12: false }).format(d);
+  }
+  if (dateFormatConfig.value === 'short') {
+    return new Intl.DateTimeFormat(locale.value, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }).format(d);
+  }
+  if (dateFormatConfig.value === 'long') {
+    return new Intl.DateTimeFormat(locale.value, { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }).format(d);
+  }
+  // full
+  return new Intl.DateTimeFormat(locale.value, { year: 'numeric', month: 'short', day: 'numeric', weekday: 'short', hour: '2-digit', minute: '2-digit', hour12: false }).format(d);
+});
 
 const themeTitle = computed(() => {
   if (props.theme === "light") return t('topbar.themeLight');
@@ -84,6 +128,17 @@ function handleFilterWheel(event: WheelEvent) {
       </div>
 
       <div class="top-actions">
+        <div v-if="showDateConfig || weather" class="weather-widget">
+          <template v-if="showDateConfig">
+            <span class="datetime">{{ formattedDatetime }}</span>
+            <div v-if="weather" class="weather-divider"></div>
+          </template>
+          <template v-if="weather">
+            <img :src="weather.condition.icon" :title="weather.condition.text" alt="weather" />
+            <span :title="weather.condition.text">{{ weather.temp_c }}°C</span>
+          </template>
+        </div>
+
         <button class="top-icon theme-toggle-btn" :title="themeTitle" @click="cycleTheme">
           <Sun v-if="theme === 'light'" :size="18" />
           <Moon v-else :size="18" />
@@ -101,3 +156,36 @@ function handleFilterWheel(event: WheelEvent) {
     </div>
   </header>
 </template>
+
+<style scoped>
+.weather-widget {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  padding: 0 8px;
+  height: 32px;
+  border-radius: 8px;
+  background-color: var(--bg-secondary);
+  user-select: none;
+}
+.weather-widget img {
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
+}
+.weather-divider {
+  width: 1px;
+  height: 12px;
+  background: var(--border-subtle);
+  margin: 0 4px;
+}
+.datetime {
+  font-variant-numeric: tabular-nums;
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+</style>

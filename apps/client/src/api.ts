@@ -241,6 +241,21 @@ export function revealApiKey(providerId: string): Promise<{ providerId: string; 
   });
 }
 
+export function getWeatherSettings(): Promise<{ settings: any }> {
+  return request("/api/settings/weather");
+}
+
+export function saveWeatherSettings(payload: any): Promise<{ settings: any }> {
+  return request("/api/settings/weather", {
+    method: "PUT",
+    body: JSON.stringify(payload)
+  });
+}
+
+export function getCurrentWeather(): Promise<any> {
+  return request("/api/weather");
+}
+
 export function reorderAiProviders(orderedIds: string[]): Promise<{ settings: { activeProviderId: string; providers: AiProviderConfig[] } }> {
   return request("/api/settings/ai/reorder", {
     method: "POST",
