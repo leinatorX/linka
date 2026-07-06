@@ -51,7 +51,7 @@ export function useAiSettings(options: UseAiSettingsOptions) {
   const newAiProviderName = ref("");
   const showAiModelModal = ref(false);
   const editingAiModel = ref<AiModelConfig | null>(null);
-  const aiModelFormData = ref({ name: "", maxTokens: 1000 });
+  const aiModelFormData = ref({ name: "", maxTokens: 1000, supportsVision: false });
   const aiSettingsForm = ref({
     activeProviderId: "openai",
     providers: [] as AiProviderConfig[]
@@ -227,7 +227,8 @@ export function useAiSettings(options: UseAiSettingsOptions) {
         id: provider.activeModelId,
         name: "MiniMax-M3",
         maxTokens: 1000,
-        enabled: true
+        enabled: true,
+        supportsVision: true
       }
     ];
     aiSettingsForm.value.providers.push(provider);
@@ -268,13 +269,13 @@ export function useAiSettings(options: UseAiSettingsOptions) {
 
   function openAddAiModelModal() {
     editingAiModel.value = null;
-    aiModelFormData.value = { name: "", maxTokens: 1000 };
+    aiModelFormData.value = { name: "", maxTokens: 1000, supportsVision: false };
     showAiModelModal.value = true;
   }
 
   function openEditAiModelModal(model: AiModelConfig) {
     editingAiModel.value = model;
-    aiModelFormData.value = { name: model.name, maxTokens: model.maxTokens };
+    aiModelFormData.value = { name: model.name, maxTokens: model.maxTokens, supportsVision: model.supportsVision };
     showAiModelModal.value = true;
   }
 
@@ -292,12 +293,14 @@ export function useAiSettings(options: UseAiSettingsOptions) {
     if (editingAiModel.value) {
       editingAiModel.value.name = name;
       editingAiModel.value.maxTokens = Number(aiModelFormData.value.maxTokens) || 1000;
+      editingAiModel.value.supportsVision = Boolean(aiModelFormData.value.supportsVision);
     } else {
       const model = {
         id: createLocalId("model"),
         name,
         maxTokens: Number(aiModelFormData.value.maxTokens) || 1000,
-        enabled: true
+        enabled: true,
+        supportsVision: Boolean(aiModelFormData.value.supportsVision)
       };
       provider.models.push(model);
       provider.activeModelId = model.id;

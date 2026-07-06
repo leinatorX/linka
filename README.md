@@ -1,40 +1,86 @@
-<div align="center">
-  <h1>Linka</h1>
-  <p><strong>Save it. Let AI organize it.</strong></p>
-  <img src="./assets/screenshot.png" alt="Linka Screenshot" width="800" style="border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); margin-top: 16px; margin-bottom: 24px;" />
-</div>
+# Linka
 
-Linka 是一款极致轻量的 AI 驱动书签管理器。你只需要随手丢入链接，Linka 会自动抓取网页元数据（标题、描述、Favicon、封面图），并利用大语言模型（LLM）生成智能摘要、自动匹配分类并提取标签，最后以极简精致的卡片瀑布流呈现给你。
+> Save it. Let AI organize it.
 
-## ✨ 核心特性
+Linka 是一款面向个人和小团队自托管场景的 AI 书签管理器。它可以抓取网页元数据，使用大语言模型生成摘要、分类和标签，并通过对话式 AI 助手完成收藏、检索和多模态内容理解。
 
-- Vue 3 + Vite + TypeScript 前端。
-- Node.js + Fastify + TypeScript 后端。
-- SQLite 本地持久化。
-- 手动添加 URL 收藏。
-- 自动抓取标题、描述、favicon 和封面图。
-- 支持在设置页配置多个 AI 供应商和多个模型，用于生成摘要、分类和标签。
-- 没有 AI Key 时使用本地兜底规则，保证应用可以先跑起来。
-- 首页卡片展示、关键词搜索、分类筛选、标签筛选。
-- AI 助手支持通过对话收藏链接和搜索已收藏内容。
-- Docker Compose 部署，适合群晖 NAS。
+<p align="center">
+  <img src="./assets/screenshot.png" alt="Linka screenshot" width="860" />
+</p>
 
-## 本地开发
+## 功能特性
+
+- 书签管理：添加、编辑、删除、搜索 URL 收藏。
+- 元数据抓取：自动解析标题、描述、favicon 和封面图。
+- 智能整理：基于 AI 生成摘要、推荐分类并提取标签。
+- 分类视图：支持首页、AI 工具、开发工具、设计资源等分类切换。
+- AI 助手：通过自然语言搜索书签、添加收藏、补充描述和执行书签操作。
+- 多模态输入：助手支持图片、视频和普通附件上传；图片理解依赖当前模型能力。
+- 多供应商配置：支持 OpenAI 兼容接口和 Anthropic 消息接口。
+- 模型能力配置：可为每个模型设置上下文长度、默认模型和是否支持视觉理解。
+- 历史会话：保存 AI 助手对话上下文，并保留附件历史记录。
+- 本地存储：SQLite 持久化，适合桌面、本机服务器和 NAS 部署。
+- Docker 部署：提供 Dockerfile 和 Docker Compose 配置。
+
+## 技术栈
+
+| 模块 | 技术 |
+| --- | --- |
+| 前端 | Vue 3, Vite, TypeScript, Vue Router |
+| 后端 | Node.js, Fastify, TypeScript |
+| 数据库 | SQLite, better-sqlite3 |
+| AI 接口 | OpenAI compatible, Anthropic Messages compatible |
+| 文档 | Swagger UI / OpenAPI |
+| 部署 | Docker, Docker Compose |
+
+## 项目结构
+
+```text
+.
+├── apps
+│   ├── client          # Vue 前端应用
+│   └── server          # Fastify 后端服务
+├── assets              # README 和项目展示图片
+├── data                # 本地 SQLite 数据目录
+├── dist                # 构建产物
+├── docker-compose.yml
+├── Dockerfile
+└── package.json
+```
+
+## 快速开始
+
+### 环境要求
+
+- Node.js 22 或更高版本
+- npm
+- Docker 和 Docker Compose，可选
+
+### 本地开发
 
 ```bash
 npm install
 npm run dev
 ```
 
-默认地址：
+默认服务地址：
 
-- 前端开发服务：http://localhost:5173
-- 后端 API：http://localhost:3030
-- 接口文档 (Swagger UI)：http://localhost:3030/documentation
+- 前端开发服务：[http://localhost:5173](http://localhost:5173)
+- 后端 API：[http://localhost:3030](http://localhost:3030)
+- Swagger UI：[http://localhost:3030/documentation](http://localhost:3030/documentation)
+
+首次启动会自动创建默认账号：
+
+```text
+用户名：admin
+密码：linka123456
+```
+
+登录后建议在账号设置中修改用户名、头像和密码。
 
 ## 环境变量
 
-复制 `.env.example` 为 `.env`，按需填写：
+复制 `.env.example` 为 `.env`，按需调整：
 
 ```env
 LINKA_PORT=3030
@@ -49,22 +95,56 @@ OPENAI_MODEL=gpt-4.1-mini
 LINKA_API_TOKEN=
 ```
 
-说明：
+常用配置说明：
 
-- AI 供应商和模型配置保存在本地 SQLite 数据库的 `settings` 表中，建议在应用设置页维护。
-- `OPENAI_API_KEY`、`OPENAI_BASE_URL`、`OPENAI_MODEL` 只是可选默认值：首次启动且数据库中还没有 AI 设置时，会用于生成默认 OpenAI 供应商。
-- 未配置可用 AI Key 时，Linka 仍可使用，但摘要、分类和 AI 助手会使用本地兜底逻辑。
-- `LINKA_API_TOKEN` 设置后，外部客户端调用 `POST /api/bookmarks` 需要携带 `Authorization: Bearer <token>`。
-- 第一版默认单用户自托管场景，不包含完整登录系统。
+| 变量 | 默认值 | 说明 |
+| --- | --- | --- |
+| `LINKA_PORT` | `3030` | 后端监听端口 |
+| `LINKA_HOST` | `0.0.0.0` | 后端监听地址 |
+| `LINKA_DB_PATH` | `./data/linka.sqlite` | SQLite 数据库路径 |
+| `LINKA_APP_URL` | `http://localhost:3030` | 应用访问地址，用于 Cookie 安全策略判断 |
+| `OPENAI_API_KEY` | 空 | 首次启动时的默认 OpenAI 供应商密钥 |
+| `OPENAI_BASE_URL` | `https://api.openai.com/v1` | OpenAI 兼容接口地址 |
+| `OPENAI_MODEL` | `gpt-4.1-mini` | 默认 OpenAI 模型名 |
+| `LINKA_API_TOKEN` | 空 | 外部 API 调用令牌，配置后需要 `Authorization: Bearer <token>` |
 
-## 构建
+AI 供应商、接口格式、模型列表、温度、上下文长度和视觉理解能力都可以在应用设置页维护。环境变量中的 OpenAI 配置只用于首次初始化，后续以数据库中的设置为准。
+
+## AI 供应商配置
+
+Linka 当前支持两类接口格式：
+
+- `OpenAI 兼容接口`：请求路径为 `/chat/completions`，适合 OpenAI、DeepSeek、Qwen、OpenRouter 等兼容服务。
+- `Anthropic 消息接口`：请求路径为 `/v1/messages`，适合 Claude 或提供 Anthropic 兼容协议的服务。
+
+模型配置中可以开启 `支持视觉理解`。只有开启该能力的模型才会接收图片或视频附件；如果供应商安全策略拦截图片，Linka 会在助手中显示对应提示。
+
+## 常用脚本
+
+```bash
+npm run dev      # 同时启动前端和后端开发服务
+npm run check    # 执行前端和后端 TypeScript 检查
+npm run build    # 构建前端静态文件和后端产物
+npm run start    # 启动生产构建后的后端服务
+```
+
+单独运行工作区脚本：
+
+```bash
+npm run dev -w apps/client
+npm run dev -w apps/server
+npm run check -w apps/client
+npm run check -w apps/server
+```
+
+## 生产构建
 
 ```bash
 npm run build
 npm run start
 ```
 
-生产服务默认运行在：
+构建后，后端会托管 `dist/public` 中的前端静态文件，默认访问地址为：
 
 ```text
 http://localhost:3030
@@ -76,16 +156,22 @@ http://localhost:3030
 docker compose up -d --build
 ```
 
-数据会持久化到本地 `./data` 目录。群晖 NAS 部署时，建议把该目录映射到共享文件夹，便于备份。
+默认会将容器内 `/app/data` 映射到本地 `./data`，用于保存 SQLite 数据库。部署到 NAS 或服务器时，建议定期备份该目录。
 
-## 接口文档 (Swagger)
+## API 文档
 
-项目集成了 OpenAPI / Swagger 接口文档规范。本地服务启动后，你可以通过以下端点查阅详细的 API 列表并直接进行调试：
+服务启动后可访问：
 
-- **Swagger UI 交互界面**：[http://localhost:3030/documentation](http://localhost:3030/documentation)
-- **OpenAPI JSON 规范数据**：[http://localhost:3030/documentation/json](http://localhost:3030/documentation/json)
+- Swagger UI：[http://localhost:3030/documentation](http://localhost:3030/documentation)
+- OpenAPI JSON：[http://localhost:3030/documentation/json](http://localhost:3030/documentation/json)
 
-主要包含健康检查、书签管理、分类管理、AI 参数配置以及 AI 助手对话（支持 SSE 流式）等核心模块。
+接口模块包括：
+
+- 认证与账号设置
+- 书签管理
+- 分类管理
+- AI 供应商和模型配置
+- AI 助手会话与 SSE 流式对话
 
 ## API 示例
 
@@ -97,7 +183,7 @@ curl -X POST http://localhost:3030/api/bookmarks \
   -d "{\"url\":\"https://example.com\",\"source\":\"web\"}"
 ```
 
-如果配置了 `LINKA_API_TOKEN`：
+配置 `LINKA_API_TOKEN` 后：
 
 ```bash
 curl -X POST http://localhost:3030/api/bookmarks \
@@ -106,17 +192,31 @@ curl -X POST http://localhost:3030/api/bookmarks \
   -d "{\"url\":\"https://example.com\",\"source\":\"chrome-extension\"}"
 ```
 
-## Chrome 扩展预留
+AI 助手流式对话接口：
 
-后续 Chrome 扩展只需要读取当前页面 URL 和标题，然后调用：
+```http
+POST /api/assistant/chat/stream
+Content-Type: application/json
+```
+
+```json
+{
+  "message": "帮我搜索 AI 图标相关收藏",
+  "model": "MiniMax-M3",
+  "effort": "默认",
+  "activeCategory": "设计资源"
+}
+```
+
+## Chrome 扩展集成
+
+浏览器扩展或外部自动化工具只需要把当前页面 URL 和标题发送到后端：
 
 ```http
 POST /api/bookmarks
 Authorization: Bearer <token>
 Content-Type: application/json
 ```
-
-请求体：
 
 ```json
 {
@@ -126,4 +226,39 @@ Content-Type: application/json
 }
 ```
 
-AI Key 不会放进扩展，所有 AI 调用都在 Linka 后端完成。
+AI Key 不需要放进扩展或客户端，所有 AI 调用都由 Linka 后端完成。
+
+## 数据与安全建议
+
+- `data/linka.sqlite` 保存书签、分类、AI 设置、账号和会话历史。
+- 不要提交 `.env`、数据库文件或真实 API Key。
+- 首次部署后请立即修改默认密码。
+- 对公网开放服务前，建议放在反向代理后方，并启用 HTTPS。
+- `LINKA_API_TOKEN` 只保护外部 API 调用，不替代登录账号密码。
+
+## 开发说明
+
+- 前端 API 封装位于 `apps/client/src/api.ts`。
+- AI 助手前端状态位于 `apps/client/src/composables/useAssistant.ts`。
+- AI 调用、模型协议适配和多模态消息组装位于 `apps/server/src/services/ai.ts`。
+- 书签工具调用推断和执行位于 `apps/server/src/services/assistantTools.ts`。
+- 供应商与模型配置持久化位于 `apps/server/src/services/settings.ts`。
+
+提交前建议执行：
+
+```bash
+npm run check
+npm run build
+```
+
+## Roadmap
+
+- Chrome 扩展正式版。
+- 更多导入导出格式。
+- 更细粒度的多用户权限。
+- 可配置的元数据抓取策略。
+- 更完整的测试覆盖。
+
+## License
+
+当前仓库尚未声明开源许可证。公开发布前请根据项目目标补充 `LICENSE` 文件。

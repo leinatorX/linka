@@ -9,6 +9,7 @@ export interface AiModelConfig {
   name: string;
   maxTokens: number;
   enabled: boolean;
+  supportsVision: boolean;
 }
 
 export interface AiProviderConfig {
@@ -44,9 +45,13 @@ export interface ActiveAiConfig {
   model: AiModelConfig;
 }
 
+type AiProviderConfigInput = Partial<Omit<AiProviderConfig, "models">> & {
+  models?: Array<Partial<AiModelConfig>>;
+};
+
 type AiSettingsInput = {
   activeProviderId?: unknown;
-  providers?: Array<Partial<AiProviderConfig>>;
+  providers?: AiProviderConfigInput[];
 };
 
 const SETTINGS_KEY = "ai";
@@ -78,7 +83,8 @@ const DEFAULT_AI_SETTINGS: AiSettings = {
           id: DEFAULT_OPENAI_MODEL,
           name: DEFAULT_OPENAI_MODEL,
           maxTokens: 900,
-          enabled: true
+          enabled: true,
+          supportsVision: true
         }
       ]
     },
@@ -96,7 +102,8 @@ const DEFAULT_AI_SETTINGS: AiSettings = {
           id: "claude-sonnet-4-5",
           name: "claude-sonnet-4-5",
           maxTokens: 1000,
-          enabled: true
+          enabled: true,
+          supportsVision: true
         }
       ]
     }
@@ -126,6 +133,10 @@ function normalizeId(value: unknown, fallback: string) {
   return text || fallback;
 }
 
+function inferVisionSupport(modelName: string) {
+  return /(gpt-4o|gpt-5|o3|o4|claude|gemini|qwen-vl|vision|minimax-m3)/i.test(modelName);
+}
+
 function normalizeModel(value: Partial<AiModelConfig>, fallbackName: string): AiModelConfig {
   const name = String(value.name || fallbackName).trim() || fallbackName;
 
@@ -134,11 +145,12 @@ function normalizeModel(value: Partial<AiModelConfig>, fallbackName: string): Ai
     id: normalizeId(value.id, randomUUID()),
     name,
     maxTokens: normalizeNumber(value.maxTokens, 1000, 64, 2000000),
-    enabled: normalizeBoolean(value.enabled, true)
+    enabled: normalizeBoolean(value.enabled, true),
+    supportsVision: normalizeBoolean(value.supportsVision, inferVisionSupport(name))
   };
 }
 
-function normalizeProvider(value: Partial<AiProviderConfig>, fallback?: AiProviderConfig): AiProviderConfig {
+function normalizeProvider(value: AiProviderConfigInput, fallback?: AiProviderConfig): AiProviderConfig {
   const apiFormat = normalizeApiFormat(value.apiFormat ?? fallback?.apiFormat);
   const fallbackBaseUrl = fallback?.baseUrl ?? "";
   const fallbackName = fallback?.name ?? "";
@@ -186,7 +198,8 @@ function migrateLegacySettings(value: Record<string, unknown>): AiSettings | nul
         id: "", // normalizeModel 会替换为 UUID
         name: modelName,
         maxTokens: Number(value.maxTokens ?? 1000),
-        enabled: true
+        enabled: true,
+        supportsVision: inferVisionSupport(modelName)
       }
     ]
   });

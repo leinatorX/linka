@@ -540,6 +540,30 @@
   font-weight: 500;
 }
 
+.vision-model-badge {
+  font-size: 11px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: rgba(14, 165, 233, 0.12);
+  color: #38bdf8;
+  font-weight: 500;
+}
+
+.model-capability-toggle {
+  gap: 8px;
+}
+
+.model-capability-toggle .switch-toggle {
+  width: 44px;
+  height: 24px;
+}
+
+.model-capability-toggle small {
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
 .ai-model-tokens {
   gap: 12px;
   flex-wrap: wrap;

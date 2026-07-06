@@ -334,6 +334,7 @@ function getApiFormatLabel(format: AiApiFormat) {
                     <div class="ai-model-name-row">
                       <span class="ai-model-name">{{ model.name }}</span>
                       <span v-if="index === 0" class="default-model-badge">默认</span>
+                      <span v-if="model.supportsVision" class="vision-model-badge">视觉</span>
                     </div>
                     <div class="ai-model-tokens">
                       <span>上下文：{{ model.maxTokens.toLocaleString() }} 个 token</span>

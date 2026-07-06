@@ -1,4 +1,4 @@
-import type { AiProviderConfig, AiSettings, AiSettingsPayload, AssistantConversation, AssistantMessage, AssistantResponse, AuthUser, Bookmark, Category } from "./types";
+import type { AiProviderConfig, AiSettings, AiSettingsPayload, AssistantAttachment, AssistantConversation, AssistantMessage, AssistantResponse, AuthUser, Bookmark, Category } from "./types";
 
 async function request<T>(url: string, options?: RequestInit): Promise<T> {
   const response = await fetch(url, {
@@ -103,10 +103,10 @@ export function reorderCategories(orderedIds: string[]): Promise<{ categories: C
   });
 }
 
-export function sendAssistantMessage(message: string, activeCategory?: string): Promise<AssistantResponse> {
+export function sendAssistantMessage(message: string, activeCategory?: string, attachments?: AssistantAttachment[]): Promise<AssistantResponse> {
   return request("/api/assistant/chat", {
     method: "POST",
-    body: JSON.stringify({ message, activeCategory })
+    body: JSON.stringify({ message, activeCategory, attachments })
   });
 }
 
@@ -133,7 +133,7 @@ export function deleteAssistantConversations(ids: string[]): Promise<{ deleted: 
 }
 
 export async function streamAssistantMessage(
-  payload: { conversationId?: string; message: string; activeCategory?: string; model?: string; effort?: string },
+  payload: { conversationId?: string; message: string; activeCategory?: string; attachments?: AssistantAttachment[]; model?: string; effort?: string },
   handlers: {
     onMeta?: (data: { conversation: AssistantConversation }) => void;
     onReasoning?: (data: { text: string }) => void;

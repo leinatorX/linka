@@ -6,11 +6,12 @@ import {
   listAssistantConversations,
   streamAssistantMessage
 } from "../api";
-import type { AssistantConversation, Bookmark } from "../types";
+import type { AssistantAttachment, AssistantAttachmentKind, AssistantConversation, Bookmark } from "../types";
 
 export interface AssistantUiMessage {
   role: "user" | "assistant";
   text: string;
+  attachments?: AssistantAttachment[];
   reasoning?: string;
   reasoningCollapsed?: boolean;
   results?: Bookmark[];
@@ -21,6 +22,29 @@ interface UseAssistantOptions {
   loadBookmarks: () => Promise<void>;
   loadCategories?: () => Promise<void>;
   getActiveCategory?: () => string;
+}
+
+const maxAttachmentCount = 6;
+const maxAttachmentSize = 20 * 1024 * 1024;
+const maxAttachmentTotalSize = 60 * 1024 * 1024;
+
+function getAttachmentKind(mimeType: string): AssistantAttachmentKind {
+  if (mimeType.startsWith("image/")) {
+    return "image";
+  }
+  if (mimeType.startsWith("video/")) {
+    return "video";
+  }
+  return "file";
+}
+
+function readFileAsDataUrl(file: File) {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result ?? ""));
+    reader.onerror = () => reject(reader.error ?? new Error("读取附件失败"));
+    reader.readAsDataURL(file);
+  });
 }
 
 export function useAssistant(options: UseAssistantOptions) {
@@ -39,6 +63,7 @@ export function useAssistant(options: UseAssistantOptions) {
   const historySearchInput = ref("");
   // 留空：空状态由 AssistantPanel 中的欢迎页承担，避免在对话流中混入占位气泡。
   const assistantMessages = ref<AssistantUiMessage[]>([]);
+  const assistantAttachments = ref<AssistantAttachment[]>([]);
   const isAssistantLoading = ref(false);
 
   const activeConversation = computed(() => assistantConversations.value.find((conversation) => conversation.id === activeConversationId.value));
@@ -92,7 +117,8 @@ export function useAssistant(options: UseAssistantOptions) {
     // 空会话同样交给欢迎页展示，不写入占位气泡。
     assistantMessages.value = [...result.messages].reverse().map((message) => ({
       role: message.role,
-      text: message.content
+      text: message.content,
+      attachments: message.attachments
     }));
   }
 
@@ -143,15 +169,65 @@ export function useAssistant(options: UseAssistantOptions) {
     }
   }
 
-  async function askAssistant() {
-    const message = assistantInput.value.trim();
-    if (!message) {
+  async function attachAssistantFiles(files: FileList | File[]) {
+    const nextFiles = Array.from(files);
+    if (!nextFiles.length) {
       return;
     }
 
-    assistantMessages.value.unshift({ role: "user", text: message });
+    const currentSize = assistantAttachments.value.reduce((sum, item) => sum + item.size, 0);
+    let acceptedSize = currentSize;
+    const remainingSlots = maxAttachmentCount - assistantAttachments.value.length;
+    const acceptedFiles = nextFiles.slice(0, Math.max(0, remainingSlots)).filter((file) => {
+      if (file.size > maxAttachmentSize || acceptedSize + file.size > maxAttachmentTotalSize) {
+        return false;
+      }
+      acceptedSize += file.size;
+      return true;
+    });
+
+    if (!acceptedFiles.length) {
+      addAssistantNotice("附件数量或体积超过限制：最多 6 个文件，单个不超过 20MB，总计不超过 60MB。");
+      return;
+    }
+
+    let attachments: AssistantAttachment[];
+    try {
+      attachments = await Promise.all(acceptedFiles.map(async (file) => ({
+        id: crypto.randomUUID(),
+        name: file.name || "未命名附件",
+        mimeType: file.type || "application/octet-stream",
+        size: file.size,
+        dataUrl: await readFileAsDataUrl(file),
+        kind: getAttachmentKind(file.type || "")
+      })));
+    } catch {
+      addAssistantNotice("附件读取失败，请重新选择文件。");
+      return;
+    }
+
+    assistantAttachments.value = [...assistantAttachments.value, ...attachments];
+
+    if (acceptedFiles.length < nextFiles.length) {
+      addAssistantNotice("部分附件因为数量或体积限制没有添加。");
+    }
+  }
+
+  function removeAssistantAttachment(attachmentId: string) {
+    assistantAttachments.value = assistantAttachments.value.filter((item) => item.id !== attachmentId);
+  }
+
+  async function askAssistant() {
+    const message = assistantInput.value.trim();
+    if (!message && assistantAttachments.value.length === 0) {
+      return;
+    }
+
+    const attachments = [...assistantAttachments.value];
+    assistantMessages.value.unshift({ role: "user", text: message || "请分析这些附件。", attachments });
     assistantMessages.value.unshift({ role: "assistant", text: "", reasoningCollapsed: false, streaming: true });
     assistantInput.value = "";
+    assistantAttachments.value = [];
     assistantOpen.value = true;
     isAssistantLoading.value = true;
 
@@ -159,8 +235,9 @@ export function useAssistant(options: UseAssistantOptions) {
       const assistantMessage = assistantMessages.value[0];
       await streamAssistantMessage({
         conversationId: activeConversationId.value ?? undefined,
-        message,
+        message: message || "请分析这些附件。",
         activeCategory: options.getActiveCategory?.(),
+        attachments,
         model: assistantModel.value || undefined,
         effort: assistantEffort.value
       }, {
@@ -235,6 +312,7 @@ export function useAssistant(options: UseAssistantOptions) {
     selectedConversationIds,
     historySearchInput,
     assistantMessages,
+    assistantAttachments,
     isAssistantLoading,
     activeConversation,
     filteredAssistantConversations,
@@ -248,6 +326,8 @@ export function useAssistant(options: UseAssistantOptions) {
     toggleAssistantHistory,
     toggleConversationSelected,
     removeSelectedConversations,
+    attachAssistantFiles,
+    removeAssistantAttachment,
     askAssistant,
     toggleReasoningCollapsed
   };

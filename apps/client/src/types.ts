@@ -41,6 +41,17 @@ export interface AssistantResponse {
   categoriesChanged?: boolean;
 }
 
+export type AssistantAttachmentKind = "image" | "video" | "file";
+
+export interface AssistantAttachment {
+  id: string;
+  name: string;
+  mimeType: string;
+  size: number;
+  dataUrl: string;
+  kind: AssistantAttachmentKind;
+}
+
 export interface AssistantConversation {
   id: string;
   title: string;
@@ -53,6 +64,7 @@ export interface AssistantMessage {
   conversationId: string;
   role: "user" | "assistant";
   content: string;
+  attachments?: AssistantAttachment[];
   createdAt: string;
 }
 
@@ -63,6 +75,7 @@ export interface AiModelConfig {
   name: string;
   maxTokens: number;
   enabled: boolean;
+  supportsVision: boolean;
 }
 
 export interface AiProviderConfig {

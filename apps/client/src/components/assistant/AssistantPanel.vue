@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from "vue";
-import { ChevronDown, History, Loader2, Mic, Plus, Search, Send, X } from "@lucide/vue";
+import { ChevronDown, FileText, History, Loader2, Mic, Plus, Search, Send, Video, X } from "@lucide/vue";
 import type { AssistantUiMessage } from "../../composables/useAssistant";
-import type { AiModelConfig, AssistantConversation } from "../../types";
+import type { AiModelConfig, AssistantAttachment, AssistantConversation } from "../../types";
 import { renderAssistantMarkdown } from "../../utils/markdown";
 
 const props = defineProps<{
@@ -12,6 +12,7 @@ const props = defineProps<{
   activeConversationId: string | null;
   selectedConversationIds: Set<string>;
   assistantMessages: AssistantUiMessage[];
+  assistantAttachments: AssistantAttachment[];
   isAssistantLoading: boolean;
   assistantEffortOptions: string[];
   availableModels: AiModelConfig[];
@@ -27,6 +28,7 @@ const renderedMessages = computed(() =>
 );
 const assistantPanelWidth = ref(420);
 const isResizingAssistant = ref(false);
+const attachmentInputRef = ref<HTMLInputElement | null>(null);
 const panelWidthStyle = computed(() => ({
   width: `${assistantPanelWidth.value}px`
 }));
@@ -93,17 +95,38 @@ const assistantEffort = defineModel<string>("assistantEffort", { required: true 
 const modelSelectOpen = defineModel<boolean>("modelSelectOpen", { required: true });
 const effortSelectOpen = defineModel<boolean>("effortSelectOpen", { required: true });
 
-defineEmits<{
+const emit = defineEmits<{
   askAssistant: [];
   toggleAssistantHistory: [];
   startNewAssistantConversation: [];
   toggleConversationSelected: [conversationId: string];
   openAssistantConversation: [conversationId: string];
   removeSelectedConversations: [];
+  attachAssistantFiles: [files: FileList];
+  removeAssistantAttachment: [attachmentId: string];
   toggleModelSelect: [event: Event];
   toggleEffortSelect: [event: Event];
   toggleReasoningCollapsed: [index: number];
 }>();
+
+function triggerAttachmentPicker() {
+  attachmentInputRef.value?.click();
+}
+
+function onAttachmentInputChange(event: Event) {
+  const input = event.target as HTMLInputElement;
+  if (input.files?.length) {
+    emit("attachAssistantFiles", input.files);
+  }
+  input.value = "";
+}
+
+function formatFileSize(size: number) {
+  if (size < 1024 * 1024) {
+    return `${Math.max(1, Math.round(size / 1024))} KB`;
+  }
+  return `${(size / 1024 / 1024).toFixed(1)} MB`;
+}
 </script>
 
 <template>
@@ -201,6 +224,20 @@ defineEmits<{
             v-html="message.html || message.text"></div>
           <p v-else-if="message.text || !message.reasoning">{{ message.text }}<span v-if="message.streaming"
               class="stream-cursor"></span></p>
+          <div v-if="message.attachments?.length" class="attachment-list message-attachment-list">
+            <div v-for="attachment in message.attachments" :key="attachment.id" class="attachment-chip readonly"
+              :class="{ image: attachment.kind === 'image' }">
+              <img v-if="attachment.kind === 'image'" :src="attachment.dataUrl" :alt="attachment.name" />
+              <div v-else class="attachment-icon">
+                <Video v-if="attachment.kind === 'video'" :size="16" />
+                <FileText v-else :size="16" />
+              </div>
+              <div v-if="attachment.kind !== 'image'" class="attachment-meta">
+                <strong>{{ attachment.name }}</strong>
+                <span>{{ formatFileSize(attachment.size) }}</span>
+              </div>
+            </div>
+          </div>
           <div v-if="message.results?.length" class="result-list">
             <a v-for="result in message.results" :key="result.id" :href="result.url" target="_blank" rel="noreferrer">
               {{ result.title }}
@@ -214,9 +251,29 @@ defineEmits<{
         <div class="siri-glow-wave"></div>
         <textarea v-model="assistantInput" placeholder="随心输入"
           @keydown.enter.exact.prevent="$emit('askAssistant')"></textarea>
+        <div v-if="assistantAttachments.length" class="attachment-list input-attachment-list">
+          <div v-for="attachment in assistantAttachments" :key="attachment.id" class="attachment-chip"
+            :class="{ image: attachment.kind === 'image' }">
+            <img v-if="attachment.kind === 'image'" :src="attachment.dataUrl" :alt="attachment.name" />
+            <div v-else class="attachment-icon">
+              <Video v-if="attachment.kind === 'video'" :size="16" />
+              <FileText v-else :size="16" />
+            </div>
+            <div v-if="attachment.kind !== 'image'" class="attachment-meta">
+              <strong>{{ attachment.name }}</strong>
+              <span>{{ formatFileSize(attachment.size) }}</span>
+            </div>
+            <button type="button" title="移除附件" @click="$emit('removeAssistantAttachment', attachment.id)">
+              <X :size="14" />
+            </button>
+          </div>
+        </div>
         <div class="input-toolbar">
           <div class="toolbar-left">
-            <button class="tool-btn" title="上传附件">
+            <input ref="attachmentInputRef" class="attachment-input" type="file" multiple
+              accept="image/*,video/*,application/pdf,text/plain,text/markdown,application/json,.csv,.doc,.docx,.ppt,.pptx,.xls,.xlsx"
+              @change="onAttachmentInputChange" />
+            <button class="tool-btn" title="上传图片、视频或附件" @click="triggerAttachmentPicker">
               <Plus :size="18" />
             </button>
             <div class="custom-select" :class="{ open: modelSelectOpen }">

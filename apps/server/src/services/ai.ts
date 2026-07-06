@@ -20,9 +20,26 @@ export interface AiClassification {
   confidence: number;
 }
 
+export interface AssistantAttachment {
+  id?: string;
+  name: string;
+  mimeType: string;
+  size: number;
+  dataUrl: string;
+  kind: "image" | "video" | "file";
+}
+
+type ChatContentPart =
+  | { type: "text"; text: string }
+  | { type: "image_url"; image_url: { url: string } }
+  | { type: "video_url"; video_url: { url: string } }
+  | { type: "image"; source: { type: "base64"; media_type: string; data: string } };
+
+type ChatMessageContent = string | ChatContentPart[];
+
 interface ChatMessage {
   role: "system" | "user" | "assistant";
-  content: string;
+  content: ChatMessageContent;
 }
 
 export type ReasoningEffort = "关闭" | "默认" | "低" | "中" | "高" | "最大";
@@ -113,6 +130,112 @@ function getConfigIdentity(active: ActiveAiConfig) {
 
 function includesAny(text: string, keywords: string[]) {
   return keywords.some((keyword) => text.includes(keyword));
+}
+
+function getTextContent(content: ChatMessageContent) {
+  if (typeof content === "string") {
+    return content;
+  }
+
+  return content
+    .filter((part): part is Extract<ChatContentPart, { type: "text" }> => part.type === "text")
+    .map((part) => part.text)
+    .join("\n");
+}
+
+function parseBase64DataUrl(dataUrl: string) {
+  const match = dataUrl.match(/^data:([^;,]+);base64,(.*)$/);
+  if (!match) {
+    return null;
+  }
+
+  return {
+    mediaType: match[1],
+    data: match[2]
+  };
+}
+
+function formatAttachmentSize(size: number) {
+  if (size < 1024 * 1024) {
+    return `${Math.max(1, Math.round(size / 1024))} KB`;
+  }
+
+  return `${(size / 1024 / 1024).toFixed(1)} MB`;
+}
+
+function buildAttachmentPrompt(message: string, attachments: AssistantAttachment[] = []) {
+  if (!attachments.length) {
+    return message;
+  }
+
+  const attachmentText = attachments.map((attachment, index) => (
+    `${index + 1}. ${attachment.name}（${attachment.mimeType || "未知类型"}，${formatAttachmentSize(attachment.size)}）`
+  )).join("\n");
+
+  return [
+    message,
+    "",
+    "本轮用户附加了以下文件，请结合可识别的图片或视频内容以及文件信息回答：",
+    attachmentText
+  ].join("\n");
+}
+
+function buildOpenAiUserContent(message: string, attachments: AssistantAttachment[] = []): ChatMessageContent {
+  if (!attachments.length) {
+    return message;
+  }
+
+  const parts: ChatContentPart[] = [{ type: "text", text: buildAttachmentPrompt(message, attachments) }];
+
+  for (const attachment of attachments) {
+    if (attachment.kind === "image" && attachment.dataUrl) {
+      parts.push({ type: "image_url", image_url: { url: attachment.dataUrl } });
+    } else if (attachment.kind === "video" && attachment.dataUrl) {
+      parts.push({ type: "video_url", video_url: { url: attachment.dataUrl } });
+    }
+  }
+
+  return parts;
+}
+
+function buildAnthropicUserContent(message: string, attachments: AssistantAttachment[] = []): ChatMessageContent {
+  if (!attachments.length) {
+    return message;
+  }
+
+  const parts: ChatContentPart[] = [{ type: "text", text: buildAttachmentPrompt(message, attachments) }];
+
+  for (const attachment of attachments) {
+    if (attachment.kind !== "image") {
+      continue;
+    }
+
+    const source = parseBase64DataUrl(attachment.dataUrl);
+    if (!source) {
+      continue;
+    }
+
+    parts.push({
+      type: "image",
+      source: {
+        type: "base64",
+        media_type: attachment.mimeType || source.mediaType,
+        data: source.data
+      }
+    });
+  }
+
+  return parts;
+}
+
+function hasVisualAttachments(attachments: AssistantAttachment[] = []) {
+  return attachments.some((attachment) => attachment.kind === "image" || attachment.kind === "video");
+}
+
+function assertModelSupportsAttachments(active: ActiveAiConfig, attachments: AssistantAttachment[] = []) {
+  if (hasVisualAttachments(attachments) && !active.model.supportsVision) {
+    throw new Error(`当前模型「${active.model.name}」未开启视觉理解能力。请在模型配置中开启“支持视觉理解”，或切换到支持图片/视频理解的模型。`);
+  }
 }
 
 function mapOpenAiReasoningEffort(effort?: ReasoningEffort, identity = "") {
@@ -310,7 +433,7 @@ async function requestOpenAi(active: ActiveAiConfig, messages: ChatMessage[], js
   });
 
   if (!response.ok) {
-    throw new Error(`AI 服务返回 ${response.status}`);
+    throw new Error(`AI 服务返回 ${response.status}：${(await response.text()).slice(0, 500)}`);
   }
 
   const payload = await response.json() as { choices?: Array<{ message?: { content?: string } }> };
@@ -337,7 +460,7 @@ async function* streamOpenAi(active: ActiveAiConfig, messages: ChatMessage[], ef
   });
 
   if (!response.ok || !response.body) {
-    throw new Error(`AI 服务返回 ${response.status}`);
+    throw new Error(`AI 服务返回 ${response.status}：${(await response.text().catch(() => "")).slice(0, 500)}`);
   }
 
   const reader = response.body.getReader();
@@ -394,7 +517,7 @@ async function* streamOpenAi(active: ActiveAiConfig, messages: ChatMessage[], ef
 }
 
 async function requestAnthropic(active: ActiveAiConfig, messages: ChatMessage[]) {
-  const system = messages.filter((message) => message.role === "system").map((message) => message.content).join("\n\n");
+  const system = messages.filter((message) => message.role === "system").map((message) => getTextContent(message.content)).join("\n\n");
   const conversation = messages
     .filter((message) => message.role !== "system")
     .map((message) => ({
@@ -419,7 +542,7 @@ async function requestAnthropic(active: ActiveAiConfig, messages: ChatMessage[])
   });
 
   if (!response.ok) {
-    throw new Error(`AI 服务返回 ${response.status}`);
+    throw new Error(`AI 服务返回 ${response.status}：${(await response.text()).slice(0, 500)}`);
   }
 
   const payload = await response.json() as { content?: Array<{ type?: string; text?: string }> };
@@ -427,7 +550,7 @@ async function requestAnthropic(active: ActiveAiConfig, messages: ChatMessage[])
 }
 
 async function* streamAnthropic(active: ActiveAiConfig, messages: ChatMessage[], effort?: ReasoningEffort) {
-  const system = messages.filter((message) => message.role === "system").map((message) => message.content).join("\n\n");
+  const system = messages.filter((message) => message.role === "system").map((message) => getTextContent(message.content)).join("\n\n");
   const conversation = messages
     .filter((message) => message.role !== "system")
     .map((message) => ({
@@ -455,7 +578,7 @@ async function* streamAnthropic(active: ActiveAiConfig, messages: ChatMessage[],
   });
 
   if (!response.ok || !response.body) {
-    throw new Error(`AI 服务返回 ${response.status}`);
+    throw new Error(`AI 服务返回 ${response.status}：${(await response.text().catch(() => "")).slice(0, 500)}`);
   }
 
   const reader = response.body.getReader();
@@ -544,13 +667,20 @@ export async function classifyBookmark(metadata: PageMetadata, allowedCategories
   }
 }
 
-export async function generateAssistantReply(message: string, bookmarks: Array<ReturnType<typeof toBookmark>>): Promise<AssistantResult> {
+export async function generateAssistantReply(message: string, bookmarks: Array<ReturnType<typeof toBookmark>>, attachments: AssistantAttachment[] = []): Promise<AssistantResult> {
   const prompt = buildAssistantUserPrompt({ message, bookmarks });
+  const active = getActiveAiConfig();
+  assertModelSupportsAttachments(active, attachments);
 
-  const content = await requestAi([
+  const content = active.provider.apiFormat === "anthropic"
+    ? await requestAnthropic(active, [
+      { role: "system", content: ASSISTANT_CHAT_SYSTEM_PROMPT },
+      { role: "user", content: buildAnthropicUserContent(prompt, attachments) }
+    ])
+    : await requestOpenAi(active, [
     { role: "system", content: ASSISTANT_CHAT_SYSTEM_PROMPT },
-    { role: "user", content: prompt }
-  ]);
+      { role: "user", content: buildOpenAiUserContent(prompt, attachments) }
+    ], false);
 
   return {
     message: content.trim() || "我暂时没有生成有效回复。"
@@ -561,6 +691,7 @@ export async function* streamAssistantReply(options: {
   message: string;
   bookmarks: Array<ReturnType<typeof toBookmark>>;
   history?: AssistantHistoryMessage[];
+  attachments?: AssistantAttachment[];
   model?: string;
   effort?: ReasoningEffort;
 }) {
@@ -570,10 +701,24 @@ export async function* streamAssistantReply(options: {
     history: options.history
   });
 
-  yield* streamAi([
+  const active = getActiveAiConfig(options.model);
+  assertModelSupportsAttachments(active, options.attachments);
+  const messages: ChatMessage[] = [
     { role: "system", content: ASSISTANT_CHAT_SYSTEM_PROMPT },
-    { role: "user", content: prompt }
-  ], options.model, options.effort);
+    {
+      role: "user",
+      content: active.provider.apiFormat === "anthropic"
+        ? buildAnthropicUserContent(prompt, options.attachments)
+        : buildOpenAiUserContent(prompt, options.attachments)
+    }
+  ];
+
+  if (active.provider.apiFormat === "anthropic") {
+    yield* streamAnthropic(active, messages, options.effort);
+    return;
+  }
+
+  yield* streamOpenAi(active, messages, options.effort);
 }
 
 export async function planAssistantToolCall(options: {

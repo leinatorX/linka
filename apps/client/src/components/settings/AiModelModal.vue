@@ -8,6 +8,7 @@ defineProps<{
   formData: {
     name: string;
     maxTokens: number;
+    supportsVision: boolean;
   };
 }>();
 
@@ -37,6 +38,14 @@ defineEmits<{
           <span>最大 Token</span>
           <input v-model.number="formData.maxTokens" type="number" min="64" max="2000000" step="64"
             @keyup.enter="activeProvider && $emit('save', activeProvider)" />
+        </label>
+        <label class="model-capability-toggle">
+          <span>支持视觉理解</span>
+          <button type="button" class="switch-toggle" :class="{ active: formData.supportsVision }"
+            @click="formData.supportsVision = !formData.supportsVision">
+            <div></div>
+          </button>
+          <small>开启后，该模型可接收图片/视频附件进行理解。</small>
         </label>
       </div>
       <footer class="modal-footer">

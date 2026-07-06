@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { db, toAssistantConversation, toAssistantMessage } from "../db.js";
 import type { AssistantConversationRecord, AssistantMessageRecord } from "../db.js";
+import type { AssistantAttachment } from "./ai.js";
 
 const selectConversations = db.prepare("SELECT * FROM assistant_conversations ORDER BY updated_at DESC");
 const selectConversationById = db.prepare("SELECT * FROM assistant_conversations WHERE id = ?");
@@ -18,9 +19,59 @@ const insertMessage = db.prepare(`
   VALUES (?, ?, ?, ?, ?)
 `);
 
+interface StoredAssistantMessageContent {
+  type: "linka_assistant_message";
+  version: 1;
+  text: string;
+  attachments?: AssistantAttachment[];
+}
+
 function createTitle(message: string) {
   const normalized = message.replace(/\s+/g, " ").trim();
   return normalized.slice(0, 28) || "新对话";
+}
+
+function encodeMessageContent(content: string, attachments: AssistantAttachment[] = []) {
+  if (!attachments.length) {
+    return content;
+  }
+
+  return JSON.stringify({
+    type: "linka_assistant_message",
+    version: 1,
+    text: content,
+    attachments
+  } satisfies StoredAssistantMessageContent);
+}
+
+function decodeMessageContent(content: string) {
+  try {
+    const parsed = JSON.parse(content) as Partial<StoredAssistantMessageContent>;
+    if (parsed.type === "linka_assistant_message" && typeof parsed.text === "string") {
+      return {
+        text: parsed.text,
+        attachments: Array.isArray(parsed.attachments) ? parsed.attachments : []
+      };
+    }
+  } catch {
+    // 旧历史记录是纯文本，直接按文本返回。
+  }
+
+  return {
+    text: content,
+    attachments: []
+  };
+}
+
+function toAssistantUiMessage(record: AssistantMessageRecord) {
+  const message = toAssistantMessage(record);
+  const decoded = decodeMessageContent(message.content);
+
+  return {
+    ...message,
+    content: decoded.text,
+    attachments: decoded.attachments
+  };
 }
 
 export function listAssistantConversations() {
@@ -42,7 +93,7 @@ export function getAssistantConversation(id: string) {
 
   return {
     conversation: toAssistantConversation(conversation),
-    messages: (selectMessagesByConversationId.all(id) as AssistantMessageRecord[]).map(toAssistantMessage)
+    messages: (selectMessagesByConversationId.all(id) as AssistantMessageRecord[]).map(toAssistantUiMessage)
   };
 }
 
@@ -57,10 +108,10 @@ export function ensureAssistantConversation(conversationId: string | undefined, 
   return createAssistantConversation(createTitle(firstMessage));
 }
 
-export function addAssistantMessage(conversationId: string, role: "user" | "assistant", content: string) {
+export function addAssistantMessage(conversationId: string, role: "user" | "assistant", content: string, attachments: AssistantAttachment[] = []) {
   const now = new Date().toISOString();
   const id = randomUUID();
-  insertMessage.run(id, conversationId, role, content, now);
+  insertMessage.run(id, conversationId, role, encodeMessageContent(content, attachments), now);
   touchConversation.run(now, conversationId);
 
   if (role === "user") {
@@ -70,14 +121,14 @@ export function addAssistantMessage(conversationId: string, role: "user" | "assi
     }
   }
 
-  return toAssistantMessage(selectMessagesByConversationId.all(conversationId).at(-1) as AssistantMessageRecord);
+  return toAssistantUiMessage(selectMessagesByConversationId.all(conversationId).at(-1) as AssistantMessageRecord);
 }
 
 export function buildConversationContext(conversationId: string, limit = 12) {
   const messages = (selectMessagesByConversationId.all(conversationId) as AssistantMessageRecord[]).slice(-limit);
   return messages.map((message) => ({
     role: message.role,
-    content: message.content
+    content: decodeMessageContent(message.content).text
   }));
 }
 

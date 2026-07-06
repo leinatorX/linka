@@ -110,6 +110,7 @@ const {
   selectedConversationIds,
   historySearchInput,
   assistantMessages,
+  assistantAttachments,
   isAssistantLoading,
   activeConversation,
   filteredAssistantConversations,
@@ -123,6 +124,8 @@ const {
   toggleAssistantHistory,
   toggleConversationSelected,
   removeSelectedConversations,
+  attachAssistantFiles,
+  removeAssistantAttachment,
   askAssistant,
   toggleReasoningCollapsed
 } = useAssistant({
@@ -417,6 +420,7 @@ onUnmounted(() => {
       :active-conversation-id="activeConversationId"
       :selected-conversation-ids="selectedConversationIds"
       :assistant-messages="assistantMessages"
+      :assistant-attachments="assistantAttachments"
       :is-assistant-loading="isAssistantLoading"
       :assistant-effort-options="assistantEffortOptions"
       :available-models="availableModels"
@@ -426,6 +430,8 @@ onUnmounted(() => {
       @toggle-conversation-selected="toggleConversationSelected"
       @open-assistant-conversation="openAssistantConversation"
       @remove-selected-conversations="removeSelectedConversations"
+      @attach-assistant-files="attachAssistantFiles"
+      @remove-assistant-attachment="removeAssistantAttachment"
       @toggle-model-select="toggleModelSelect"
       @toggle-effort-select="toggleEffortSelect"
       @toggle-reasoning-collapsed="toggleReasoningCollapsed"

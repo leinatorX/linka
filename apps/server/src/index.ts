@@ -13,7 +13,8 @@ import swagger from "@fastify/swagger";
 import swaggerUi from "@fastify/swagger-ui";
 
 const app = Fastify({
-  logger: true
+  logger: true,
+  bodyLimit: 100 * 1024 * 1024
 });
 
 initializeCategories();

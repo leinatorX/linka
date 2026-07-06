@@ -2,6 +2,7 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { z } from "zod";
 import { config } from "./config.js";
 import { generateAssistantReply, generateAssistantToolResultReply, planAssistantToolCall, streamAssistantReply, testAiConnection } from "./services/ai.js";
+import type { AssistantAttachment } from "./services/ai.js";
 import { addAssistantMessage, buildConversationContext, createAssistantConversation, deleteAssistantConversations, ensureAssistantConversation, getAssistantConversation, listAssistantConversations } from "./services/assistant.js";
 import { executeAssistantToolPlan, inferAssistantToolPlan } from "./services/assistantTools.js";
 import { clearSessionCookie, getSessionFromRequest, login, logout, requireAuth, updateAvatar, updateCredentials } from "./services/auth.js";
@@ -80,15 +81,29 @@ const updateAvatarSchema = z.object({
   avatarUrl: z.string().max(1500000)
 });
 
+const assistantMaxAttachmentSize = 20 * 1024 * 1024;
+const assistantMaxAttachmentDataUrlSize = 30 * 1024 * 1024;
+
+const assistantAttachmentSchema = z.object({
+  id: z.string().optional(),
+  name: z.string().min(1).max(240),
+  mimeType: z.string().max(120),
+  size: z.number().int().min(0).max(assistantMaxAttachmentSize),
+  dataUrl: z.string().min(1).max(assistantMaxAttachmentDataUrlSize),
+  kind: z.enum(["image", "video", "file"])
+});
+
 const assistantSchema = z.object({
   message: z.string().min(1),
-  activeCategory: z.string().optional()
+  activeCategory: z.string().optional(),
+  attachments: z.array(assistantAttachmentSchema).max(6).optional()
 });
 
 const assistantStreamSchema = z.object({
   conversationId: z.string().optional(),
   message: z.string().min(1),
   activeCategory: z.string().optional(),
+  attachments: z.array(assistantAttachmentSchema).max(6).optional(),
   model: z.string().optional(),
   effort: z.enum(["关闭", "默认", "低", "中", "高", "最大"]).optional()
 });
@@ -113,7 +128,8 @@ const aiModelSchema = z.object({
   id: z.string().trim().min(1),
   name: z.string().trim().min(1).max(120),
   maxTokens: z.number().int().min(64).max(2000000),
-  enabled: z.boolean()
+  enabled: z.boolean(),
+  supportsVision: z.boolean().optional()
 });
 
 const aiProviderSchema = z.object({
@@ -181,6 +197,28 @@ function writeSse(raw: FastifyReply["raw"], event: string, data: unknown) {
 
 function assistantModelUnavailableMessage() {
   return "AI 助手暂时不可用，请先在设置里配置可用模型。";
+}
+
+function assistantMultimodalUnavailableMessage() {
+  return "图片/视频理解调用失败。请确认当前模型支持多模态输入，或切换到 MiniMax-M3、GPT-4o、Claude 等支持图片理解的模型后重试。";
+}
+
+function assistantErrorMessage(error: unknown, hasAttachments = false) {
+  const message = error instanceof Error ? error.message : "";
+
+  if (error instanceof Error && error.message.startsWith("当前模型")) {
+    return error.message;
+  }
+
+  if (hasAttachments && /new_sensitive|image is sensitive|content.*sensitive|内容安全|安全策略|\(1026\)|1026/i.test(message)) {
+    return "这张图片被当前模型服务的内容安全策略拦截了，所以没有进入视觉理解流程。请换一张图片，或改用安全策略不同的视觉模型后重试。";
+  }
+
+  if (hasAttachments && /support image input|image input|vision|图片|图像/i.test(message)) {
+    return `当前模型或接口端点不支持图片输入：${message}`;
+  }
+
+  return hasAttachments ? assistantMultimodalUnavailableMessage() : assistantModelUnavailableMessage();
 }
 
 function isConfirmationOnly(message: string) {
@@ -848,16 +886,17 @@ export async function registerRoutes(app: FastifyInstance) {
     }
 
     try {
-      const answer = await generateAssistantReply(payload.data.message, results);
+      const answer = await generateAssistantReply(payload.data.message, results, payload.data.attachments as AssistantAttachment[] | undefined);
       return {
         type: "message",
         message: answer.message,
         results: results.length ? results : undefined
       };
-    } catch {
+    } catch (error) {
+      request.log.error({ error }, "assistant chat failed");
       return {
         type: "message",
-        message: assistantModelUnavailableMessage()
+        message: assistantErrorMessage(error, Boolean(payload.data.attachments?.length))
       };
     }
   });
@@ -882,11 +921,11 @@ export async function registerRoutes(app: FastifyInstance) {
       "X-Accel-Buffering": "no"
     });
 
-    const { message, model, effort, conversationId, activeCategory } = payload.data;
+    const { message, model, effort, conversationId, activeCategory, attachments } = payload.data;
     const conversation = ensureAssistantConversation(conversationId, message);
     const history = buildConversationContext(conversation.id);
     writeSse(reply.raw, "meta", { conversation });
-    addAssistantMessage(conversation.id, "user", message);
+    addAssistantMessage(conversation.id, "user", message, attachments as AssistantAttachment[] | undefined);
 
     const results = findAssistantBookmarkCandidates(message);
     const toolContext = { activeCategory };
@@ -923,7 +962,7 @@ export async function registerRoutes(app: FastifyInstance) {
 
     try {
       let fullText = "";
-      for await (const chunk of streamAssistantReply({ message, bookmarks: results, history, model, effort })) {
+      for await (const chunk of streamAssistantReply({ message, bookmarks: results, history, attachments: attachments as AssistantAttachment[] | undefined, model, effort })) {
         if (chunk.type === "reasoning") {
           writeSse(reply.raw, "reasoning", { text: chunk.text });
           continue;
@@ -941,8 +980,9 @@ export async function registerRoutes(app: FastifyInstance) {
         results: results.length ? results : undefined,
         conversation
       });
-    } catch {
-      const text = assistantModelUnavailableMessage();
+    } catch (error) {
+      request.log.error({ error }, "assistant stream failed");
+      const text = assistantErrorMessage(error, Boolean(attachments?.length));
       addAssistantMessage(conversation.id, "assistant", text);
       writeSse(reply.raw, "delta", { text });
       writeSse(reply.raw, "done", {
