@@ -274,6 +274,10 @@ async function renderAssistantToolMessage(message: string, toolResult: Awaited<R
     return "";
   }
 
+  if (toolResult.type === "message" || toolResult.changed === false) {
+    return toolResult.message;
+  }
+
   try {
     return await generateAssistantToolResultReply({
       message,
@@ -958,7 +962,7 @@ export async function registerRoutes(app: FastifyInstance) {
     addAssistantMessage(conversation.id, "user", message, attachments as AssistantAttachment[] | undefined);
 
     const results = findAssistantBookmarkCandidates(message);
-    const toolContext = { activeCategory };
+    const toolContext = { activeCategory, history };
     const toolPlan = inferAssistantToolPlan(message, toolContext) ?? await planAssistantToolCall({
       message,
       categories: listCategories().map((category) => category.name),

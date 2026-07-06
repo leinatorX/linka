@@ -1,7 +1,7 @@
 import type { AssistantToolPlan } from "./ai.js";
 import { createBookmark, deleteBookmark, getBookmarkById, listBookmarks, updateBookmark } from "./bookmarks.js";
 import { createCategory, deleteCategory, listCategories, updateCategory } from "./categories.js";
-import { extractFirstUrl, isValidUrl } from "../utils/url.js";
+import { extractFirstUrl, isValidUrl, normalizeUrl } from "../utils/url.js";
 
 export interface AssistantToolResult {
   type: "bookmark_saved" | "search_results" | "message" | "tool_result";
@@ -14,6 +14,7 @@ export interface AssistantToolResult {
 
 export interface AssistantToolContext {
   activeCategory?: string;
+  history?: Array<{ role: "user" | "assistant"; content: string }>;
 }
 
 function asText(value: unknown) {
@@ -40,9 +41,77 @@ function pickDefaultCategory(message: string, context?: AssistantToolContext) {
   return pickCategoryFromMessage(message) || (isRealCategoryName(context?.activeCategory ?? "") ? context?.activeCategory : undefined);
 }
 
+function extractUrls(text: string) {
+  return [...text.matchAll(/https?:\/\/[^\s<>"']+/gi)]
+    .map((match) => match[0].replace(/[，。！？；：、)\]}]+$/u, ""))
+    .filter(isValidUrl);
+}
+
+function findBookmarkByUrl(url: string) {
+  let normalizedUrl = "";
+  try {
+    normalizedUrl = normalizeUrl(url);
+  } catch {
+    return null;
+  }
+
+  return listBookmarks({ archived: false }).find((bookmark) => (
+    bookmark.normalizedUrl === normalizedUrl || bookmark.url === url
+  )) ?? null;
+}
+
+function pickRecentBookmarkFromHistory(context?: AssistantToolContext) {
+  const history = context?.history ?? [];
+  for (const item of [...history].reverse()) {
+    for (const url of extractUrls(item.content).reverse()) {
+      const bookmark = findBookmarkByUrl(url);
+      if (bookmark) {
+        return bookmark;
+      }
+    }
+  }
+
+  return null;
+}
+
+function pickRecentCategoryFromHistory(context?: AssistantToolContext) {
+  const history = context?.history ?? [];
+  for (const item of [...history].reverse()) {
+    const category = pickCategoryFromMessage(item.content);
+    if (category) {
+      return category;
+    }
+  }
+
+  return undefined;
+}
+
+function isMoveToCategoryIntent(message: string) {
+  return /(放入|放到|放进|移到|移动到|挪到|归类到|分到|加到).*(分类|资源|工具|平台|云盘|应用)?/.test(message);
+}
+
+function isAffirmativeReply(message: string) {
+  return /^(是|是的|对|对的|可以|好|好的|行|确认|没错|帮我移|移吧|可以的)[\s。！!]*$/.test(message.trim());
+}
+
 export function inferAssistantToolPlan(message: string, context?: AssistantToolContext): AssistantToolPlan | null {
   const url = extractFirstUrl(message);
   if (!url || !isValidUrl(url)) {
+    const category = pickCategoryFromMessage(message) || (isAffirmativeReply(message) ? pickRecentCategoryFromHistory(context) : undefined);
+    const bookmark = pickRecentBookmarkFromHistory(context);
+    if (category && bookmark && (isMoveToCategoryIntent(message) || isAffirmativeReply(message))) {
+      return {
+        tool: "move_bookmarks_to_category",
+        arguments: {
+          id: bookmark.id,
+          to: category
+        },
+        confidence: 1,
+        requiresConfirmation: false,
+        reason: "用户要求把最近提到的书签移动到指定分类。"
+      };
+    }
+
     return null;
   }
 
@@ -86,7 +155,7 @@ function findCategory(value: string) {
   return listCategories().find((category) => category.id === value || category.name === value) ?? null;
 }
 
-function resolveBookmarks(args: Record<string, unknown>) {
+function resolveBookmarks(args: Record<string, unknown>, context?: AssistantToolContext) {
   const id = asText(args.id);
   const query = asText(args.query || args.q || args.title || args.url);
   const category = asText(args.category || args.from);
@@ -108,7 +177,8 @@ function resolveBookmarks(args: Record<string, unknown>) {
     return listBookmarks({ category, archived: false });
   }
 
-  return [];
+  const recentBookmark = pickRecentBookmarkFromHistory(context);
+  return recentBookmark ? [recentBookmark] : [];
 }
 
 export async function executeAssistantToolPlan(plan: AssistantToolPlan, message: string, context?: AssistantToolContext): Promise<AssistantToolResult | null> {
@@ -233,7 +303,7 @@ export async function executeAssistantToolPlan(plan: AssistantToolPlan, message:
 
   if (plan.tool === "move_bookmarks_to_category") {
     const category = asText(args.to || args.category || args.name);
-    const targets = resolveBookmarks(args);
+    const targets = resolveBookmarks(args, context);
     if (!category) {
       return { type: "message", message: "请告诉我要移动到哪个分类。" };
     }
@@ -256,7 +326,7 @@ export async function executeAssistantToolPlan(plan: AssistantToolPlan, message:
   }
 
   if (plan.tool === "archive_bookmark" || plan.tool === "pin_bookmark" || plan.tool === "update_bookmark") {
-    const targets = resolveBookmarks(args);
+    const targets = resolveBookmarks(args, context);
     if (!targets.length) {
       return { type: "message", message: "没有找到要修改的书签。" };
     }
@@ -301,7 +371,7 @@ export async function executeAssistantToolPlan(plan: AssistantToolPlan, message:
   }
 
   if (plan.tool === "delete_bookmark") {
-    const targets = resolveBookmarks(args);
+    const targets = resolveBookmarks(args, context);
     if (!targets.length) {
       return { type: "message", message: "没有找到要删除的书签。" };
     }
