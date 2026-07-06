@@ -261,4 +261,4 @@ npm run build
 
 ## License
 
-当前仓库尚未声明开源许可证。公开发布前请根据项目目标补充 `LICENSE` 文件。
+本项目基于 [MIT License](./LICENSE) 开源。
