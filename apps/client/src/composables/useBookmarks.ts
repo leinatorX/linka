@@ -52,15 +52,15 @@ export function useBookmarks(options: UseBookmarksOptions = {}) {
     if (searchInput.value.trim()) {
       params.set("q", searchInput.value.trim());
     }
-    if (!(loadOptions.all ?? options.loadAllBookmarks?.() ?? false)) {
+
+    if (showArchived.value) {
+      params.set("archived", "true");
+    } else if (!(loadOptions.all ?? options.loadAllBookmarks?.() ?? false)) {
       if (selectedCategory.value === "首页") {
         params.set("home", "true");
       } else {
         params.set("category", selectedCategory.value);
       }
-    }
-    if (showArchived.value) {
-      params.set("archived", "true");
     }
 
     const result = await listBookmarks(params);

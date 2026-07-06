@@ -109,11 +109,11 @@ function handleFilterWheel(event: WheelEvent) {
     <!-- 中间：分类导航（iOS分段控制器） -->
     <nav class="filter-rail" aria-label="收藏筛选" @wheel="handleFilterWheel">
       <div class="filter-group">
-        <RouterLink class="filter-btn" :class="{ active: selectedCategory === '首页' }" to="/">
+        <RouterLink class="filter-btn" :class="{ active: !showArchived && selectedCategory === '首页' }" to="/">
           {{ t('topbar.home') }}
         </RouterLink>
         <RouterLink v-for="category in categories" :key="category.id" class="filter-btn"
-          :class="{ active: selectedCategory === category.name }"
+          :class="{ active: !showArchived && selectedCategory === category.name }"
           :to="{ name: 'category', params: { slug: category.slug } }">
           {{ category.name }}
         </RouterLink>

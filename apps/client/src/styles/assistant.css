@@ -282,6 +282,10 @@
   animation: waiting-dot 1s ease-in-out infinite;
 }
 
+:root.light-theme .assistant-waiting span {
+  background: rgba(29, 29, 31, 0.58);
+}
+
 .assistant-waiting span:nth-child(2) {
   animation-delay: 0.14s;
 }
@@ -566,15 +570,6 @@
   z-index: 5;
   pointer-events: none;
   border-radius: 999px;
-}
-
-.assistant-input-wrapper.is-loading .siri-glow-wave {
-  opacity: 1;
-}
-
-@keyframes siriGlow {
-  0% { background-position: 0% 50%; }
-  100% { background-position: 200% 50%; }
 }
 
 .assistant-input-wrapper.is-loading .siri-glow-wave {
@@ -872,4 +867,3 @@
 @keyframes spin {
   to { transform: rotate(360deg); }
 }
-

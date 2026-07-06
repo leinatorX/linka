@@ -45,6 +45,8 @@ const renderedMessages = computed(() =>
 );
 const assistantPanelWidth = ref(420);
 const isResizingAssistant = ref(false);
+const isAssistantInputComposing = ref(false);
+const shouldIgnoreNextEnter = ref(false);
 const attachmentInputRef = ref<HTMLInputElement | null>(null);
 const panelWidthStyle = computed(() => ({
   width: `${assistantPanelWidth.value}px`
@@ -125,6 +127,33 @@ const emit = defineEmits<{
   toggleEffortSelect: [event: Event];
   toggleReasoningCollapsed: [index: number];
 }>();
+
+function onAssistantInputCompositionStart() {
+  isAssistantInputComposing.value = true;
+}
+
+function onAssistantInputCompositionEnd() {
+  isAssistantInputComposing.value = false;
+  shouldIgnoreNextEnter.value = true;
+  window.setTimeout(() => {
+    shouldIgnoreNextEnter.value = false;
+  }, 80);
+}
+
+function onAssistantInputEnter(event: KeyboardEvent) {
+  if (event.isComposing || isAssistantInputComposing.value || event.keyCode === 229) {
+    return;
+  }
+
+  if (shouldIgnoreNextEnter.value) {
+    event.preventDefault();
+    shouldIgnoreNextEnter.value = false;
+    return;
+  }
+
+  event.preventDefault();
+  emit("askAssistant");
+}
 
 function triggerAttachmentPicker() {
   attachmentInputRef.value?.click();
@@ -267,7 +296,9 @@ function formatFileSize(size: number) {
       <div class="assistant-input-wrapper" v-if="!assistantHistoryOpen" :class="{ 'is-loading': isAssistantLoading }">
         <div class="siri-glow-wave"></div>
         <textarea v-model="assistantInput" :placeholder="t('assistant.inputPlaceholder')"
-          @keydown.enter.exact.prevent="$emit('askAssistant')"></textarea>
+          @compositionstart="onAssistantInputCompositionStart"
+          @compositionend="onAssistantInputCompositionEnd"
+          @keydown.enter.exact="onAssistantInputEnter"></textarea>
         <div v-if="assistantAttachments.length" class="attachment-list input-attachment-list">
           <div v-for="attachment in assistantAttachments" :key="attachment.id" class="attachment-chip"
             :class="{ image: attachment.kind === 'image' }">
