@@ -69,7 +69,12 @@ function formatBookmarkList(bookmarks: ReturnType<typeof listBookmarks>) {
   }
 
   return bookmarks.slice(0, 10).map((bookmark, index) => (
-    `${index + 1}. ${bookmark.title}\n分类：${bookmark.category}\n链接：${bookmark.url}`
+    [
+      `${index + 1}. ${bookmark.title}`,
+      `分类：${bookmark.category}`,
+      bookmark.summary ? `摘要：${bookmark.summary}` : `网页描述：${bookmark.description || "暂无摘要"}`,
+      `链接：${bookmark.url}`
+    ].join("\n")
   )).join("\n\n");
 }
 

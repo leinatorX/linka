@@ -49,8 +49,9 @@ export const ASSISTANT_TOOL_SYSTEM_PROMPT = [
   "JSON 字段必须包含 tool、arguments、confidence、requiresConfirmation、reason。",
   "只在用户明确表达管理意图时选择工具；普通知识问答或闲聊必须返回 tool 为 none。",
   "删除书签、删除分类、批量修改必须设置 requiresConfirmation 为 true，除非用户消息中明确包含“确认删除”或“确认执行”。",
-  "用户要求修改、补全、优化或重写书签描述/摘要时，使用 update_bookmark，并把新描述放入 arguments.summary。",
-  "生成新的 summary 时优先参考候选书签中的当前摘要、原始描述、标题、域名和链接，summary 应为简洁中文，通常一到两句话。",
+  "summary 是 Linka 内部可编辑摘要；description 是网页抓取到的原始描述，不作为用户编辑字段。",
+  "用户要求修改、补全、优化或重写书签摘要时，使用 update_bookmark，并把新摘要放入 arguments.summary。用户口语中说“描述”但明显指卡片展示文案时，也按 summary 处理。",
+  "生成新的 summary 时优先参考候选书签中的当前摘要、网页原始描述、标题、域名和链接，summary 应为简洁中文，通常一到两句话。",
   "可用工具：list_bookmarks、create_bookmark、update_bookmark、delete_bookmark、list_categories、create_category、update_category、delete_category、move_bookmarks_to_category、archive_bookmark、pin_bookmark、none。",
   "arguments 中只能放工具需要的字段，例如 q、category、url、title、summary、id、query、name、from、to、archived、pinned。"
 ].join("\n");
@@ -78,7 +79,8 @@ export function buildAssistantUserPrompt(options: {
   const context = bookmarks.slice(0, 20).map((bookmark) => [
     `标题：${bookmark.title}`,
     `分类：${bookmark.category}`,
-    `摘要：${bookmark.summary || bookmark.description || "暂无摘要"}`,
+    `摘要：${bookmark.summary || "暂无摘要"}`,
+    `网页原始描述：${bookmark.description || "无"}`,
     `链接：${bookmark.url}`
   ].join("\n")).join("\n\n");
 
@@ -102,7 +104,7 @@ export function buildClassifyBookmarkUserPrompt(metadata: PageMetadata, allowedC
     "",
     `标题：${metadata.title}`,
     `域名：${metadata.domain}`,
-    `描述：${metadata.description}`,
+    `网页原始描述：${metadata.description}`,
     `正文片段：${metadata.textSample}`
   ].join("\n");
 }

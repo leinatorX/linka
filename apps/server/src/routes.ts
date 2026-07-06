@@ -252,7 +252,9 @@ function findAssistantBookmarkCandidates(message: string) {
       bookmark.title,
       bookmark.domain,
       bookmark.category,
-      bookmark.url
+      bookmark.url,
+      bookmark.summary,
+      bookmark.description
     ].map((value) => value.trim().toLowerCase()).filter((value) => value.length >= 2);
 
     if (searchableValues.some((value) => normalizedMessage.includes(value))) {
@@ -426,7 +428,7 @@ export async function registerRoutes(app: FastifyInstance) {
       querystring: {
         type: "object",
         properties: {
-          q: { type: "string", description: "搜索关键词（标题/描述/内容）" },
+          q: { type: "string", description: "搜索关键词（标题/摘要/网页原始描述）" },
           category: { type: "string", description: "所属分类名称" },
           home: { type: "string", enum: ["true", "false"], description: "是否只返回首页书签" },
           archived: { type: "string", enum: ["true", "false"], description: "是否已被归档" }
