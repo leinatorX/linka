@@ -1,10 +1,12 @@
-# Linka
+<div align="center">
+  <h1>Linka</h1>
+  <p><strong>Save it. Let AI organize it.</strong></p>
+  <img src="./assets/screenshot.png" alt="Linka Screenshot" width="800" style="border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); margin-top: 16px; margin-bottom: 24px;" />
+</div>
 
-Save it. Let AI organize it.
+Linka 是一款极致轻量的 AI 驱动书签管理器。你只需要随手丢入链接，Linka 会自动抓取网页元数据（标题、描述、Favicon、封面图），并利用大语言模型（LLM）生成智能摘要、自动匹配分类并提取标签，最后以极简精致的卡片瀑布流呈现给你。
 
-Linka 是一款极致轻量的 AI 驱动书签管理器。你只需要收藏链接，Linka 会自动抓取网页信息，并生成摘要、分类和标签，再以卡片形式展示。
-
-## 当前功能
+## ✨ 核心特性
 
 - Vue 3 + Vite + TypeScript 前端。
 - Node.js + Fastify + TypeScript 后端。
