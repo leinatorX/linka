@@ -31,7 +31,8 @@ const { t } = useI18n();
   <template v-if="true">
     <section class="library">
       <transition-group name="fade" tag="div" class="card-grid" v-if="bookmarks.length">
-        <article v-for="bookmark in bookmarks" :key="bookmark.id" class="bookmark-card">
+        <article v-for="(bookmark, index) in bookmarks" :key="bookmark.id" class="bookmark-card"
+          :style="{ '--stagger-delay': `${Math.min(index * 0.03, 0.5)}s` }">
           <a class="open-link-btn" :href="bookmark.url" target="_blank" rel="noreferrer" :title="t('library.openLink')">
             <ExternalLink :size="20" />
           </a>
