@@ -538,7 +538,7 @@
   flex-direction: column;
   transition: border-color var(--transition-fast), box-shadow var(--transition-fast), background var(--transition-fast);
   position: relative;
-  overflow: hidden;
+  overflow: visible; /* Modified to visible so dropdown is not clipped */
 }
 
 :root.dark-theme .assistant-input-wrapper {
@@ -564,6 +564,8 @@
   animation: siriGlow 2s linear infinite;
   box-shadow: 0 1px 6px rgba(0, 122, 255, 0.3);
   z-index: 5;
+  border-top-left-radius: inherit; /* Inherit rounded corners from parent */
+  border-top-right-radius: inherit;
 }
 
 .assistant-input-wrapper.is-loading .siri-glow-wave {
