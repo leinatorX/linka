@@ -17,7 +17,7 @@ export function getDomain(rawUrl: string): string {
 
 export function extractFirstUrl(text: string): string | null {
   const match = text.match(/https?:\/\/[^\s<>"']+/i);
-  return match?.[0] ?? null;
+  return match?.[0].replace(/[，。！？；：、)\]}]+$/u, "") ?? null;
 }
 
 export function isValidUrl(value: string): boolean {

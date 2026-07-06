@@ -20,6 +20,7 @@ export interface AssistantUiMessage {
 interface UseAssistantOptions {
   loadBookmarks: () => Promise<void>;
   loadCategories?: () => Promise<void>;
+  getActiveCategory?: () => string;
 }
 
 export function useAssistant(options: UseAssistantOptions) {
@@ -159,6 +160,7 @@ export function useAssistant(options: UseAssistantOptions) {
       await streamAssistantMessage({
         conversationId: activeConversationId.value ?? undefined,
         message,
+        activeCategory: options.getActiveCategory?.(),
         model: assistantModel.value || undefined,
         effort: assistantEffort.value
       }, {

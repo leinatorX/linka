@@ -579,6 +579,7 @@ export async function* streamAssistantReply(options: {
 export async function planAssistantToolCall(options: {
   message: string;
   categories: string[];
+  activeCategory?: string;
   history?: AssistantHistoryMessage[];
   bookmarkHints: Array<Pick<ReturnType<typeof toBookmark>, "id" | "title" | "category" | "summary" | "description" | "url" | "domain">>;
 }): Promise<AssistantToolPlan | null> {

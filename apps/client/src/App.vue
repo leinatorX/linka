@@ -127,7 +127,8 @@ const {
   toggleReasoningCollapsed
 } = useAssistant({
   loadBookmarks,
-  loadCategories: () => reloadCategoriesFromAssistant()
+  loadCategories: () => reloadCategoriesFromAssistant(),
+  getActiveCategory: () => selectedCategory.value
 });
 
 addAssistantNotice = appendAssistantNotice;

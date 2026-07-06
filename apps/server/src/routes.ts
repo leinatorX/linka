@@ -3,7 +3,7 @@ import { z } from "zod";
 import { config } from "./config.js";
 import { generateAssistantReply, generateAssistantToolResultReply, planAssistantToolCall, streamAssistantReply, testAiConnection } from "./services/ai.js";
 import { addAssistantMessage, buildConversationContext, createAssistantConversation, deleteAssistantConversations, ensureAssistantConversation, getAssistantConversation, listAssistantConversations } from "./services/assistant.js";
-import { executeAssistantToolPlan } from "./services/assistantTools.js";
+import { executeAssistantToolPlan, inferAssistantToolPlan } from "./services/assistantTools.js";
 import { clearSessionCookie, getSessionFromRequest, login, logout, requireAuth, updateAvatar, updateCredentials } from "./services/auth.js";
 import { createBookmark, deleteBookmark, getBookmarkById, listBookmarks, updateBookmark } from "./services/bookmarks.js";
 import { createCategory, deleteCategory, listCategories, reorderCategories, updateCategory } from "./services/categories.js";
@@ -81,12 +81,14 @@ const updateAvatarSchema = z.object({
 });
 
 const assistantSchema = z.object({
-  message: z.string().min(1)
+  message: z.string().min(1),
+  activeCategory: z.string().optional()
 });
 
 const assistantStreamSchema = z.object({
   conversationId: z.string().optional(),
   message: z.string().min(1),
+  activeCategory: z.string().optional(),
   model: z.string().optional(),
   effort: z.enum(["关闭", "默认", "低", "中", "高", "最大"]).optional()
 });
@@ -822,12 +824,14 @@ export async function registerRoutes(app: FastifyInstance) {
     }
 
     const results = findAssistantBookmarkCandidates(payload.data.message);
-    const toolPlan = await planAssistantToolCall({
+    const toolContext = { activeCategory: payload.data.activeCategory };
+    const toolPlan = inferAssistantToolPlan(payload.data.message, toolContext) ?? await planAssistantToolCall({
       message: payload.data.message,
       categories: listCategories().map((category) => category.name),
+      activeCategory: payload.data.activeCategory,
       bookmarkHints: results.map(toAssistantBookmarkHint)
     });
-    const toolResult = toolPlan ? await executeAssistantToolPlan(toolPlan, payload.data.message) : null;
+    const toolResult = toolPlan ? await executeAssistantToolPlan(toolPlan, payload.data.message, toolContext) : null;
 
     if (toolResult) {
       return {
@@ -878,20 +882,22 @@ export async function registerRoutes(app: FastifyInstance) {
       "X-Accel-Buffering": "no"
     });
 
-    const { message, model, effort, conversationId } = payload.data;
+    const { message, model, effort, conversationId, activeCategory } = payload.data;
     const conversation = ensureAssistantConversation(conversationId, message);
     const history = buildConversationContext(conversation.id);
     writeSse(reply.raw, "meta", { conversation });
     addAssistantMessage(conversation.id, "user", message);
 
     const results = findAssistantBookmarkCandidates(message);
-    const toolPlan = await planAssistantToolCall({
+    const toolContext = { activeCategory };
+    const toolPlan = inferAssistantToolPlan(message, toolContext) ?? await planAssistantToolCall({
       message,
       categories: listCategories().map((category) => category.name),
+      activeCategory,
       history,
       bookmarkHints: results.map(toAssistantBookmarkHint)
     });
-    const toolResult = toolPlan ? await executeAssistantToolPlan(toolPlan, message) : null;
+    const toolResult = toolPlan ? await executeAssistantToolPlan(toolPlan, message, toolContext) : null;
 
     if (toolResult) {
       const text = await renderAssistantToolMessage(message, toolResult);

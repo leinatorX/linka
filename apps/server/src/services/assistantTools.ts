@@ -1,7 +1,7 @@
 import type { AssistantToolPlan } from "./ai.js";
 import { createBookmark, deleteBookmark, getBookmarkById, listBookmarks, updateBookmark } from "./bookmarks.js";
 import { createCategory, deleteCategory, listCategories, updateCategory } from "./categories.js";
-import { isValidUrl } from "../utils/url.js";
+import { extractFirstUrl, isValidUrl } from "../utils/url.js";
 
 export interface AssistantToolResult {
   type: "bookmark_saved" | "search_results" | "message" | "tool_result";
@@ -10,6 +10,10 @@ export interface AssistantToolResult {
   results?: ReturnType<typeof listBookmarks>;
   changed?: boolean;
   categoriesChanged?: boolean;
+}
+
+export interface AssistantToolContext {
+  activeCategory?: string;
 }
 
 function asText(value: unknown) {
@@ -22,6 +26,41 @@ function asBoolean(value: unknown) {
 
 function hasConfirmation(message: string) {
   return /确认删除|确认执行|确认操作|确定删除|请删除/.test(message);
+}
+
+function isRealCategoryName(value: string) {
+  return Boolean(value && !/^(首页|全部|所有|未指定)$/.test(value));
+}
+
+function pickCategoryFromMessage(message: string) {
+  return listCategories().find((category) => message.includes(category.name))?.name;
+}
+
+function pickDefaultCategory(message: string, context?: AssistantToolContext) {
+  return pickCategoryFromMessage(message) || (isRealCategoryName(context?.activeCategory ?? "") ? context?.activeCategory : undefined);
+}
+
+export function inferAssistantToolPlan(message: string, context?: AssistantToolContext): AssistantToolPlan | null {
+  const url = extractFirstUrl(message);
+  if (!url || !isValidUrl(url)) {
+    return null;
+  }
+
+  if (!/(收藏|添加|加入|保存|收录|记下|加到|放到|添加到)(?:.*?(书签|收藏夹|分类|资源))?/.test(message)) {
+    return null;
+  }
+
+  const category = pickDefaultCategory(message, context);
+  return {
+    tool: "create_bookmark",
+    arguments: {
+      url,
+      ...(category ? { category } : {})
+    },
+    confidence: 1,
+    requiresConfirmation: false,
+    reason: "用户提供了 URL，并明确要求添加为书签。"
+  };
 }
 
 function formatBookmarkList(bookmarks: ReturnType<typeof listBookmarks>) {
@@ -67,7 +106,7 @@ function resolveBookmarks(args: Record<string, unknown>) {
   return [];
 }
 
-export async function executeAssistantToolPlan(plan: AssistantToolPlan, message: string): Promise<AssistantToolResult | null> {
+export async function executeAssistantToolPlan(plan: AssistantToolPlan, message: string, context?: AssistantToolContext): Promise<AssistantToolResult | null> {
   if (plan.tool === "none" || plan.confidence < 0.55) {
     return null;
   }
@@ -100,7 +139,7 @@ export async function executeAssistantToolPlan(plan: AssistantToolPlan, message:
       return { type: "message", message: "我没有找到有效 URL，无法创建书签。" };
     }
 
-    const category = asText(args.category);
+    const category = asText(args.category) || pickDefaultCategory(message, context) || "";
     if (category) {
       createCategory(category);
     }

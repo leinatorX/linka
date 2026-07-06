@@ -103,10 +103,10 @@ export function reorderCategories(orderedIds: string[]): Promise<{ categories: C
   });
 }
 
-export function sendAssistantMessage(message: string): Promise<AssistantResponse> {
+export function sendAssistantMessage(message: string, activeCategory?: string): Promise<AssistantResponse> {
   return request("/api/assistant/chat", {
     method: "POST",
-    body: JSON.stringify({ message })
+    body: JSON.stringify({ message, activeCategory })
   });
 }
 
@@ -133,7 +133,7 @@ export function deleteAssistantConversations(ids: string[]): Promise<{ deleted: 
 }
 
 export async function streamAssistantMessage(
-  payload: { conversationId?: string; message: string; model?: string; effort?: string },
+  payload: { conversationId?: string; message: string; activeCategory?: string; model?: string; effort?: string },
   handlers: {
     onMeta?: (data: { conversation: AssistantConversation }) => void;
     onReasoning?: (data: { text: string }) => void;

@@ -111,10 +111,11 @@ export function buildClassifyBookmarkUserPrompt(metadata: PageMetadata, allowedC
 export function buildAssistantToolUserPrompt(options: {
   message: string;
   categories: string[];
+  activeCategory?: string;
   history?: AssistantHistoryMessage[];
   bookmarkHints: Array<Pick<ReturnType<typeof toBookmark>, "id" | "title" | "category" | "summary" | "description" | "url" | "domain">>;
 }): string {
-  const { message, categories, history = [], bookmarkHints } = options;
+  const { message, categories, activeCategory, history = [], bookmarkHints } = options;
   const historyText = history.slice(-6).map((item) => `${item.role === "user" ? "用户" : "助手"}：${item.content}`).join("\n");
   const bookmarkText = bookmarkHints.length
     ? bookmarkHints.map((bookmark) => [
@@ -134,6 +135,7 @@ export function buildAssistantToolUserPrompt(options: {
     `用户消息：${message}`,
     "",
     `当前分类：${categories.join("、") || "无"}`,
+    `当前页面分类：${activeCategory || "未指定"}`,
     "",
     `候选书签：\n${bookmarkText}`,
     "",
