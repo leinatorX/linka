@@ -50,12 +50,12 @@
 
 .assistant-panel {
   position: fixed;
-  top: 64px; /* Starts below the sticky topbar */
+  top: 0;
   right: 0;
   bottom: 0;
-  z-index: 51;
+  z-index: 150; /* 提升层级，避免被 topbar (100) 遮挡 */
   width: 420px;
-  height: calc(100vh - 64px); /* Full viewport minus topbar height */
+  height: 100vh;
   max-height: none;
   background: var(--bg-panel);
   backdrop-filter: blur(30px) saturate(190%);
