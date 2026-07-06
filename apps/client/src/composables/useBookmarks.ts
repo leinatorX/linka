@@ -31,6 +31,7 @@ export function useBookmarks(options: UseBookmarksOptions = {}) {
   const editBookmarkData = ref({
     title: "",
     url: "",
+    summary: "",
     faviconUrl: "",
     category: "",
     showOnHome: false
@@ -145,6 +146,7 @@ export function useBookmarks(options: UseBookmarksOptions = {}) {
     editBookmarkData.value = {
       title: bookmark.title,
       url: bookmark.url,
+      summary: bookmark.summary || bookmark.description || "",
       faviconUrl: bookmark.faviconUrl || "",
       category: bookmark.category || "",
       showOnHome: bookmark.showOnHome
@@ -156,6 +158,7 @@ export function useBookmarks(options: UseBookmarksOptions = {}) {
     await updateBookmark(editingBookmarkId.value, {
       title: editBookmarkData.value.title.trim() || undefined,
       url: editBookmarkData.value.url.trim() || undefined,
+      summary: editBookmarkData.value.summary.trim(),
       faviconUrl: editBookmarkData.value.faviconUrl.trim() || undefined,
       category: editBookmarkData.value.category || undefined,
       showOnHome: editBookmarkData.value.showOnHome

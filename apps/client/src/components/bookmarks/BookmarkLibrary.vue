@@ -26,19 +26,6 @@ function getFallbackIconText(bookmark: Bookmark) {
 
 <template>
   <template v-if="true">
-    <nav class="filter-rail" aria-label="收藏筛选">
-      <div class="filter-group">
-        <RouterLink class="filter-btn" :class="{ active: selectedCategory === '首页' }" to="/">
-          首页
-        </RouterLink>
-        <RouterLink v-for="category in categories" :key="category.id" class="filter-btn"
-          :class="{ active: selectedCategory === category.name }"
-          :to="{ name: 'category', params: { slug: category.slug } }">
-          {{ category.name }}
-        </RouterLink>
-      </div>
-    </nav>
-
     <section class="library">
       <transition-group name="fade" tag="div" class="card-grid" v-if="bookmarks.length">
         <article v-for="bookmark in bookmarks" :key="bookmark.id" class="bookmark-card">

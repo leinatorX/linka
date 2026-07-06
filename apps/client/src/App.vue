@@ -21,6 +21,7 @@ import { useAuth } from "./composables/useAuth";
 import { useBookmarks } from "./composables/useBookmarks";
 import { useCategories } from "./composables/useCategories";
 import { useToast } from "./composables/useToast";
+import { useTheme } from "./composables/useTheme";
 
 type SettingsTab = "categories" | "manage_bookmarks" | "ai" | "account";
 const HOME_CATEGORY = "首页";
@@ -31,6 +32,7 @@ const settingsTab = ref<SettingsTab>("account");
 const isSettingsPage = computed(() => route.path === "/settings");
 
 const { toasts, showToast } = useToast();
+const { theme, applyTheme } = useTheme();
 
 const {
   authLoading,
@@ -294,103 +296,109 @@ onUnmounted(() => {
     @submit="handleLogin"
   />
 
-  <main v-else class="app-shell" :class="{ 'settings-route': isSettingsPage }">
+  <div v-else class="app-container">
     <AppTopbar
       v-model:search-input="searchInput"
       :show-archived="showArchived"
       :is-settings-page="isSettingsPage"
       :current-user="authUser"
+      :theme="theme"
+      :categories="categories"
+      :selected-category="selectedCategory"
+      @change-theme="applyTheme"
       @search="search"
       @toggle-archived="toggleArchivedView"
       @open-settings="openSettings"
     />
 
-    <BookmarkLibrary
-      v-if="!isSettingsPage"
-      :bookmarks="visibleBookmarks"
-      :categories="categories"
-      :selected-category="selectedCategory"
-      :show-archived="showArchived"
-      :failed-icon-ids="failedIconIds"
-      @toggle-pinned="togglePinned"
-      @toggle-archived="toggleArchived"
-      @remove-bookmark="removeBookmark"
-      @mark-icon-failed="markIconFailed"
-      @edit-bookmark="startEditingBookmark"
-    />
-
-    <SettingsPage
-      v-else
-      v-model:settings-tab="settingsTab"
-      @open-guide="openGuide"
-      @close-settings="closeSettings"
-    >
-      <CategorySettings
-        v-if="settingsTab === 'categories'"
-        v-model:new-category-name="newCategoryName"
+    <main class="app-shell" :class="{ 'settings-route': isSettingsPage }">
+      <BookmarkLibrary
+        v-if="!isSettingsPage"
+        :bookmarks="visibleBookmarks"
         :categories="categories"
-        :editing-category-names="editingCategoryNames"
-        @add-category="addCategory"
-        @save-category="saveCategory"
-        @remove-category="removeCategory"
-        @reorder-categories="reorderCategories"
+        :selected-category="selectedCategory"
+        :show-archived="showArchived"
+        :failed-icon-ids="failedIconIds"
+        @toggle-pinned="togglePinned"
+        @toggle-archived="toggleArchived"
+        @remove-bookmark="removeBookmark"
+        @mark-icon-failed="markIconFailed"
+        @edit-bookmark="startEditingBookmark"
       />
 
-      <AiProviderSettings
-        v-else-if="settingsTab === 'ai'"
-        v-model:show-api-key="showApiKey"
-        :ai-settings-form="aiSettingsForm"
-        :active-ai-provider="activeAiProvider"
-        :editing-provider-id="editingProviderId"
-        :is-ai-settings-saving="isAiSettingsSaving"
-        :revealed-api-keys="revealedApiKeys"
-        :revealing-api-key-provider-ids="revealingApiKeyProviderIds"
-        :testing-model-id="testingModelId"
-        :model-test-results="modelTestResults"
-        :last-saved-time="lastSavedTime"
-        :is-api-key-revealed="isApiKeyRevealed"
-        @select-ai-provider="selectAiProvider"
-        @add-ai-provider="addAiProvider"
-        @remove-ai-provider="removeAiProvider"
-        @toggle-reveal-api-key="toggleRevealApiKey"
-        @copy-api-key-value="copyApiKeyValue"
-        @open-add-ai-model-modal="openAddAiModelModal"
-        @open-edit-ai-model-modal="openEditAiModelModal"
-        @remove-ai-model="removeAiModel"
-        @model-drag-start="onModelDragStart"
-        @model-drag-enter="onModelDragEnter"
-        @model-drag-end="onModelDragEnd"
-        @test-model="testModel"
-        @clear-model-test-result="clearModelTestResult"
-        @load-ai-settings="loadAiSettings"
-        @save-ai-settings="saveAiSettings"
-        @reorder-providers="reorderProviders"
-      />
-
-      <AccountSettings
-        v-else-if="settingsTab === 'account'"
-        v-model:username="accountUsername"
-        v-model:avatar-url="accountAvatarUrl"
-        v-model:current-password="accountCurrentPassword"
-        v-model:new-password="accountNewPassword"
-        v-model:confirm-password="accountConfirmPassword"
-        :user="authUser"
-        :message="accountMessage"
-        :avatar-message="avatarMessage"
-        :is-saving="isAccountSaving"
-        :is-avatar-saving="isAvatarSaving"
-        @save-avatar="saveAvatar"
-        @save="saveAccount"
-        @logout="handleLogout"
-      />
-
-      <BookmarkSettings
+      <SettingsPage
         v-else
-        :bookmarks="bookmarks"
-        @show-add-bookmark="showAddBookmarkModal = true"
-        @start-editing-bookmark="startEditingBookmark"
-      />
-    </SettingsPage>
+        v-model:settings-tab="settingsTab"
+        @open-guide="openGuide"
+        @close-settings="closeSettings"
+      >
+        <CategorySettings
+          v-if="settingsTab === 'categories'"
+          v-model:new-category-name="newCategoryName"
+          :categories="categories"
+          :editing-category-names="editingCategoryNames"
+          @add-category="addCategory"
+          @save-category="saveCategory"
+          @remove-category="removeCategory"
+          @reorder-categories="reorderCategories"
+        />
+
+        <AiProviderSettings
+          v-else-if="settingsTab === 'ai'"
+          v-model:show-api-key="showApiKey"
+          :ai-settings-form="aiSettingsForm"
+          :active-ai-provider="activeAiProvider"
+          :editing-provider-id="editingProviderId"
+          :is-ai-settings-saving="isAiSettingsSaving"
+          :revealed-api-keys="revealedApiKeys"
+          :revealing-api-key-provider-ids="revealingApiKeyProviderIds"
+          :testing-model-id="testingModelId"
+          :model-test-results="modelTestResults"
+          :last-saved-time="lastSavedTime"
+          :is-api-key-revealed="isApiKeyRevealed"
+          @select-ai-provider="selectAiProvider"
+          @add-ai-provider="addAiProvider"
+          @remove-ai-provider="removeAiProvider"
+          @toggle-reveal-api-key="toggleRevealApiKey"
+          @copy-api-key-value="copyApiKeyValue"
+          @open-add-ai-model-modal="openAddAiModelModal"
+          @open-edit-ai-model-modal="openEditAiModelModal"
+          @remove-ai-model="removeAiModel"
+          @model-drag-start="onModelDragStart"
+          @model-drag-enter="onModelDragEnter"
+          @model-drag-end="onModelDragEnd"
+          @test-model="testModel"
+          @clear-model-test-result="clearModelTestResult"
+          @load-ai-settings="loadAiSettings"
+          @save-ai-settings="saveAiSettings"
+          @reorder-providers="reorderProviders"
+        />
+
+        <AccountSettings
+          v-else-if="settingsTab === 'account'"
+          v-model:username="accountUsername"
+          v-model:avatar-url="accountAvatarUrl"
+          v-model:current-password="accountCurrentPassword"
+          v-model:new-password="accountNewPassword"
+          v-model:confirm-password="accountConfirmPassword"
+          :user="authUser"
+          :message="accountMessage"
+          :avatar-message="avatarMessage"
+          :is-saving="isAccountSaving"
+          :is-avatar-saving="isAvatarSaving"
+          @save-avatar="saveAvatar"
+          @save="saveAccount"
+          @logout="handleLogout"
+        />
+
+        <BookmarkSettings
+          v-else
+          :bookmarks="bookmarks"
+          @show-add-bookmark="showAddBookmarkModal = true"
+          @start-editing-bookmark="startEditingBookmark"
+        />
+      </SettingsPage>
+    </main>
 
     <AssistantPanel
       v-model:assistant-open="assistantOpen"
@@ -421,7 +429,7 @@ onUnmounted(() => {
       @toggle-effort-select="toggleEffortSelect"
       @toggle-reasoning-collapsed="toggleReasoningCollapsed"
     />
-  </main>
+  </div>
 
   <AddBookmarkModal
     v-model:visible="showAddBookmarkModal"

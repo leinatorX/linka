@@ -9,6 +9,7 @@ const props = defineProps<{
   editData: {
     title: string;
     url: string;
+    summary: string;
     faviconUrl: string;
     category: string;
     showOnHome: boolean;
@@ -63,6 +64,10 @@ async function onIconFileChange(event: Event) {
           <label>
             <span>标题</span>
             <input v-model="editData.title" placeholder="可选，不填则自动抓取" @keyup.enter="$emit('submit')" />
+          </label>
+          <label>
+            <span>描述</span>
+            <textarea v-model="editData.summary" placeholder="可选，用于书签卡片摘要显示；留空则显示暂无摘要"></textarea>
           </label>
           <label>
             <span>图标链接</span>

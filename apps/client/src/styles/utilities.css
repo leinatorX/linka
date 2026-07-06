@@ -125,26 +125,32 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.6);
-  backdrop-filter: blur(4px);
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(20px);
   z-index: 10000;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 24px;
+  animation: modalFadeIn 0.25s ease-out;
+}
+
+:root.light-theme .modal-overlay {
+  background: rgba(255, 255, 255, 0.2);
 }
 
 .modal-card {
   width: 100%;
   max-width: 480px;
-  background: rgba(20, 20, 25, 0.95);
-  backdrop-filter: blur(16px);
-  border: 1px solid var(--border-subtle);
+  background: var(--bg-panel);
+  border: 1px solid var(--border-strong);
   border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-lg);
+  box-shadow: var(--shadow-md);
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  animation: modalSlideUp var(--transition-spring);
+  transform-origin: center bottom;
 }
 
 .modal-header {
@@ -157,8 +163,9 @@
 
 .modal-header h3 {
   margin: 0;
-  font-size: 18px;
+  font-size: 20px;
   font-weight: 600;
+  letter-spacing: -0.5px;
 }
 
 .modal-body {
@@ -176,8 +183,19 @@
 .modal-two-actions {
   display: flex;
   gap: 12px;
-  margin-top: 16px;
+  margin-top: 20px;
 }
+
+@keyframes modalFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes modalSlideUp {
+  from { transform: scale(0.9) translateY(40px); opacity: 0; }
+  to { transform: scale(1) translateY(0); opacity: 1; }
+}
+
 
 .modal-two-actions .btn-secondary,
 .modal-two-actions .btn-primary {

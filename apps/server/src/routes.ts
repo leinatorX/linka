@@ -185,6 +185,47 @@ function isConfirmationOnly(message: string) {
   return /^(确认执行|确认删除|确认操作|确定删除|确定执行)[\s。！!]*$/.test(message.trim());
 }
 
+function toAssistantBookmarkHint(bookmark: ReturnType<typeof listBookmarks>[number]) {
+  return {
+    id: bookmark.id,
+    title: bookmark.title,
+    category: bookmark.category,
+    summary: bookmark.summary,
+    description: bookmark.description,
+    url: bookmark.url,
+    domain: bookmark.domain
+  };
+}
+
+function findAssistantBookmarkCandidates(message: string) {
+  const directMatches = listBookmarks({ q: message }).slice(0, 8);
+  const byId = new Map(directMatches.map((bookmark) => [bookmark.id, bookmark]));
+  const normalizedMessage = message.toLowerCase();
+
+  for (const bookmark of listBookmarks({ archived: false })) {
+    if (byId.has(bookmark.id)) {
+      continue;
+    }
+
+    const searchableValues = [
+      bookmark.title,
+      bookmark.domain,
+      bookmark.category,
+      bookmark.url
+    ].map((value) => value.trim().toLowerCase()).filter((value) => value.length >= 2);
+
+    if (searchableValues.some((value) => normalizedMessage.includes(value))) {
+      byId.set(bookmark.id, bookmark);
+    }
+
+    if (byId.size >= 8) {
+      break;
+    }
+  }
+
+  return [...byId.values()];
+}
+
 async function renderAssistantToolMessage(message: string, toolResult: Awaited<ReturnType<typeof executeAssistantToolPlan>>) {
   if (!toolResult) {
     return "";
@@ -780,17 +821,11 @@ export async function registerRoutes(app: FastifyInstance) {
       return reply.code(400).send({ message: "请输入消息内容" });
     }
 
-    const results = listBookmarks({ q: payload.data.message }).slice(0, 8);
+    const results = findAssistantBookmarkCandidates(payload.data.message);
     const toolPlan = await planAssistantToolCall({
       message: payload.data.message,
       categories: listCategories().map((category) => category.name),
-      bookmarkHints: results.map((bookmark) => ({
-        id: bookmark.id,
-        title: bookmark.title,
-        category: bookmark.category,
-        url: bookmark.url,
-        domain: bookmark.domain
-      }))
+      bookmarkHints: results.map(toAssistantBookmarkHint)
     });
     const toolResult = toolPlan ? await executeAssistantToolPlan(toolPlan, payload.data.message) : null;
 
@@ -849,18 +884,12 @@ export async function registerRoutes(app: FastifyInstance) {
     writeSse(reply.raw, "meta", { conversation });
     addAssistantMessage(conversation.id, "user", message);
 
-    const results = listBookmarks({ q: message }).slice(0, 8);
+    const results = findAssistantBookmarkCandidates(message);
     const toolPlan = await planAssistantToolCall({
       message,
       categories: listCategories().map((category) => category.name),
       history,
-      bookmarkHints: results.map((bookmark) => ({
-        id: bookmark.id,
-        title: bookmark.title,
-        category: bookmark.category,
-        url: bookmark.url,
-        domain: bookmark.domain
-      }))
+      bookmarkHints: results.map(toAssistantBookmarkHint)
     });
     const toolResult = toolPlan ? await executeAssistantToolPlan(toolPlan, message) : null;
 

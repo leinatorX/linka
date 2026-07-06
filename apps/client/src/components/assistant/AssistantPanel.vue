@@ -210,7 +210,8 @@ defineEmits<{
         </div>
       </div>
 
-      <div class="assistant-input-wrapper" v-if="!assistantHistoryOpen">
+      <div class="assistant-input-wrapper" v-if="!assistantHistoryOpen" :class="{ 'is-loading': isAssistantLoading }">
+        <div class="siri-glow-wave"></div>
         <textarea v-model="assistantInput" placeholder="随心输入"
           @keydown.enter.exact.prevent="$emit('askAssistant')"></textarea>
         <div class="input-toolbar">

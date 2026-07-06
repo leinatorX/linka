@@ -231,7 +231,7 @@ export async function executeAssistantToolPlan(plan: AssistantToolPlan, message:
       patch.pinned = asBoolean(args.pinned) ?? true;
     } else {
       const title = asText(args.title);
-      const summary = asText(args.summary);
+      const summary = asText(args.summary || args.description);
       const category = asText(args.category);
       if (title) patch.title = title;
       if (summary) patch.summary = summary;

@@ -49,6 +49,8 @@ export const ASSISTANT_TOOL_SYSTEM_PROMPT = [
   "JSON 字段必须包含 tool、arguments、confidence、requiresConfirmation、reason。",
   "只在用户明确表达管理意图时选择工具；普通知识问答或闲聊必须返回 tool 为 none。",
   "删除书签、删除分类、批量修改必须设置 requiresConfirmation 为 true，除非用户消息中明确包含“确认删除”或“确认执行”。",
+  "用户要求修改、补全、优化或重写书签描述/摘要时，使用 update_bookmark，并把新描述放入 arguments.summary。",
+  "生成新的 summary 时优先参考候选书签中的当前摘要、原始描述、标题、域名和链接，summary 应为简洁中文，通常一到两句话。",
   "可用工具：list_bookmarks、create_bookmark、update_bookmark、delete_bookmark、list_categories、create_category、update_category、delete_category、move_bookmarks_to_category、archive_bookmark、pin_bookmark、none。",
   "arguments 中只能放工具需要的字段，例如 q、category、url、title、summary、id、query、name、from、to、archived、pinned。"
 ].join("\n");
@@ -110,7 +112,7 @@ export function buildAssistantToolUserPrompt(options: {
   message: string;
   categories: string[];
   history?: AssistantHistoryMessage[];
-  bookmarkHints: Array<Pick<ReturnType<typeof toBookmark>, "id" | "title" | "category" | "url" | "domain">>;
+  bookmarkHints: Array<Pick<ReturnType<typeof toBookmark>, "id" | "title" | "category" | "summary" | "description" | "url" | "domain">>;
 }): string {
   const { message, categories, history = [], bookmarkHints } = options;
   const historyText = history.slice(-6).map((item) => `${item.role === "user" ? "用户" : "助手"}：${item.content}`).join("\n");
@@ -119,6 +121,8 @@ export function buildAssistantToolUserPrompt(options: {
       `ID：${bookmark.id}`,
       `标题：${bookmark.title}`,
       `分类：${bookmark.category}`,
+      `当前摘要：${bookmark.summary || "无"}`,
+      `原始描述：${bookmark.description || "无"}`,
       `域名：${bookmark.domain}`,
       `链接：${bookmark.url}`
     ].join("\n")).join("\n\n")

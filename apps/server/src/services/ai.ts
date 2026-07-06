@@ -580,7 +580,7 @@ export async function planAssistantToolCall(options: {
   message: string;
   categories: string[];
   history?: AssistantHistoryMessage[];
-  bookmarkHints: Array<Pick<ReturnType<typeof toBookmark>, "id" | "title" | "category" | "url" | "domain">>;
+  bookmarkHints: Array<Pick<ReturnType<typeof toBookmark>, "id" | "title" | "category" | "summary" | "description" | "url" | "domain">>;
 }): Promise<AssistantToolPlan | null> {
   const prompt = buildAssistantToolUserPrompt(options);
 
