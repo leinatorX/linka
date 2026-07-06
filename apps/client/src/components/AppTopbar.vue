@@ -1,9 +1,11 @@
 <script setup lang="ts">
-import { Archive, ChevronDown, Search, Settings } from "@lucide/vue";
+import { Archive, Search } from "@lucide/vue";
+import type { AuthUser } from "../types";
 
 defineProps<{
   showArchived: boolean;
   isSettingsPage: boolean;
+  currentUser: AuthUser;
 }>();
 
 const searchInput = defineModel<string>("searchInput", { required: true });
@@ -37,12 +39,9 @@ defineEmits<{
         @click="$emit('toggleArchived')">
         <Archive :size="20" />
       </button>
-      <button class="top-icon" :class="{ active: isSettingsPage }" title="设置" @click="$emit('openSettings')">
-        <Settings :size="20" />
-      </button>
-      <button class="user-pill" title="当前用户">
-        <span>Hongli</span>
-        <ChevronDown :size="16" />
+      <button class="user-avatar" :title="`设置：${currentUser.username}`" aria-label="打开设置" @click="$emit('openSettings')">
+        <img v-if="currentUser.avatarUrl" :src="currentUser.avatarUrl" alt="" />
+        <span v-else>{{ currentUser.username.slice(0, 1).toUpperCase() }}</span>
       </button>
     </div>
   </header>

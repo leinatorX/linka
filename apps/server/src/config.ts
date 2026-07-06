@@ -11,6 +11,8 @@ export interface AppConfig {
   openaiBaseUrl: string;
   openaiModel: string;
   apiToken: string;
+  defaultUsername: string;
+  defaultPassword: string;
 }
 
 function findWorkspaceRoot(startDir: string) {
@@ -54,5 +56,7 @@ export const config: AppConfig = {
   openaiApiKey: process.env.OPENAI_API_KEY ?? "",
   openaiBaseUrl: process.env.OPENAI_BASE_URL ?? "https://api.openai.com/v1",
   openaiModel: process.env.OPENAI_MODEL ?? "gpt-4.1-mini",
-  apiToken: process.env.LINKA_API_TOKEN ?? ""
+  apiToken: process.env.LINKA_API_TOKEN ?? "",
+  defaultUsername: process.env.LINKA_DEFAULT_USERNAME ?? "admin",
+  defaultPassword: process.env.LINKA_DEFAULT_PASSWORD ?? "linka123456"
 };

@@ -26,6 +26,12 @@ export interface Category {
   updatedAt: string;
 }
 
+export interface AuthUser {
+  id: string;
+  username: string;
+  avatarUrl: string;
+}
+
 export interface AssistantResponse {
   type: "bookmark_saved" | "search_results" | "message" | "tool_result";
   message: string;

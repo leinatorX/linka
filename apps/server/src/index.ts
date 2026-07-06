@@ -6,6 +6,7 @@ import fastifyStatic from "@fastify/static";
 import Fastify from "fastify";
 import { config } from "./config.js";
 import { registerRoutes } from "./routes.js";
+import { initializeAuth } from "./services/auth.js";
 import { initializeCategories } from "./services/categories.js";
 
 import swagger from "@fastify/swagger";
@@ -16,6 +17,7 @@ const app = Fastify({
 });
 
 initializeCategories();
+initializeAuth();
 
 await app.register(cors, {
   origin: true

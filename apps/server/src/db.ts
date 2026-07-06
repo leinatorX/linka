@@ -46,6 +46,23 @@ export interface AssistantMessageRecord {
   created_at: string;
 }
 
+export interface UserRecord {
+  id: string;
+  username: string;
+  avatar_url: string;
+  password_hash: string;
+  password_salt: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SessionRecord {
+  token_hash: string;
+  user_id: string;
+  expires_at: string;
+  created_at: string;
+}
+
 fs.mkdirSync(path.dirname(config.dbPath), { recursive: true });
 
 export const db = new Database(config.dbPath);
@@ -111,6 +128,27 @@ db.exec(`
   );
 
   CREATE INDEX IF NOT EXISTS idx_assistant_messages_conversation_id ON assistant_messages(conversation_id, created_at);
+
+  CREATE TABLE IF NOT EXISTS users (
+    id TEXT PRIMARY KEY,
+    username TEXT NOT NULL UNIQUE,
+    avatar_url TEXT NOT NULL DEFAULT '',
+    password_hash TEXT NOT NULL,
+    password_salt TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  );
+
+  CREATE TABLE IF NOT EXISTS sessions (
+    token_hash TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    expires_at TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON sessions(user_id);
+  CREATE INDEX IF NOT EXISTS idx_sessions_expires_at ON sessions(expires_at);
 `);
 
 const bookmarkColumns = db.prepare("PRAGMA table_info(bookmarks)").all() as Array<{ name: string }>;
@@ -121,6 +159,12 @@ if (!bookmarkColumnNames.has("show_on_home")) {
   `);
 }
 db.exec("CREATE INDEX IF NOT EXISTS idx_bookmarks_show_on_home ON bookmarks(show_on_home)");
+
+const userColumns = db.prepare("PRAGMA table_info(users)").all() as Array<{ name: string }>;
+const userColumnNames = new Set(userColumns.map((column) => column.name));
+if (!userColumnNames.has("avatar_url")) {
+  db.exec("ALTER TABLE users ADD COLUMN avatar_url TEXT NOT NULL DEFAULT ''");
+}
 
 export function toBookmark(record: BookmarkRecord) {
   return {

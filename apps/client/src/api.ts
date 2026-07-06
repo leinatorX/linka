@@ -1,4 +1,4 @@
-import type { AiProviderConfig, AiSettings, AiSettingsPayload, AssistantConversation, AssistantMessage, AssistantResponse, Bookmark, Category } from "./types";
+import type { AiProviderConfig, AiSettings, AiSettingsPayload, AssistantConversation, AssistantMessage, AssistantResponse, AuthUser, Bookmark, Category } from "./types";
 
 async function request<T>(url: string, options?: RequestInit): Promise<T> {
   const response = await fetch(url, {
@@ -19,6 +19,37 @@ async function request<T>(url: string, options?: RequestInit): Promise<T> {
 
 export function listBookmarks(params: URLSearchParams): Promise<{ bookmarks: Bookmark[] }> {
   return request(`/api/bookmarks?${params.toString()}`);
+}
+
+export function getAuthStatus(): Promise<{ authenticated: boolean; user: AuthUser | null }> {
+  return request("/api/auth/me");
+}
+
+export function loginUser(payload: { username: string; password: string; rememberSession: boolean }): Promise<{ user: AuthUser }> {
+  return request("/api/auth/login", {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
+
+export function logoutUser(): Promise<{ status: string }> {
+  return request("/api/auth/logout", {
+    method: "POST"
+  });
+}
+
+export function updateAuthProfile(payload: { username: string; currentPassword: string; newPassword?: string }): Promise<{ user: AuthUser }> {
+  return request("/api/auth/profile", {
+    method: "PUT",
+    body: JSON.stringify(payload)
+  });
+}
+
+export function updateAuthAvatar(avatarUrl: string): Promise<{ user: AuthUser }> {
+  return request("/api/auth/avatar", {
+    method: "PUT",
+    body: JSON.stringify({ avatarUrl })
+  });
 }
 
 export function createBookmark(payload: { url: string; title?: string; category?: string; faviconUrl?: string; showOnHome?: boolean; source?: string }): Promise<{ status: string; bookmark: Bookmark }> {

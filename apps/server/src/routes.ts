@@ -4,6 +4,7 @@ import { config } from "./config.js";
 import { generateAssistantReply, generateAssistantToolResultReply, planAssistantToolCall, streamAssistantReply, testAiConnection } from "./services/ai.js";
 import { addAssistantMessage, buildConversationContext, createAssistantConversation, deleteAssistantConversations, ensureAssistantConversation, getAssistantConversation, listAssistantConversations } from "./services/assistant.js";
 import { executeAssistantToolPlan } from "./services/assistantTools.js";
+import { clearSessionCookie, getSessionFromRequest, login, logout, requireAuth, updateAvatar, updateCredentials } from "./services/auth.js";
 import { createBookmark, deleteBookmark, getBookmarkById, listBookmarks, updateBookmark } from "./services/bookmarks.js";
 import { createCategory, deleteCategory, listCategories, reorderCategories, updateCategory } from "./services/categories.js";
 import { getPublicAiSettings, getProviderApiKey, reorderAiProviders, saveAiSettings } from "./services/settings.js";
@@ -61,6 +62,22 @@ const createBookmarkSchema = z.object({
   faviconUrl: z.string().optional(),
   showOnHome: z.boolean().optional(),
   source: z.string().optional()
+});
+
+const loginSchema = z.object({
+  username: z.string().trim().min(1).max(80),
+  password: z.string().min(1).max(200),
+  rememberSession: z.boolean().optional()
+});
+
+const updateCredentialsSchema = z.object({
+  username: z.string().trim().min(3).max(80),
+  currentPassword: z.string().min(1).max(200),
+  newPassword: z.string().min(8).max(200).optional()
+});
+
+const updateAvatarSchema = z.object({
+  avatarUrl: z.string().max(1500000)
 });
 
 const assistantSchema = z.object({
@@ -135,12 +152,24 @@ async function requireApiToken(request: FastifyRequest, reply: FastifyReply) {
     return;
   }
 
+  if (getSessionFromRequest(request)) {
+    return;
+  }
+
   const auth = request.headers.authorization ?? "";
   const token = auth.replace(/^Bearer\s+/i, "");
 
   if (token !== config.apiToken) {
     await reply.code(401).send({ message: "缺少有效的 API Token" });
   }
+}
+
+function hasValidApiToken(request: FastifyRequest) {
+  if (!config.apiToken) {
+    return false;
+  }
+  const auth = request.headers.authorization ?? "";
+  return auth.replace(/^Bearer\s+/i, "") === config.apiToken;
 }
 
 function writeSse(raw: FastifyReply["raw"], event: string, data: unknown) {
@@ -175,6 +204,25 @@ async function renderAssistantToolMessage(message: string, toolResult: Awaited<R
 }
 
 export async function registerRoutes(app: FastifyInstance) {
+  app.addHook("preHandler", async (request, reply) => {
+    const path = request.url.split("?")[0] ?? request.url;
+    const isPublicApi = path === "/api/health"
+      || path === "/api/auth/login"
+      || path === "/api/auth/logout"
+      || path === "/api/auth/me";
+    if (!path.startsWith("/api/") || isPublicApi) {
+      return;
+    }
+
+    if (hasValidApiToken(request)) {
+      return;
+    }
+
+    if (!requireAuth(request, reply)) {
+      return reply;
+    }
+  });
+
   app.get("/api/health", {
     schema: {
       description: "健康检查，获取当前服务状态、系统时间等",
@@ -185,6 +233,109 @@ export async function registerRoutes(app: FastifyInstance) {
     name: "Linka",
     time: new Date().toISOString()
   }));
+
+  app.post("/api/auth/login", {
+    schema: {
+      description: "使用本地账号密码登录 Linka",
+      tags: ["用户"],
+      body: zodToJSON(loginSchema)
+    }
+  }, async (request, reply) => {
+    const payload = loginSchema.safeParse(request.body);
+    if (!payload.success) {
+      return reply.code(400).send({ message: "请输入用户名和密码" });
+    }
+
+    const result = login(payload.data.username, payload.data.password, payload.data.rememberSession ?? true);
+    if (!result) {
+      return reply.code(401).send({ message: "用户名或密码错误" });
+    }
+
+    reply.header("Set-Cookie", result.cookie);
+    return { user: result.user };
+  });
+
+  app.post("/api/auth/logout", {
+    schema: {
+      description: "退出当前登录会话",
+      tags: ["用户"]
+    }
+  }, async (request, reply) => {
+    logout(request);
+    reply.header("Set-Cookie", clearSessionCookie());
+    return { status: "ok" };
+  });
+
+  app.get("/api/auth/me", {
+    schema: {
+      description: "获取当前登录状态",
+      tags: ["用户"]
+    }
+  }, async (request) => {
+    const session = getSessionFromRequest(request);
+    return {
+      authenticated: Boolean(session),
+      user: session?.user ?? null
+    };
+  });
+
+  app.put("/api/auth/profile", {
+    schema: {
+      description: "修改当前本地账号的用户名或密码",
+      tags: ["用户"],
+      body: zodToJSON(updateCredentialsSchema)
+    }
+  }, async (request, reply) => {
+    const user = requireAuth(request, reply);
+    if (!user) {
+      return;
+    }
+
+    const payload = updateCredentialsSchema.safeParse(request.body);
+    if (!payload.success) {
+      return reply.code(400).send({ message: "请输入有效的账号信息" });
+    }
+
+    const result = updateCredentials(user.id, {
+      username: payload.data.username,
+      currentPassword: payload.data.currentPassword,
+      newPassword: payload.data.newPassword?.trim() || undefined
+    });
+
+    if (result.status === "invalid_password") {
+      return reply.code(400).send({ message: "当前密码不正确" });
+    }
+    if (result.status === "not_found") {
+      return reply.code(404).send({ message: "用户不存在" });
+    }
+
+    return { user: result.user };
+  });
+
+  app.put("/api/auth/avatar", {
+    bodyLimit: 2 * 1024 * 1024,
+    schema: {
+      description: "单独修改当前本地账号头像",
+      tags: ["用户"],
+      body: zodToJSON(updateAvatarSchema)
+    }
+  }, async (request, reply) => {
+    const user = requireAuth(request, reply);
+    if (!user) {
+      return;
+    }
+
+    const payload = updateAvatarSchema.safeParse(request.body);
+    if (!payload.success) {
+      return reply.code(400).send({ message: "请输入有效的头像数据" });
+    }
+
+    const updated = updateAvatar(user.id, payload.data.avatarUrl);
+    if (!updated) {
+      return reply.code(404).send({ message: "用户不存在" });
+    }
+    return { user: updated };
+  });
 
   app.get("/api/bookmarks", {
     schema: {

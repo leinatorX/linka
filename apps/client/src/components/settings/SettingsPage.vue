@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { X } from "@lucide/vue";
 
-export type SettingsTab = "categories" | "manage_bookmarks" | "ai";
+export type SettingsTab = "categories" | "manage_bookmarks" | "ai" | "account";
 
 const settingsTab = defineModel<SettingsTab>("settingsTab", { required: true });
 
@@ -29,6 +29,7 @@ defineEmits<{
         </button>
 
         <nav class="settings-tabs-grand" aria-label="设置选项">
+          <button :class="{ active: settingsTab === 'account' }" @click="settingsTab = 'account'">账号安全</button>
           <button :class="{ active: settingsTab === 'categories' }" @click="settingsTab = 'categories'">分类管理</button>
           <button :class="{ active: settingsTab === 'manage_bookmarks' }" @click="settingsTab = 'manage_bookmarks'">书签管理</button>
           <button :class="{ active: settingsTab === 'ai' }" @click="settingsTab = 'ai'">智能体配置</button>

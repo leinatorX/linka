@@ -2,9 +2,11 @@
 import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import AppTopbar from "./components/AppTopbar.vue";
+import LoginPage from "./components/auth/LoginPage.vue";
 import AssistantPanel from "./components/assistant/AssistantPanel.vue";
 import BookmarkLibrary from "./components/bookmarks/BookmarkLibrary.vue";
 import ToastContainer from "./components/common/ToastContainer.vue";
+import AccountSettings from "./components/settings/AccountSettings.vue";
 import AddBookmarkModal from "./components/settings/AddBookmarkModal.vue";
 import AiModelModal from "./components/settings/AiModelModal.vue";
 import AiProviderSettings from "./components/settings/AiProviderSettings.vue";
@@ -15,19 +17,45 @@ import EditBookmarkModal from "./components/settings/EditBookmarkModal.vue";
 import SettingsPage from "./components/settings/SettingsPage.vue";
 import { useAiSettings } from "./composables/useAiSettings";
 import { useAssistant } from "./composables/useAssistant";
+import { useAuth } from "./composables/useAuth";
 import { useBookmarks } from "./composables/useBookmarks";
 import { useCategories } from "./composables/useCategories";
 import { useToast } from "./composables/useToast";
 
-type SettingsTab = "categories" | "manage_bookmarks" | "ai";
+type SettingsTab = "categories" | "manage_bookmarks" | "ai" | "account";
 const HOME_CATEGORY = "首页";
 
 const route = useRoute();
 const router = useRouter();
-const settingsTab = ref<SettingsTab>("manage_bookmarks");
+const settingsTab = ref<SettingsTab>("account");
 const isSettingsPage = computed(() => route.path === "/settings");
 
 const { toasts, showToast } = useToast();
+
+const {
+  authLoading,
+  authUser,
+  loginUsername,
+  loginPassword,
+  rememberUsername,
+  autoLogin,
+  loginMessage,
+  isLoginSaving,
+  accountUsername,
+  accountAvatarUrl,
+  accountCurrentPassword,
+  accountNewPassword,
+  accountConfirmPassword,
+  accountMessage,
+  avatarMessage,
+  isAccountSaving,
+  isAvatarSaving,
+  loadCurrentUser,
+  signIn,
+  signOut,
+  saveAvatar,
+  saveAccount
+} = useAuth();
 
 let addAssistantNotice: (message: string) => void = () => {};
 let reloadCategoriesFromAssistant: () => Promise<void> = async () => {};
@@ -162,7 +190,18 @@ const {
 
 reloadCategoriesFromAssistant = loadCategories;
 
+async function initializeAppData() {
+  await loadCategories();
+  await syncBookmarksFromRoute();
+  await loadAiSettings();
+  await loadAssistantConversations({ openFirst: true });
+}
+
 async function syncBookmarksFromRoute() {
+  if (!authUser.value) {
+    return;
+  }
+
   if (isSettingsPage.value) {
     await loadBookmarks({ all: true });
     return;
@@ -202,10 +241,23 @@ function clearModelTestResult(modelId: string) {
   delete modelTestResults.value[modelId];
 }
 
-onMounted(() => {
-  loadCategories().then(() => syncBookmarksFromRoute());
-  loadAiSettings();
-  loadAssistantConversations({ openFirst: true });
+async function handleLogin() {
+  const user = await signIn();
+  if (user) {
+    await initializeAppData();
+  }
+}
+
+async function handleLogout() {
+  await signOut();
+  await router.push("/");
+}
+
+onMounted(async () => {
+  await loadCurrentUser();
+  if (authUser.value) {
+    await initializeAppData();
+  }
   document.addEventListener("click", closeDropdowns);
 });
 
@@ -226,11 +278,28 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <main class="app-shell" :class="{ 'settings-route': isSettingsPage }">
+  <div v-if="authLoading" class="auth-loading">
+    <img src="/logo.svg" alt="" />
+    <span>正在检查登录状态...</span>
+  </div>
+
+  <LoginPage
+    v-else-if="!authUser"
+    v-model:username="loginUsername"
+    v-model:password="loginPassword"
+    v-model:remember-username="rememberUsername"
+    v-model:auto-login="autoLogin"
+    :message="loginMessage"
+    :is-saving="isLoginSaving"
+    @submit="handleLogin"
+  />
+
+  <main v-else class="app-shell" :class="{ 'settings-route': isSettingsPage }">
     <AppTopbar
       v-model:search-input="searchInput"
       :show-archived="showArchived"
       :is-settings-page="isSettingsPage"
+      :current-user="authUser"
       @search="search"
       @toggle-archived="toggleArchivedView"
       @open-settings="openSettings"
@@ -296,6 +365,23 @@ onUnmounted(() => {
         @load-ai-settings="loadAiSettings"
         @save-ai-settings="saveAiSettings"
         @reorder-providers="reorderProviders"
+      />
+
+      <AccountSettings
+        v-else-if="settingsTab === 'account'"
+        v-model:username="accountUsername"
+        v-model:avatar-url="accountAvatarUrl"
+        v-model:current-password="accountCurrentPassword"
+        v-model:new-password="accountNewPassword"
+        v-model:confirm-password="accountConfirmPassword"
+        :user="authUser"
+        :message="accountMessage"
+        :avatar-message="avatarMessage"
+        :is-saving="isAccountSaving"
+        :is-avatar-saving="isAvatarSaving"
+        @save-avatar="saveAvatar"
+        @save="saveAccount"
+        @logout="handleLogout"
       />
 
       <BookmarkSettings
