@@ -343,6 +343,10 @@
   color: var(--text-secondary);
   font-size: 14px;
   font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
 }
 
 .filter-btn:hover {

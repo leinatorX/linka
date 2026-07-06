@@ -47,7 +47,7 @@ export function useCategories(options: UseCategoriesOptions) {
   async function removeCategory(category: Category) {
     await deleteCategory(category.id);
     if (options.selectedCategory.value === category.name) {
-      options.selectedCategory.value = "全部";
+      options.selectedCategory.value = "首页";
     }
     await loadCategories();
     await options.loadBookmarks();

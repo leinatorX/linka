@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Archive, Bot, Edit2, ExternalLink, Pin, Trash2 } from "@lucide/vue";
+import { RouterLink } from "vue-router";
 import type { Bookmark, Category } from "../../types";
 
 defineProps<{
@@ -11,7 +12,6 @@ defineProps<{
 }>();
 
 defineEmits<{
-  setCategory: [category: string];
   togglePinned: [bookmark: Bookmark];
   toggleArchived: [bookmark: Bookmark];
   removeBookmark: [bookmark: Bookmark];
@@ -28,14 +28,14 @@ function getFallbackIconText(bookmark: Bookmark) {
   <template v-if="true">
     <nav class="filter-rail" aria-label="收藏筛选">
       <div class="filter-group">
-
-        <button class="filter-btn" :class="{ active: selectedCategory === '全部' }" @click="$emit('setCategory', '全部')">
-          全部
-        </button>
-        <button v-for="category in categories" :key="category.id" class="filter-btn"
-          :class="{ active: selectedCategory === category.name }" @click="$emit('setCategory', category.name)">
+        <RouterLink class="filter-btn" :class="{ active: selectedCategory === '首页' }" to="/">
+          首页
+        </RouterLink>
+        <RouterLink v-for="category in categories" :key="category.id" class="filter-btn"
+          :class="{ active: selectedCategory === category.name }"
+          :to="{ name: 'category', params: { slug: category.slug } }">
           {{ category.name }}
-        </button>
+        </RouterLink>
       </div>
     </nav>
 
@@ -86,8 +86,8 @@ function getFallbackIconText(bookmark: Bookmark) {
 
       <div v-else class="empty-state">
         <Bot :size="48" color="var(--text-tertiary)" class="empty-state-icon" />
-        <h2>你的数字大脑空空如也</h2>
-        <p>在上方粘贴链接开始收集，AI 会为你搞定剩下的一切。</p>
+        <h2>{{ selectedCategory === '首页' ? '首页还没有常用书签' : '这个分类还没有书签' }}</h2>
+        <p>{{ selectedCategory === '首页' ? '在添加或编辑书签时打开首页显示。' : '切换其他分类，或在设置里调整书签分类。' }}</p>
       </div>
     </section>
   </template>

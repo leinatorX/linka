@@ -10,12 +10,14 @@ export interface BookmarkInput {
   title?: string;
   category?: string;
   faviconUrl?: string;
+  showOnHome?: boolean;
   source?: string;
 }
 
 export interface BookmarkQuery {
   q?: string;
   category?: string;
+  home?: boolean;
   archived?: boolean;
 }
 
@@ -25,10 +27,10 @@ const selectByNormalizedUrl = db.prepare("SELECT * FROM bookmarks WHERE normaliz
 const insertBookmark = db.prepare(`
   INSERT INTO bookmarks (
     id, url, normalized_url, title, description, summary, domain, favicon_url,
-    cover_image_url, category, pinned, archived, source, created_at, updated_at
+    cover_image_url, category, pinned, show_on_home, archived, source, created_at, updated_at
   ) VALUES (
     @id, @url, @normalized_url, @title, @description, @summary, @domain, @favicon_url,
-    @cover_image_url, @category, @pinned, @archived, @source, @created_at, @updated_at
+    @cover_image_url, @category, @pinned, @show_on_home, @archived, @source, @created_at, @updated_at
   )
 `);
 const updateBookmarkRecord = db.prepare(`
@@ -37,6 +39,7 @@ const updateBookmarkRecord = db.prepare(`
       summary = @summary,
       category = @category,
       pinned = @pinned,
+      show_on_home = @show_on_home,
       archived = @archived,
       url = @url,
       domain = @domain,
@@ -57,6 +60,10 @@ export function listBookmarks(query: BookmarkQuery = {}) {
 
   if (query.category) {
     bookmarks = bookmarks.filter((bookmark) => bookmark.category === query.category);
+  }
+
+  if (query.home) {
+    bookmarks = bookmarks.filter((bookmark) => bookmark.showOnHome);
   }
 
   if (query.q) {
@@ -119,6 +126,7 @@ export async function createBookmark(input: BookmarkInput) {
     cover_image_url: metadata.coverImageUrl,
     category,
     pinned: 0,
+    show_on_home: input.showOnHome ? 1 : 0,
     archived: 0,
     source: input.source || "web",
     created_at: now,
@@ -152,6 +160,7 @@ export function updateBookmark(id: string, patch: Record<string, unknown>) {
     summary: String(patch.summary ?? current.summary),
     category: normalizeCategoryName(String(patch.category ?? current.category)),
     pinned: typeof patch.pinned === "boolean" ? Number(patch.pinned) : Number(current.pinned),
+    show_on_home: typeof patch.showOnHome === "boolean" ? Number(patch.showOnHome) : Number(current.showOnHome),
     archived: typeof patch.archived === "boolean" ? Number(patch.archived) : Number(current.archived),
     url: nextUrl,
     domain: nextDomain,

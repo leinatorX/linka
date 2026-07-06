@@ -10,6 +10,7 @@ export interface Bookmark {
   coverImageUrl: string;
   category: string;
   pinned: boolean;
+  showOnHome: boolean;
   archived: boolean;
   source: string;
   createdAt: string;

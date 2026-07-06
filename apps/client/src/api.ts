@@ -21,14 +21,14 @@ export function listBookmarks(params: URLSearchParams): Promise<{ bookmarks: Boo
   return request(`/api/bookmarks?${params.toString()}`);
 }
 
-export function createBookmark(payload: { url: string; title?: string; category?: string; faviconUrl?: string; source?: string }): Promise<{ status: string; bookmark: Bookmark }> {
+export function createBookmark(payload: { url: string; title?: string; category?: string; faviconUrl?: string; showOnHome?: boolean; source?: string }): Promise<{ status: string; bookmark: Bookmark }> {
   return request("/api/bookmarks", {
     method: "POST",
     body: JSON.stringify(payload)
   });
 }
 
-export function updateBookmark(id: string, payload: Partial<Pick<Bookmark, "pinned" | "archived" | "title" | "summary" | "category" | "url" | "faviconUrl">>): Promise<{ bookmark: Bookmark }> {
+export function updateBookmark(id: string, payload: Partial<Pick<Bookmark, "pinned" | "showOnHome" | "archived" | "title" | "summary" | "category" | "url" | "faviconUrl">>): Promise<{ bookmark: Bookmark }> {
   return request(`/api/bookmarks/${id}`, {
     method: "PATCH",
     body: JSON.stringify(payload)

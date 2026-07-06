@@ -15,6 +15,7 @@ const url = defineModel<string>("url", { required: true });
 const title = defineModel<string>("title", { required: true });
 const category = defineModel<string>("category", { required: true });
 const faviconUrl = defineModel<string>("faviconUrl", { required: true });
+const showOnHome = defineModel<boolean>("showOnHome", { required: true });
 
 defineEmits<{
   submit: [];
@@ -83,6 +84,12 @@ async function onIconFileChange(event: Event) {
                 {{ item.name }}
               </option>
             </select>
+          </label>
+          <label class="bookmark-home-toggle">
+            <span>首页显示</span>
+            <button type="button" class="switch-toggle" :class="{ active: showOnHome }" @click="showOnHome = !showOnHome">
+              <div></div>
+            </button>
           </label>
           <button class="btn-primary settings-submit add-bookmark-submit" :disabled="isSaving" @click="$emit('submit')">
             <Loader2 v-if="isSaving" class="spin" :size="18" />

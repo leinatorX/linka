@@ -4,19 +4,25 @@ import type { Bookmark, Category } from "../types";
 
 interface UseBookmarksOptions {
   onAssistantNotice?: (message: string) => void;
+  loadAllBookmarks?: () => boolean;
+}
+
+interface LoadBookmarksOptions {
+  all?: boolean;
 }
 
 export function useBookmarks(options: UseBookmarksOptions = {}) {
   const bookmarks = ref<Bookmark[]>([]);
   const urlInput = ref("");
   const searchInput = ref("");
-  const selectedCategory = ref("全部");
+  const selectedCategory = ref("首页");
   const showArchived = ref(false);
   const showAddBookmarkModal = ref(false);
   const settingsBookmarkUrl = ref("");
   const settingsBookmarkTitle = ref("");
   const settingsBookmarkCategory = ref("");
   const settingsBookmarkFaviconUrl = ref("");
+  const settingsBookmarkShowOnHome = ref(false);
   const settingsMessage = ref("");
   const isLoading = ref(false);
   const isSettingsSaving = ref(false);
@@ -26,7 +32,8 @@ export function useBookmarks(options: UseBookmarksOptions = {}) {
     title: "",
     url: "",
     faviconUrl: "",
-    category: ""
+    category: "",
+    showOnHome: false
   });
   const failedIconIds = ref<Set<string>>(new Set());
   const visibleBookmarks = computed(() => bookmarks.value);
@@ -39,13 +46,17 @@ export function useBookmarks(options: UseBookmarksOptions = {}) {
     failedIconIds.value = new Set([...failedIconIds.value, bookmarkId]);
   }
 
-  async function loadBookmarks() {
+  async function loadBookmarks(loadOptions: LoadBookmarksOptions = {}) {
     const params = new URLSearchParams();
     if (searchInput.value.trim()) {
       params.set("q", searchInput.value.trim());
     }
-    if (selectedCategory.value !== "全部") {
-      params.set("category", selectedCategory.value);
+    if (!(loadOptions.all ?? options.loadAllBookmarks?.() ?? false)) {
+      if (selectedCategory.value === "首页") {
+        params.set("home", "true");
+      } else {
+        params.set("category", selectedCategory.value);
+      }
     }
     if (showArchived.value) {
       params.set("archived", "true");
@@ -94,12 +105,14 @@ export function useBookmarks(options: UseBookmarksOptions = {}) {
         title: settingsBookmarkTitle.value.trim() || undefined,
         category: settingsBookmarkCategory.value || undefined,
         faviconUrl: settingsBookmarkFaviconUrl.value.trim() || undefined,
+        showOnHome: settingsBookmarkShowOnHome.value,
         source: "settings"
       });
       settingsBookmarkUrl.value = "";
       settingsBookmarkTitle.value = "";
       settingsBookmarkCategory.value = "";
       settingsBookmarkFaviconUrl.value = "";
+      settingsBookmarkShowOnHome.value = false;
       settingsMessage.value = result.status === "exists" ? "这个链接已经收藏过了。" : `已添加，并归类到「${result.bookmark.category}」。`;
       await loadBookmarks();
       if (result.status !== "exists") {
@@ -133,7 +146,8 @@ export function useBookmarks(options: UseBookmarksOptions = {}) {
       title: bookmark.title,
       url: bookmark.url,
       faviconUrl: bookmark.faviconUrl || "",
-      category: bookmark.category || ""
+      category: bookmark.category || "",
+      showOnHome: bookmark.showOnHome
     };
   }
 
@@ -143,7 +157,8 @@ export function useBookmarks(options: UseBookmarksOptions = {}) {
       title: editBookmarkData.value.title.trim() || undefined,
       url: editBookmarkData.value.url.trim() || undefined,
       faviconUrl: editBookmarkData.value.faviconUrl.trim() || undefined,
-      category: editBookmarkData.value.category || undefined
+      category: editBookmarkData.value.category || undefined,
+      showOnHome: editBookmarkData.value.showOnHome
     });
     editingBookmarkId.value = null;
     await loadBookmarks();
@@ -178,6 +193,7 @@ export function useBookmarks(options: UseBookmarksOptions = {}) {
     settingsBookmarkTitle,
     settingsBookmarkCategory,
     settingsBookmarkFaviconUrl,
+    settingsBookmarkShowOnHome,
     settingsMessage,
     isLoading,
     isSettingsSaving,

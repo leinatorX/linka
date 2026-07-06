@@ -59,6 +59,7 @@ const createBookmarkSchema = z.object({
   title: z.string().optional(),
   category: z.string().optional(),
   faviconUrl: z.string().optional(),
+  showOnHome: z.boolean().optional(),
   source: z.string().optional()
 });
 
@@ -194,6 +195,7 @@ export async function registerRoutes(app: FastifyInstance) {
         properties: {
           q: { type: "string", description: "搜索关键词（标题/描述/内容）" },
           category: { type: "string", description: "所属分类名称" },
+          home: { type: "string", enum: ["true", "false"], description: "是否只返回首页书签" },
           archived: { type: "string", enum: ["true", "false"], description: "是否已被归档" }
         }
       }
@@ -204,6 +206,7 @@ export async function registerRoutes(app: FastifyInstance) {
       bookmarks: listBookmarks({
         q: query.q,
         category: query.category,
+        home: query.home === "true",
         archived: query.archived === undefined ? undefined : query.archived === "true"
       })
     };
@@ -446,6 +449,7 @@ export async function registerRoutes(app: FastifyInstance) {
           category: { type: "string", description: "所属分类" },
           summary: { type: "string", description: "摘要" },
           pinned: { type: "boolean", description: "是否置顶" },
+          showOnHome: { type: "boolean", description: "是否在首页显示" },
           archived: { type: "boolean", description: "是否归档" }
         }
       }

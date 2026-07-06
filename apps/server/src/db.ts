@@ -15,6 +15,7 @@ export interface BookmarkRecord {
   cover_image_url: string;
   category: string;
   pinned: 0 | 1;
+  show_on_home: 0 | 1;
   archived: 0 | 1;
   source: string;
   created_at: string;
@@ -63,6 +64,7 @@ db.exec(`
     cover_image_url TEXT NOT NULL DEFAULT '',
     category TEXT NOT NULL DEFAULT '未分类',
     pinned INTEGER NOT NULL DEFAULT 0,
+    show_on_home INTEGER NOT NULL DEFAULT 0,
     archived INTEGER NOT NULL DEFAULT 0,
     source TEXT NOT NULL DEFAULT 'web',
     created_at TEXT NOT NULL,
@@ -111,6 +113,15 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_assistant_messages_conversation_id ON assistant_messages(conversation_id, created_at);
 `);
 
+const bookmarkColumns = db.prepare("PRAGMA table_info(bookmarks)").all() as Array<{ name: string }>;
+const bookmarkColumnNames = new Set(bookmarkColumns.map((column) => column.name));
+if (!bookmarkColumnNames.has("show_on_home")) {
+  db.exec(`
+    ALTER TABLE bookmarks ADD COLUMN show_on_home INTEGER NOT NULL DEFAULT 0;
+  `);
+}
+db.exec("CREATE INDEX IF NOT EXISTS idx_bookmarks_show_on_home ON bookmarks(show_on_home)");
+
 export function toBookmark(record: BookmarkRecord) {
   return {
     id: record.id,
@@ -124,6 +135,7 @@ export function toBookmark(record: BookmarkRecord) {
     coverImageUrl: record.cover_image_url,
     category: record.category,
     pinned: Boolean(record.pinned),
+    showOnHome: Boolean(record.show_on_home),
     archived: Boolean(record.archived),
     source: record.source,
     createdAt: record.created_at,

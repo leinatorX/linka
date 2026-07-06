@@ -11,6 +11,7 @@ const props = defineProps<{
     url: string;
     faviconUrl: string;
     category: string;
+    showOnHome: boolean;
   };
 }>();
 
@@ -78,11 +79,17 @@ async function onIconFileChange(event: Event) {
           <label>
             <span>分类</span>
             <select v-model="editData.category">
-              <option value="全部">全部 / 未分类</option>
+              <option value="">未分类</option>
               <option v-for="item in categories" :key="item.id" :value="item.name">
                 {{ item.name }}
               </option>
             </select>
+          </label>
+          <label class="bookmark-home-toggle">
+            <span>首页显示</span>
+            <button type="button" class="switch-toggle" :class="{ active: editData.showOnHome }" @click="editData.showOnHome = !editData.showOnHome">
+              <div></div>
+            </button>
           </label>
           <div class="modal-two-actions">
             <button class="btn-secondary" @click="editingBookmarkId = null">取消</button>

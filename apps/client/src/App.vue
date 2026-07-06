@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from "vue";
+import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import AppTopbar from "./components/AppTopbar.vue";
 import AssistantPanel from "./components/assistant/AssistantPanel.vue";
@@ -20,6 +20,7 @@ import { useCategories } from "./composables/useCategories";
 import { useToast } from "./composables/useToast";
 
 type SettingsTab = "categories" | "manage_bookmarks" | "ai";
+const HOME_CATEGORY = "首页";
 
 const route = useRoute();
 const router = useRouter();
@@ -41,6 +42,7 @@ const {
   settingsBookmarkTitle,
   settingsBookmarkCategory,
   settingsBookmarkFaviconUrl,
+  settingsBookmarkShowOnHome,
   settingsMessage,
   isSettingsSaving,
   editingBookmarkId,
@@ -55,10 +57,10 @@ const {
   removeBookmark,
   startEditingBookmark,
   saveEditedBookmark,
-  setCategory,
   search,
   toggleArchivedView
 } = useBookmarks({
+  loadAllBookmarks: () => isSettingsPage.value,
   onAssistantNotice(message) {
     addAssistantNotice(message);
   }
@@ -160,6 +162,30 @@ const {
 
 reloadCategoriesFromAssistant = loadCategories;
 
+async function syncBookmarksFromRoute() {
+  if (isSettingsPage.value) {
+    await loadBookmarks({ all: true });
+    return;
+  }
+
+  if (route.name === "category") {
+    const slug = typeof route.params.slug === "string" ? route.params.slug : "";
+    const category = categories.value.find((item) => item.slug === slug);
+    if (!category) {
+      if (categories.value.length > 0) {
+        selectedCategory.value = HOME_CATEGORY;
+        await router.replace("/");
+      }
+      return;
+    }
+    selectedCategory.value = category.name;
+  } else {
+    selectedCategory.value = HOME_CATEGORY;
+  }
+
+  await loadBookmarks();
+}
+
 function openSettings() {
   router.push("/settings");
 }
@@ -177,12 +203,22 @@ function clearModelTestResult(modelId: string) {
 }
 
 onMounted(() => {
-  loadCategories();
-  loadBookmarks();
+  loadCategories().then(() => syncBookmarksFromRoute());
   loadAiSettings();
   loadAssistantConversations({ openFirst: true });
   document.addEventListener("click", closeDropdowns);
 });
+
+watch(
+  [
+    () => route.name,
+    () => route.params.slug,
+    () => categories.value.map((category) => `${category.slug}:${category.name}`).join("|")
+  ],
+  () => {
+    syncBookmarksFromRoute();
+  }
+);
 
 onUnmounted(() => {
   document.removeEventListener("click", closeDropdowns);
@@ -207,7 +243,6 @@ onUnmounted(() => {
       :selected-category="selectedCategory"
       :show-archived="showArchived"
       :failed-icon-ids="failedIconIds"
-      @set-category="setCategory"
       @toggle-pinned="togglePinned"
       @toggle-archived="toggleArchived"
       @remove-bookmark="removeBookmark"
@@ -308,6 +343,7 @@ onUnmounted(() => {
     v-model:title="settingsBookmarkTitle"
     v-model:category="settingsBookmarkCategory"
     v-model:favicon-url="settingsBookmarkFaviconUrl"
+    v-model:show-on-home="settingsBookmarkShowOnHome"
     :categories="categories"
     :is-saving="isSettingsSaving"
     :message="settingsMessage"
