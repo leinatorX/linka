@@ -2,6 +2,7 @@
 import { Archive, Moon, Search, Sun } from "@lucide/vue";
 import { computed } from "vue";
 import { RouterLink } from "vue-router";
+import { useI18n } from "vue-i18n";
 import type { AuthUser, Category } from "../types";
 import type { ThemeMode } from "../composables/useTheme";
 
@@ -23,9 +24,11 @@ const emit = defineEmits<{
   changeTheme: [theme: ThemeMode];
 }>();
 
+const { t } = useI18n();
+
 const themeTitle = computed(() => {
-  if (props.theme === "light") return "外观：明亮模式 (点击切换为暗黑模式)";
-  return "外观：暗黑模式 (点击切换为明亮模式)";
+  if (props.theme === "light") return t('topbar.themeLight');
+  return t('topbar.themeDark');
 });
 
 function cycleTheme() {
@@ -63,7 +66,7 @@ function handleFilterWheel(event: WheelEvent) {
     <nav class="filter-rail" aria-label="收藏筛选" @wheel="handleFilterWheel">
       <div class="filter-group">
         <RouterLink class="filter-btn" :class="{ active: selectedCategory === '首页' }" to="/">
-          首页
+          {{ t('topbar.home') }}
         </RouterLink>
         <RouterLink v-for="category in categories" :key="category.id" class="filter-btn"
           :class="{ active: selectedCategory === category.name }"
@@ -77,7 +80,7 @@ function handleFilterWheel(event: WheelEvent) {
     <div class="topbar-right-controls">
       <div class="global-search">
         <Search :size="14" />
-        <input v-model="searchInput" placeholder="搜索书签..." @keyup.enter="$emit('search')" />
+        <input v-model="searchInput" :placeholder="t('topbar.searchPlaceholder')" @keyup.enter="$emit('search')" />
       </div>
 
       <div class="top-actions">
@@ -86,11 +89,11 @@ function handleFilterWheel(event: WheelEvent) {
           <Moon v-else :size="18" />
         </button>
 
-        <button class="top-icon" :class="{ active: showArchived }" :title="showArchived ? '查看当前书签' : '查看归档'"
+        <button class="top-icon" :class="{ active: showArchived }" :title="showArchived ? t('topbar.viewCurrent') : t('topbar.viewArchived')"
           @click="$emit('toggleArchived')">
           <Archive :size="18" />
         </button>
-        <button class="user-avatar" :title="`设置：${currentUser.username}`" aria-label="打开设置" @click="$emit('openSettings')">
+        <button class="user-avatar" :title="`${t('topbar.settingsPrefix')}${currentUser.username}`" aria-label="打开设置" @click="$emit('openSettings')">
           <img v-if="currentUser.avatarUrl" :src="currentUser.avatarUrl" alt="" />
           <span v-else>{{ currentUser.username.slice(0, 1).toUpperCase() }}</span>
         </button>

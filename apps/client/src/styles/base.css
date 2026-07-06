@@ -110,3 +110,8 @@ input::placeholder, textarea::placeholder {
   color: var(--text-tertiary);
 }
 
+select option {
+  background-color: var(--bg-base);
+  color: var(--text-primary);
+}
+

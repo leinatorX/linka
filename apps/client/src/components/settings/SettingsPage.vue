@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { User, FolderOpen, Bookmark, Sparkles, X, ChevronRight, ChevronLeft } from "@lucide/vue";
+import { User, FolderOpen, Bookmark, Sparkles, X, ChevronRight, ChevronLeft, Settings } from "@lucide/vue";
 import { computed } from "vue";
+import { useI18n } from "vue-i18n";
 
-export type SettingsTab = "categories" | "manage_bookmarks" | "ai" | "account" | "";
+export type SettingsTab = "general" | "categories" | "manage_bookmarks" | "ai" | "account" | "";
 
 const settingsTab = defineModel<SettingsTab>("settingsTab", { required: true });
 
@@ -11,11 +12,14 @@ defineEmits<{
   closeSettings: [];
 }>();
 
+const { t } = useI18n();
+
 const tabLabel = computed(() => {
-  if (settingsTab.value === "account") return "账号安全";
-  if (settingsTab.value === "categories") return "分类管理";
-  if (settingsTab.value === "manage_bookmarks") return "书签管理";
-  if (settingsTab.value === "ai") return "智能体配置";
+  if (settingsTab.value === "general") return t('settings.tabs.general');
+  if (settingsTab.value === "account") return t('settings.tabs.account');
+  if (settingsTab.value === "categories") return t('settings.tabs.categories');
+  if (settingsTab.value === "manage_bookmarks") return t('settings.tabs.bookmarks');
+  if (settingsTab.value === "ai") return t('settings.tabs.ai');
   return "";
 });
 
@@ -32,39 +36,46 @@ function clearTabMobile() {
         <!-- 左侧 macOS 风格侧边栏 -->
         <aside class="settings-sidebar">
           <div class="sidebar-header">
-            <button class="btn-sidebar-back" title="返回首页" @click="$emit('closeSettings')">
+            <button class="btn-sidebar-back" :title="t('settings.backToHome')" @click="$emit('closeSettings')">
               <X :size="18" />
             </button>
-            <h2>系统设置</h2>
+            <h2>{{ t('settings.title') }}</h2>
           </div>
 
-          <nav class="settings-sidebar-nav" aria-label="设置选项">
+          <nav class="settings-sidebar-nav" :aria-label="t('settings.title')">
+            <button class="nav-item" :class="{ active: settingsTab === 'general' }" @click="settingsTab = 'general'">
+              <div class="icon-wrap general-icon">
+                <Settings :size="15" />
+              </div>
+              <span class="nav-label">{{ t('settings.tabs.general') }}</span>
+              <ChevronRight class="chevron" :size="14" />
+            </button>
             <button class="nav-item" :class="{ active: settingsTab === 'account' }" @click="settingsTab = 'account'">
               <div class="icon-wrap account-icon">
                 <User :size="15" />
               </div>
-              <span class="nav-label">账号安全</span>
+              <span class="nav-label">{{ t('settings.tabs.account') }}</span>
               <ChevronRight class="chevron" :size="14" />
             </button>
             <button class="nav-item" :class="{ active: settingsTab === 'categories' }" @click="settingsTab = 'categories'">
               <div class="icon-wrap category-icon">
                 <FolderOpen :size="15" />
               </div>
-              <span class="nav-label">分类管理</span>
+              <span class="nav-label">{{ t('settings.tabs.categories') }}</span>
               <ChevronRight class="chevron" :size="14" />
             </button>
             <button class="nav-item" :class="{ active: settingsTab === 'manage_bookmarks' }" @click="settingsTab = 'manage_bookmarks'">
               <div class="icon-wrap bookmark-icon">
                 <Bookmark :size="15" />
               </div>
-              <span class="nav-label">书签管理</span>
+              <span class="nav-label">{{ t('settings.tabs.bookmarks') }}</span>
               <ChevronRight class="chevron" :size="14" />
             </button>
             <button class="nav-item" :class="{ active: settingsTab === 'ai' }" @click="settingsTab = 'ai'">
               <div class="icon-wrap ai-icon">
                 <Sparkles :size="15" />
               </div>
-              <span class="nav-label">智能体配置</span>
+              <span class="nav-label">{{ t('settings.tabs.ai') }}</span>
               <ChevronRight class="chevron" :size="14" />
             </button>
           </nav>
@@ -87,7 +98,7 @@ function clearTabMobile() {
           <div class="settings-mobile-header" v-if="settingsTab">
             <button class="btn-mobile-back" @click="clearTabMobile">
               <ChevronLeft :size="20" />
-              <span>设置</span>
+              <span>{{ t('settings.title') }}</span>
             </button>
             <h3>{{ tabLabel }}</h3>
           </div>

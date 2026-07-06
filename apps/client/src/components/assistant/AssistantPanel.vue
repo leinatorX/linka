@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from "vue";
+import { useI18n } from "vue-i18n";
 import { ChevronDown, FileText, History, Loader2, Mic, Plus, Search, Send, Video, X } from "@lucide/vue";
 import type { AssistantUiMessage } from "../../composables/useAssistant";
 import type { AiModelConfig, AssistantAttachment, AssistantConversation } from "../../types";
@@ -17,6 +18,22 @@ const props = defineProps<{
   assistantEffortOptions: string[];
   availableModels: AiModelConfig[];
 }>();
+
+const { t } = useI18n();
+
+const effortMap: Record<string, string> = {
+  "关闭": "none",
+  "默认": "default",
+  "低": "low",
+  "中": "medium",
+  "高": "high",
+  "最大": "max"
+};
+
+function getEffortLabel(effort: string) {
+  const key = effortMap[effort];
+  return key ? t(`assistant.effort.${key}`) : effort;
+}
 
 // 流式场景下，文本会逐字追加，computed 会重新解析带最新片段的 markdown。
 // 用户消息保持纯文本——前端永远不应该把用户输入当 markdown 渲染。
@@ -130,7 +147,7 @@ function formatFileSize(size: number) {
 </script>
 
 <template>
-  <button class="assistant-fab" title="唤起 Linka AI" @click="assistantOpen = true"
+  <button class="assistant-fab" :title="t('assistant.summon')" @click="assistantOpen = true"
     v-show="!assistantOpen && !isSettingsPage">
     <img src="/assistant-bot.png" alt="Linka AI" />
   </button>
@@ -138,7 +155,7 @@ function formatFileSize(size: number) {
   <transition name="fade">
     <aside v-if="assistantOpen && !isSettingsPage" class="assistant-panel" :style="panelWidthStyle"
       :class="{ resizing: isResizingAssistant }">
-      <div class="assistant-resize-handle" title="拖拽调整宽度" aria-label="拖拽调整助手面板宽度"
+      <div class="assistant-resize-handle" :title="t('assistant.dragResize')" :aria-label="t('assistant.dragResizeAria')"
         @pointerdown="startAssistantResize"></div>
       <div class="assistant-header">
         <div class="brand-icon assistant-brand-icon">
@@ -148,15 +165,15 @@ function formatFileSize(size: number) {
           <h2>Linka AI</h2>
         </div>
         <div class="header-actions">
-          <button class="tool-btn" title="历史记录" :class="{ active: assistantHistoryOpen }"
+          <button class="tool-btn" :title="t('assistant.history')" :class="{ active: assistantHistoryOpen }"
             @click="$emit('toggleAssistantHistory')">
             <History :size="18" />
           </button>
-          <button class="tool-btn" title="新建对话" @click="$emit('startNewAssistantConversation')">
+          <button class="tool-btn" :title="t('assistant.newConversation')" @click="$emit('startNewAssistantConversation')">
             <Plus :size="18" />
           </button>
         </div>
-        <button class="btn-close" title="关闭" @click="assistantOpen = false">
+        <button class="btn-close" :title="t('assistant.close')" @click="assistantOpen = false">
           <X :size="20" />
         </button>
       </div>
@@ -164,12 +181,12 @@ function formatFileSize(size: number) {
       <div v-if="assistantHistoryOpen" class="assistant-history-page">
         <div class="history-search">
           <Search :size="16" />
-          <input v-model="historySearchInput" placeholder="搜索历史记录..." />
+          <input v-model="historySearchInput" :placeholder="t('assistant.searchHistory')" />
         </div>
         <div class="history-actions">
-          <span>历史记录</span>
+          <span>{{ t('assistant.history') }}</span>
           <button class="mini-button" @click="assistantHistoryManage = !assistantHistoryManage">
-            {{ assistantHistoryManage ? '完成' : '管理' }}
+            {{ assistantHistoryManage ? t('assistant.done') : t('assistant.manage') }}
           </button>
         </div>
         <div class="history-list">
@@ -184,14 +201,14 @@ function formatFileSize(size: number) {
             </div>
           </button>
           <div v-if="filteredConversations.length === 0" class="history-empty">
-            暂无历史记录
+            {{ t('assistant.emptyHistory') }}
           </div>
         </div>
         <div class="history-manage-bar" v-if="assistantHistoryManage">
-          <span>已选择 {{ selectedConversationIds.size }} 条</span>
+          <span>{{ t('assistant.selected') }}{{ selectedConversationIds.size }}{{ t('assistant.items') }}</span>
           <button class="mini-button danger" :disabled="selectedConversationIds.size === 0"
             @click="$emit('removeSelectedConversations')">
-            批量删除
+            {{ t('assistant.batchDelete') }}
           </button>
         </div>
       </div>
@@ -201,13 +218,13 @@ function formatFileSize(size: number) {
           <div class="welcome-avatar">
             <img src="/assistant-bot.png" alt="Linka AI" />
           </div>
-          <h3>你好！我是 Linka AI</h3>
+          <h3>{{ t('assistant.welcome') }}</h3>
         </div>
         <div v-for="(message, index) in renderedMessages" :key="index" class="message" :class="message.role">
           <div v-if="message.reasoning" class="message-reasoning" :class="{ collapsed: message.reasoningCollapsed }">
             <button class="message-reasoning-toggle" type="button"
               @click="$emit('toggleReasoningCollapsed', index)">
-              <span>{{ message.streaming ? '思考中' : '思考完成' }}</span>
+              <span>{{ message.streaming ? t('assistant.thinking') : t('assistant.thoughtDone') }}</span>
               <ChevronDown :size="14" />
             </button>
             <p v-if="!message.reasoningCollapsed">{{ message.reasoning }}<span v-if="message.streaming && !message.text"
@@ -215,7 +232,7 @@ function formatFileSize(size: number) {
           </div>
           <!-- assistant 消息走 markdown 渲染（已经过 XSS 过滤），user 消息保持纯文本。 -->
           <div v-if="message.role === 'assistant' && message.streaming && !message.text && !message.reasoning"
-            class="assistant-waiting" aria-label="Linka AI 正在处理">
+            class="assistant-waiting" :aria-label="t('assistant.processingAria')">
             <span></span>
             <span></span>
             <span></span>
@@ -249,7 +266,7 @@ function formatFileSize(size: number) {
 
       <div class="assistant-input-wrapper" v-if="!assistantHistoryOpen" :class="{ 'is-loading': isAssistantLoading }">
         <div class="siri-glow-wave"></div>
-        <textarea v-model="assistantInput" placeholder="随心输入"
+        <textarea v-model="assistantInput" :placeholder="t('assistant.inputPlaceholder')"
           @keydown.enter.exact.prevent="$emit('askAssistant')"></textarea>
         <div v-if="assistantAttachments.length" class="attachment-list input-attachment-list">
           <div v-for="attachment in assistantAttachments" :key="attachment.id" class="attachment-chip"
@@ -263,7 +280,7 @@ function formatFileSize(size: number) {
               <strong>{{ attachment.name }}</strong>
               <span>{{ formatFileSize(attachment.size) }}</span>
             </div>
-            <button type="button" title="移除附件" @click="$emit('removeAssistantAttachment', attachment.id)">
+            <button type="button" :title="t('assistant.removeAttachment')" @click="$emit('removeAssistantAttachment', attachment.id)">
               <X :size="14" />
             </button>
           </div>
@@ -273,12 +290,12 @@ function formatFileSize(size: number) {
             <input ref="attachmentInputRef" class="attachment-input" type="file" multiple
               accept="image/*,video/*,application/pdf,text/plain,text/markdown,application/json,.csv,.doc,.docx,.ppt,.pptx,.xls,.xlsx"
               @change="onAttachmentInputChange" />
-            <button class="tool-btn" title="上传图片、视频或附件" @click="triggerAttachmentPicker">
+            <button class="tool-btn" :title="t('assistant.uploadAttachment')" @click="triggerAttachmentPicker">
               <Plus :size="18" />
             </button>
             <div class="custom-select" :class="{ open: modelSelectOpen }">
               <div class="select-trigger" @click="$emit('toggleModelSelect', $event)">
-                <span>{{ assistantModel || '默认模型' }}</span>
+                <span>{{ assistantModel || t('assistant.defaultModel') }}</span>
                 <ChevronDown :size="14" class="select-icon" />
               </div>
               <transition name="fade">
@@ -289,8 +306,8 @@ function formatFileSize(size: number) {
                     {{ model.name }}
                   </div>
                   <div class="select-option" v-if="availableModels.length === 0"
-                    @click="assistantModel = '默认模型'; modelSelectOpen = false">
-                    默认模型
+                    @click="assistantModel = t('assistant.defaultModel'); modelSelectOpen = false">
+                    {{ t('assistant.defaultModel') }}
                   </div>
                 </div>
               </transition>
@@ -298,7 +315,7 @@ function formatFileSize(size: number) {
 
             <div class="custom-select" :class="{ open: effortSelectOpen }">
               <div class="select-trigger" @click="$emit('toggleEffortSelect', $event)">
-                <span>{{ assistantEffort }}</span>
+                <span>{{ getEffortLabel(assistantEffort) }}</span>
                 <ChevronDown :size="14" class="select-icon" />
               </div>
               <transition name="fade">
@@ -306,17 +323,17 @@ function formatFileSize(size: number) {
                   <div class="select-option" v-for="effort in assistantEffortOptions" :key="effort"
                     @click="assistantEffort = effort; effortSelectOpen = false"
                     :class="{ active: assistantEffort === effort }">
-                    {{ effort }}
+                    {{ getEffortLabel(effort) }}
                   </div>
                 </div>
               </transition>
             </div>
           </div>
           <div class="toolbar-right">
-            <button class="tool-btn" title="语音输入">
+            <button class="tool-btn" :title="t('assistant.voiceInput')">
               <Mic :size="18" />
             </button>
-            <button class="btn-send" title="发送 (Enter)" :disabled="isAssistantLoading" @click="$emit('askAssistant')">
+            <button class="btn-send" :title="t('assistant.send')" :disabled="isAssistantLoading" @click="$emit('askAssistant')">
               <Loader2 v-if="isAssistantLoading" class="spin" :size="16" />
               <Send v-else :size="16" />
             </button>

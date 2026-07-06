@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ImagePlus, X } from "@lucide/vue";
 import { ref } from "vue";
+import { useI18n } from "vue-i18n";
 import type { Category } from "../../types";
 import { readIconFileAsDataUrl } from "../../utils/imageInput";
 
@@ -22,6 +23,8 @@ defineEmits<{
   submit: [];
 }>();
 
+const { t } = useI18n();
+
 const fileInput = ref<HTMLInputElement | null>(null);
 const uploadError = ref("");
 
@@ -41,7 +44,7 @@ async function onIconFileChange(event: Event) {
   try {
     props.editData.faviconUrl = await readIconFileAsDataUrl(file);
   } catch (error) {
-    uploadError.value = error instanceof Error ? error.message : "图片读取失败。";
+    uploadError.value = error instanceof Error ? error.message : t('settings.bookmarks.readIconFailed');
   }
 }
 </script>
@@ -51,55 +54,55 @@ async function onIconFileChange(event: Event) {
     <div class="modal-overlay" v-if="editingBookmarkId" @click.self="editingBookmarkId = null">
       <div class="modal-card">
         <header class="modal-header">
-          <h3>编辑书签</h3>
+          <h3>{{ t('settings.bookmarks.editBookmarkTitle') }}</h3>
           <button class="btn-close" @click="editingBookmarkId = null">
             <X :size="20" />
           </button>
         </header>
         <div class="modal-body settings-form">
           <label>
-            <span>网页链接</span>
+            <span>{{ t('settings.bookmarks.url') }}</span>
             <input v-model="editData.url" placeholder="https://example.com" @keyup.enter="$emit('submit')" />
           </label>
           <label>
-            <span>标题</span>
-            <input v-model="editData.title" placeholder="可选，不填则自动抓取" @keyup.enter="$emit('submit')" />
+            <span>{{ t('settings.bookmarks.titleField') }}</span>
+            <input v-model="editData.title" :placeholder="t('settings.bookmarks.optionalAuto')" @keyup.enter="$emit('submit')" />
           </label>
           <label>
-            <span>描述</span>
-            <textarea v-model="editData.summary" placeholder="可选，用于书签卡片摘要显示；留空则显示暂无摘要"></textarea>
+            <span>{{ t('settings.bookmarks.summary') }}</span>
+            <textarea v-model="editData.summary" :placeholder="t('settings.bookmarks.summaryPlaceholder')"></textarea>
           </label>
           <label>
-            <span>图标链接</span>
+            <span>{{ t('settings.bookmarks.iconLink') }}</span>
             <div class="icon-input-row">
-              <input v-model="editData.faviconUrl" placeholder="可选，支持在线地址或本地上传" @keyup.enter="$emit('submit')" />
+              <input v-model="editData.faviconUrl" :placeholder="t('settings.bookmarks.iconPlaceholder')" @keyup.enter="$emit('submit')" />
               <button type="button" class="btn-secondary icon-upload-btn" @click="openFilePicker">
                 <ImagePlus :size="16" />
-                <span>上传</span>
+                <span>{{ t('settings.bookmarks.upload') }}</span>
               </button>
               <input ref="fileInput" class="visually-hidden" type="file" accept="image/*" @change="onIconFileChange" />
             </div>
             <small v-if="uploadError" class="field-error">{{ uploadError }}</small>
           </label>
           <label>
-            <span>分类</span>
+            <span>{{ t('settings.bookmarks.category') }}</span>
             <select v-model="editData.category">
-              <option value="">未分类</option>
+              <option value="">{{ t('settings.bookmarks.uncategorized') }}</option>
               <option v-for="item in categories" :key="item.id" :value="item.name">
                 {{ item.name }}
               </option>
             </select>
           </label>
           <label class="bookmark-home-toggle">
-            <span>首页显示</span>
+            <span>{{ t('settings.bookmarks.showOnHome') }}</span>
             <button type="button" class="switch-toggle" :class="{ active: editData.showOnHome }" @click="editData.showOnHome = !editData.showOnHome">
               <div></div>
             </button>
           </label>
           <div class="modal-two-actions">
-            <button class="btn-secondary" @click="editingBookmarkId = null">取消</button>
+            <button class="btn-secondary" @click="editingBookmarkId = null">{{ t('settings.ai.cancel') }}</button>
             <button class="btn-primary" @click="$emit('submit')">
-              <span>保存修改</span>
+              <span>{{ t('settings.bookmarks.saveChanges') }}</span>
             </button>
           </div>
         </div>

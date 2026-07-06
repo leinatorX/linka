@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Archive, Bot, Edit2, ExternalLink, Pin, Trash2 } from "@lucide/vue";
 import { RouterLink } from "vue-router";
+import { useI18n } from "vue-i18n";
 import type { Bookmark, Category } from "../../types";
 
 defineProps<{
@@ -22,6 +23,8 @@ defineEmits<{
 function getFallbackIconText(bookmark: Bookmark) {
   return (bookmark.domain || bookmark.title || "?").slice(0, 1).toUpperCase();
 }
+
+const { t } = useI18n();
 </script>
 
 <template>
@@ -29,7 +32,7 @@ function getFallbackIconText(bookmark: Bookmark) {
     <section class="library">
       <transition-group name="fade" tag="div" class="card-grid" v-if="bookmarks.length">
         <article v-for="bookmark in bookmarks" :key="bookmark.id" class="bookmark-card">
-          <a class="open-link-btn" :href="bookmark.url" target="_blank" rel="noreferrer" title="打开链接">
+          <a class="open-link-btn" :href="bookmark.url" target="_blank" rel="noreferrer" :title="t('library.openLink')">
             <ExternalLink :size="20" />
           </a>
 
@@ -49,22 +52,22 @@ function getFallbackIconText(bookmark: Bookmark) {
             </div>
           </div>
 
-          <p class="card-summary">{{ bookmark.summary || bookmark.description || "暂无摘要" }}</p>
+          <p class="card-summary">{{ bookmark.summary || bookmark.description || t('library.noSummary') }}</p>
 
           <div class="card-actions-overlay">
-            <button class="icon-action secondary-action" :class="{ selected: bookmark.pinned }" title="置顶"
+            <button class="icon-action secondary-action" :class="{ selected: bookmark.pinned }" :title="t('library.pin')"
               @click="$emit('togglePinned', bookmark)">
               <Pin :size="16" />
             </button>
-            <button class="icon-action secondary-action" title="编辑"
+            <button class="icon-action secondary-action" :title="t('library.edit')"
               @click="$emit('editBookmark', bookmark)">
               <Edit2 :size="16" />
             </button>
-            <button class="icon-action secondary-action" :title="showArchived ? '恢复' : '归档'"
+            <button class="icon-action secondary-action" :title="showArchived ? t('library.restore') : t('library.archive')"
               @click="$emit('toggleArchived', bookmark)">
               <Archive :size="16" />
             </button>
-            <button class="icon-action secondary-action danger" title="删除" @click="$emit('removeBookmark', bookmark)">
+            <button class="icon-action secondary-action danger" :title="t('library.delete')" @click="$emit('removeBookmark', bookmark)">
               <Trash2 :size="16" />
             </button>
           </div>
@@ -73,8 +76,8 @@ function getFallbackIconText(bookmark: Bookmark) {
 
       <div v-else class="empty-state">
         <Bot :size="48" color="var(--text-tertiary)" class="empty-state-icon" />
-        <h2>{{ selectedCategory === '首页' ? '首页还没有常用书签' : '这个分类还没有书签' }}</h2>
-        <p>{{ selectedCategory === '首页' ? '在添加或编辑书签时打开首页显示。' : '切换其他分类，或在设置里调整书签分类。' }}</p>
+        <h2>{{ selectedCategory === '首页' ? t('library.emptyHomeTitle') : t('library.emptyCategoryTitle') }}</h2>
+        <p>{{ selectedCategory === '首页' ? t('library.emptyHomeDesc') : t('library.emptyCategoryDesc') }}</p>
       </div>
     </section>
   </template>

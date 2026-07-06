@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Loader2, LogOut, Save, X } from "@lucide/vue";
 import { ref } from "vue";
+import { useI18n } from "vue-i18n";
 import type { AuthUser } from "../../types";
 import { readAvatarFileAsDataUrl } from "../../utils/imageInput";
 
@@ -24,6 +25,8 @@ const emit = defineEmits<{
   logout: [];
 }>();
 
+const { t } = useI18n();
+
 const fileInput = ref<HTMLInputElement | null>(null);
 const uploadError = ref("");
 
@@ -45,7 +48,7 @@ async function onAvatarFileChange(event: Event) {
     avatarUrl.value = nextAvatarUrl;
     emit("saveAvatar", nextAvatarUrl);
   } catch (error) {
-    uploadError.value = error instanceof Error ? error.message : "头像读取失败。";
+    uploadError.value = error instanceof Error ? error.message : t('settings.account.readAvatarFailed');
   }
 }
 
@@ -60,29 +63,29 @@ function clearAvatar() {
     <div class="grand-panel account-panel settings-form">
       <div class="section-title account-title">
         <div>
-          <h3>账号安全</h3>
-          <p>当前登录账号：{{ user.username }}。修改默认账号和密码，降低公网暴露风险。</p>
+          <h3>{{ t('settings.account.title') }}</h3>
+          <p>{{ t('settings.account.desc', { username: user.username }) }}</p>
         </div>
         <button type="button" class="btn-secondary" @click="$emit('logout')">
           <LogOut :size="16" />
-          <span>退出登录</span>
+          <span>{{ t('settings.account.logout') }}</span>
         </button>
       </div>
 
       <div class="account-form-grid">
         <div class="account-avatar-field">
-          <span>头像</span>
+          <span>{{ t('settings.account.avatar') }}</span>
           <div class="account-avatar-row">
-            <button type="button" class="account-avatar-preview" title="上传头像" :disabled="isAvatarSaving" @click="openFilePicker">
+            <button type="button" class="account-avatar-preview" :title="t('settings.account.uploadAvatar')" :disabled="isAvatarSaving" @click="openFilePicker">
               <img v-if="avatarUrl" :src="avatarUrl" alt="" />
               <Loader2 v-else-if="isAvatarSaving" class="spin" :size="22" />
               <span v-else>{{ username.slice(0, 1).toUpperCase() || "U" }}</span>
-              <small>{{ isAvatarSaving ? '保存中' : '上传' }}</small>
+              <small>{{ isAvatarSaving ? t('settings.account.saving') : t('settings.account.upload') }}</small>
             </button>
             <div class="account-avatar-actions">
               <button v-if="avatarUrl" type="button" class="btn-secondary" :disabled="isAvatarSaving" @click="clearAvatar">
                 <X :size="16" />
-                <span>清除</span>
+                <span>{{ t('settings.account.clear') }}</span>
               </button>
               <input ref="fileInput" class="visually-hidden" type="file" accept="image/*" @change="onAvatarFileChange" />
             </div>
@@ -91,20 +94,20 @@ function clearAvatar() {
           <small v-else-if="avatarMessage" class="settings-message">{{ avatarMessage }}</small>
         </div>
         <label>
-          <span>用户名</span>
+          <span>{{ t('settings.account.username') }}</span>
           <input v-model="username" autocomplete="username" />
         </label>
         <label>
-          <span>当前密码</span>
-          <input v-model="currentPassword" type="password" autocomplete="current-password" placeholder="保存修改前需要验证" />
+          <span>{{ t('settings.account.currentPassword') }}</span>
+          <input v-model="currentPassword" type="password" autocomplete="current-password" :placeholder="t('settings.account.currentPasswordPlaceholder')" />
         </label>
         <label>
-          <span>新密码</span>
-          <input v-model="newPassword" type="password" autocomplete="new-password" placeholder="不修改密码可留空" />
+          <span>{{ t('settings.account.newPassword') }}</span>
+          <input v-model="newPassword" type="password" autocomplete="new-password" :placeholder="t('settings.account.newPasswordPlaceholder')" />
         </label>
         <label>
-          <span>确认新密码</span>
-          <input v-model="confirmPassword" type="password" autocomplete="new-password" placeholder="再次输入新密码" />
+          <span>{{ t('settings.account.confirmPassword') }}</span>
+          <input v-model="confirmPassword" type="password" autocomplete="new-password" :placeholder="t('settings.account.confirmPasswordPlaceholder')" />
         </label>
       </div>
 
@@ -112,7 +115,7 @@ function clearAvatar() {
         <button type="button" class="btn-primary" :disabled="isSaving" @click="$emit('save')">
           <Loader2 v-if="isSaving" class="spin" :size="16" />
           <Save v-else :size="16" />
-          <span>保存账号</span>
+          <span>{{ t('settings.account.saveAccount') }}</span>
         </button>
         <p v-if="message" class="settings-message">{{ message }}</p>
       </div>

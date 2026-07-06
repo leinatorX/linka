@@ -3,7 +3,8 @@ import {
   Activity, Check, ChevronDown, Copy, Cpu, Edit2, Eye, EyeOff, GripVertical,
   Info, Key, Loader2, Plus, RotateCcw, Save, Sparkles, Trash2, X
 } from "@lucide/vue";
-import { ref } from "vue";
+import { ref, computed } from "vue";
+import { useI18n } from "vue-i18n";
 import { useProviderIcons } from "../../composables/useProviderIcons";
 import type { ModelTestResult } from "../../composables/useAiSettings";
 import type { AiApiFormat, AiProviderConfig, AiModelConfig } from "../../types";
@@ -43,6 +44,8 @@ const emit = defineEmits<{
   saveAiSettings: [];
   reorderProviders: [orderedIds: string[]];
 }>();
+
+const { t } = useI18n();
 
 // 供应商卡片拖拽：HTML5 原生 drag-and-drop，零依赖。
 // 注意：整张卡片既可拖动也响应 click 切换，两者事件不冲突。
@@ -111,13 +114,13 @@ const {
   onProviderIconError
 } = useProviderIcons();
 
-const apiFormatLabels: Record<AiApiFormat, string> = {
-  openai: "OpenAI 对话补全接口",
-  anthropic: "Anthropic 消息接口"
-};
+const apiFormatLabels = computed<Record<AiApiFormat, string>>(() => ({
+  openai: t('settings.ai.formatOpenAI'),
+  anthropic: t('settings.ai.formatAnthropic')
+}));
 
 function getApiFormatLabel(format: AiApiFormat) {
-  return apiFormatLabels[format];
+  return apiFormatLabels.value[format];
 }
 </script>
 
@@ -126,8 +129,8 @@ function getApiFormatLabel(format: AiApiFormat) {
     <div class="ai-provider-layout">
       <div class="ai-provider-sidebar">
         <div class="sidebar-header">
-          <h3>供应商管理</h3>
-          <p>管理您的 AI 服务商</p>
+          <h3>{{ t('settings.ai.title') }}</h3>
+          <p>{{ t('settings.ai.desc') }}</p>
         </div>
 
         <div class="ai-provider-cards">
@@ -145,7 +148,7 @@ function getApiFormatLabel(format: AiApiFormat) {
             @dragleave="onProviderDragLeave(provider.id)"
             @dragend="onProviderDragEnd"
             @drop="onProviderDrop($event, provider.id)">
-            <span class="provider-drag-handle" title="按住拖拽调整顺序" aria-label="拖拽调整顺序"
+            <span class="provider-drag-handle" :title="t('settings.ai.dragToSort')" :aria-label="t('settings.ai.dragToSort')"
               @click.stop>
               <span class="grip-dot"></span>
               <span class="grip-dot"></span>
@@ -162,19 +165,19 @@ function getApiFormatLabel(format: AiApiFormat) {
               </div>
               <div class="provider-card-text">
                 <span>{{ provider.name }}</span>
-                <small>{{ provider.models.length }} 个模型</small>
+                <small>{{ t('settings.ai.modelCount', { count: provider.models.length }) }}</small>
               </div>
             </div>
 
             <span class="status-badge" :class="{ active: provider.enabled }">
-              {{ provider.enabled ? '已启用' : '已禁用' }}
+              {{ provider.enabled ? t('settings.ai.enabled') : t('settings.ai.disabled') }}
               <i></i>
             </span>
           </div>
 
           <button class="add-provider-btn" @click="$emit('addAiProvider')">
             <Plus :size="16" />
-            <span>添加供应商</span>
+            <span>{{ t('settings.ai.addProvider') }}</span>
           </button>
         </div>
       </div>
@@ -191,7 +194,7 @@ function getApiFormatLabel(format: AiApiFormat) {
               <div class="provider-summary-title">
                 <h4>{{ activeAiProvider.name }}</h4>
                 <span class="status-badge" :class="{ active: activeAiProvider.enabled }">
-                  {{ activeAiProvider.enabled ? '已启用' : '已禁用' }}
+                  {{ activeAiProvider.enabled ? t('settings.ai.enabled') : t('settings.ai.disabled') }}
                 </span>
               </div>
               <div class="provider-meta-row">
@@ -201,32 +204,32 @@ function getApiFormatLabel(format: AiApiFormat) {
                 </span>
                 <span class="meta-pill">
                   <Key :size="12" />
-                  <span>{{ activeAiProvider.apiKeySet ? '已配置接口密钥' : '未配置接口密钥' }}</span>
+                  <span>{{ activeAiProvider.apiKeySet ? t('settings.ai.apiKeySetText') : t('settings.ai.apiKeyNotSet') }}</span>
                 </span>
                 <span class="meta-pill">
                   <Sparkles :size="12" />
-                  <span>默认模型：{{ activeAiProvider.models[0]?.name || '无' }}</span>
+                  <span>{{ t('settings.ai.defaultModel') }}{{ activeAiProvider.models[0]?.name || t('settings.ai.none') }}</span>
                 </span>
               </div>
             </div>
           </div>
 
-          <button class="provider-more-btn" @click.stop="$emit('removeAiProvider', activeAiProvider.id)" title="删除供应商">
+          <button class="provider-more-btn" @click.stop="$emit('removeAiProvider', activeAiProvider.id)" :title="t('settings.ai.deleteProvider')">
             <Trash2 :size="16" />
           </button>
         </div>
 
         <div class="grand-panel settings-form ai-provider-form">
           <div class="ai-form-section">
-            <h4>基础信息</h4>
+            <h4>{{ t('settings.ai.basicInfo') }}</h4>
             <div class="ai-form-grid ai-form-grid-name">
               <label>
-                <span>供应商名称</span>
+                <span>{{ t('settings.ai.providerName') }}</span>
                 <input v-model="activeAiProvider.name" />
               </label>
 
               <label class="ai-toggle-field">
-                <span>启用状态</span>
+                <span>{{ t('settings.ai.enableStatus') }}</span>
                 <div class="switch-toggle" :class="{ active: activeAiProvider.enabled }"
                   @click="activeAiProvider.enabled = !activeAiProvider.enabled">
                   <div></div>
@@ -236,10 +239,10 @@ function getApiFormatLabel(format: AiApiFormat) {
           </div>
 
           <div class="ai-form-section">
-            <h4>API 配置</h4>
+            <h4>{{ t('settings.ai.apiConfig') }}</h4>
             <div class="ai-form-grid">
               <label>
-                <span>接口格式</span>
+                <span>{{ t('settings.ai.apiFormat') }}</span>
                 <div class="select-field">
                   <select v-model="activeAiProvider.apiFormat">
                     <option value="openai">{{ apiFormatLabels.openai }}</option>
@@ -251,8 +254,8 @@ function getApiFormatLabel(format: AiApiFormat) {
 
               <label>
                 <div class="field-label-with-icon">
-                  <span>温度</span>
-                  <Info :size="14" title="控制模型生成文本的随机性。值越高越有创意，值越低越精确稳定。" />
+                  <span>{{ t('settings.ai.temperature') }}</span>
+                  <Info :size="14" :title="t('settings.ai.temperatureHint')" />
                 </div>
                 <div class="temperature-control">
                   <input type="number" v-model.number="activeAiProvider.temperature" min="0" max="2" step="0.1" />
@@ -269,39 +272,39 @@ function getApiFormatLabel(format: AiApiFormat) {
 
             <div class="ai-form-grid api-credentials-grid">
               <label>
-                <span>接口地址</span>
+                <span>{{ t('settings.ai.baseUrl') }}</span>
                 <input v-model="activeAiProvider.baseUrl"
                   :placeholder="activeAiProvider.apiFormat === 'anthropic' ? 'https://api.anthropic.com' : 'https://api.openai.com/v1'" />
               </label>
 
               <label>
-                <span>接口密钥</span>
+                <span>{{ t('settings.ai.apiKey') }}</span>
                 <div class="api-key-field">
                   <input v-if="activeAiProvider.apiKeySet && !isApiKeyRevealed(activeAiProvider.id)" type="text"
                     :value="'•'.repeat(Math.max(activeAiProvider.apiKeyPreview.length || 12, 12))" readonly tabindex="-1"
                     class="api-key-mask" />
-                  <input v-else-if="revealingApiKeyProviderIds.has(activeAiProvider.id)" type="text" value="正在加载…"
+                  <input v-else-if="revealingApiKeyProviderIds.has(activeAiProvider.id)" type="text" :value="t('settings.ai.loading')"
                     readonly tabindex="-1" />
                   <input v-else-if="isApiKeyRevealed(activeAiProvider.id)" type="text"
-                    v-model="revealedApiKeys[activeAiProvider.id]" placeholder="请输入新的接口密钥覆盖现有值" autocomplete="off" />
+                    v-model="revealedApiKeys[activeAiProvider.id]" :placeholder="t('settings.ai.enterNewKey')" autocomplete="off" />
                   <input v-else :type="showApiKey ? 'text' : 'password'" v-model="activeAiProvider.apiKey"
-                    placeholder="请输入接口密钥" autocomplete="off" />
+                    :placeholder="t('settings.ai.enterKey')" autocomplete="off" />
                   <div class="api-key-actions">
                     <button v-if="activeAiProvider.apiKeySet && !isApiKeyRevealed(activeAiProvider.id)" type="button"
                       :disabled="revealingApiKeyProviderIds.has(activeAiProvider.id)"
-                      @click="$emit('toggleRevealApiKey', activeAiProvider.id)" title="解锁查看/修改">
+                      @click="$emit('toggleRevealApiKey', activeAiProvider.id)" :title="t('settings.ai.unlockKey')">
                       <Loader2 v-if="revealingApiKeyProviderIds.has(activeAiProvider.id)" class="spin" :size="14" />
                       <Eye v-else :size="16" />
                     </button>
                     <button v-else-if="activeAiProvider.apiKeySet" type="button"
-                      @click="$emit('toggleRevealApiKey', activeAiProvider.id)" title="锁定">
+                      @click="$emit('toggleRevealApiKey', activeAiProvider.id)" :title="t('settings.ai.lockKey')">
                       <EyeOff :size="16" />
                     </button>
                     <button v-else type="button" @click="showApiKey = !showApiKey">
                       <Eye v-if="!showApiKey" :size="16" />
                       <EyeOff v-else :size="16" />
                     </button>
-                    <button type="button" @click="$emit('copyApiKeyValue', activeAiProvider)" title="复制">
+                    <button type="button" @click="$emit('copyApiKeyValue', activeAiProvider)" :title="t('settings.ai.copy')">
                       <Copy :size="16" />
                     </button>
                   </div>
@@ -313,12 +316,12 @@ function getApiFormatLabel(format: AiApiFormat) {
           <div class="ai-form-section">
             <div class="ai-model-header">
               <div>
-                <h4>模型列表</h4>
-                <p>拖动模型调整优先级，排在第一位的模型作为默认模型使用。</p>
+                <h4>{{ t('settings.ai.modelList') }}</h4>
+                <p>{{ t('settings.ai.modelListDesc') }}</p>
               </div>
               <button type="button" class="outline-btn" @click="$emit('openAddAiModelModal')">
                 <Plus :size="14" />
-                <span>添加模型</span>
+                <span>{{ t('settings.ai.addModel') }}</span>
               </button>
             </div>
 
@@ -333,24 +336,24 @@ function getApiFormatLabel(format: AiApiFormat) {
                   <div class="ai-model-info">
                     <div class="ai-model-name-row">
                       <span class="ai-model-name">{{ model.name }}</span>
-                      <span v-if="index === 0" class="default-model-badge">默认</span>
-                      <span v-if="model.supportsVision" class="vision-model-badge">视觉</span>
+                      <span v-if="index === 0" class="default-model-badge">{{ t('settings.ai.default') }}</span>
+                      <span v-if="model.supportsVision" class="vision-model-badge">{{ t('settings.ai.vision') }}</span>
                     </div>
                     <div class="ai-model-tokens">
-                      <span>上下文：{{ model.maxTokens.toLocaleString() }} 个 token</span>
+                      <span>{{ t('settings.ai.contextPrefix') }}{{ model.maxTokens.toLocaleString() }}{{ t('settings.ai.tokenSuffix') }}</span>
                     </div>
                   </div>
 
                   <div class="ai-model-actions">
-                    <button type="button" class="btn-model-icon" title="测试连接" :disabled="testingModelId === model.id"
+                    <button type="button" class="btn-model-icon" :title="t('settings.ai.testConnection')" :disabled="testingModelId === model.id"
                       @click="$emit('testModel', activeAiProvider, model)">
                       <Loader2 v-if="testingModelId === model.id" class="spin" :size="14" />
                       <Activity v-else :size="14" />
                     </button>
-                    <button type="button" class="btn-model-icon" title="编辑" @click="$emit('openEditAiModelModal', model)">
+                    <button type="button" class="btn-model-icon" :title="t('settings.ai.edit')" @click="$emit('openEditAiModelModal', model)">
                       <Edit2 :size="14" />
                     </button>
-                    <button type="button" class="btn-model-icon btn-model-icon-danger" title="删除"
+                    <button type="button" class="btn-model-icon btn-model-icon-danger" :title="t('settings.ai.delete')"
                       @click="$emit('removeAiModel', activeAiProvider, model.id)">
                       <Trash2 :size="14" />
                     </button>
@@ -362,7 +365,7 @@ function getApiFormatLabel(format: AiApiFormat) {
                   <Check v-if="modelTestResults[model.id].status === 'success'" :size="14" />
                   <X v-else :size="14" />
                   <span>{{ modelTestResults[model.id].message }}</span>
-                  <button type="button" @click="$emit('clearModelTestResult', model.id)" title="关闭">
+                  <button type="button" @click="$emit('clearModelTestResult', model.id)" :title="t('settings.ai.close')">
                     <X :size="12" />
                   </button>
                 </div>
@@ -371,16 +374,16 @@ function getApiFormatLabel(format: AiApiFormat) {
           </div>
 
           <div class="ai-form-actions">
-            <span>上次保存：{{ lastSavedTime }}</span>
+            <span>{{ t('settings.ai.lastSaved') }}{{ lastSavedTime }}</span>
             <div>
               <button type="button" class="btn-secondary" @click="$emit('loadAiSettings')">
                 <RotateCcw :size="14" />
-                <span>重置修改</span>
+                <span>{{ t('settings.ai.reset') }}</span>
               </button>
               <button type="button" class="btn-primary" :disabled="isAiSettingsSaving" @click="$emit('saveAiSettings')">
                 <Loader2 v-if="isAiSettingsSaving" class="spin" :size="16" />
                 <Save v-else :size="16" />
-                <span>保存配置</span>
+                <span>{{ t('settings.ai.saveConfig') }}</span>
               </button>
             </div>
           </div>

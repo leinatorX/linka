@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
+import { useI18n } from "vue-i18n";
 import AppTopbar from "./components/AppTopbar.vue";
 import LoginPage from "./components/auth/LoginPage.vue";
 import AssistantPanel from "./components/assistant/AssistantPanel.vue";
 import BookmarkLibrary from "./components/bookmarks/BookmarkLibrary.vue";
 import ToastContainer from "./components/common/ToastContainer.vue";
+import GeneralSettings from "./components/settings/GeneralSettings.vue";
 import AccountSettings from "./components/settings/AccountSettings.vue";
 import AddBookmarkModal from "./components/settings/AddBookmarkModal.vue";
 import AiModelModal from "./components/settings/AiModelModal.vue";
@@ -23,13 +25,15 @@ import { useCategories } from "./composables/useCategories";
 import { useToast } from "./composables/useToast";
 import { useTheme } from "./composables/useTheme";
 
-type SettingsTab = "categories" | "manage_bookmarks" | "ai" | "account";
+type SettingsTab = "general" | "categories" | "manage_bookmarks" | "ai" | "account";
 const HOME_CATEGORY = "首页";
 
 const route = useRoute();
 const router = useRouter();
-const settingsTab = ref<SettingsTab>("account");
+const settingsTab = ref<SettingsTab>("general");
 const isSettingsPage = computed(() => route.path === "/settings");
+
+const { t } = useI18n();
 
 const { toasts, showToast } = useToast();
 const { theme, applyTheme } = useTheme();
@@ -286,7 +290,7 @@ onUnmounted(() => {
 <template>
   <div v-if="authLoading" class="auth-loading">
     <img src="/logo.svg" alt="" />
-    <span>正在检查登录状态...</span>
+    <span>{{ t('auth.checkingStatus') }}</span>
   </div>
 
   <LoginPage
@@ -336,8 +340,10 @@ onUnmounted(() => {
         @open-guide="openGuide"
         @close-settings="closeSettings"
       >
+        <GeneralSettings v-if="settingsTab === 'general'" />
+
         <CategorySettings
-          v-if="settingsTab === 'categories'"
+          v-else-if="settingsTab === 'categories'"
           v-model:new-category-name="newCategoryName"
           :categories="categories"
           :editing-category-names="editingCategoryNames"

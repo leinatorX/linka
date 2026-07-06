@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Eye, EyeOff, Loader2, LockKeyhole } from "@lucide/vue";
 import { ref } from "vue";
+import { useI18n } from "vue-i18n";
 
 defineProps<{
   message: string;
@@ -17,6 +18,8 @@ const showPassword = ref(false);
 defineEmits<{
   submit: [];
 }>();
+
+const { t } = useI18n();
 </script>
 
 <template>
@@ -28,25 +31,25 @@ defineEmits<{
         </div>
         <div>
           <h1>Linka</h1>
-          <p>登录后管理你的书签和 AI 配置。</p>
+          <p>{{ t('auth.loginDesc') }}</p>
         </div>
       </div>
 
       <div class="login-defaults">
         <LockKeyhole :size="16" />
-        <span>首次部署默认账号：admin / linka123456，登录后请在设置中修改。</span>
+        <span>{{ t('auth.defaultAccountHint') }}</span>
       </div>
 
       <form class="login-form" @submit.prevent="$emit('submit')">
         <label>
-          <span>用户名</span>
+          <span>{{ t('auth.username') }}</span>
           <input v-model="username" autocomplete="username" placeholder="admin" />
         </label>
         <label>
-          <span>密码</span>
+          <span>{{ t('auth.password') }}</span>
           <div class="login-password-field">
-            <input v-model="password" :type="showPassword ? 'text' : 'password'" autocomplete="current-password" placeholder="请输入密码" />
-            <button type="button" :title="showPassword ? '隐藏密码' : '显示密码'" @click="showPassword = !showPassword">
+            <input v-model="password" :type="showPassword ? 'text' : 'password'" autocomplete="current-password" :placeholder="t('auth.passwordPlaceholder')" />
+            <button type="button" :title="showPassword ? t('auth.hidePassword') : t('auth.showPassword')" @click="showPassword = !showPassword">
               <EyeOff v-if="showPassword" :size="16" />
               <Eye v-else :size="16" />
             </button>
@@ -56,18 +59,18 @@ defineEmits<{
         <div class="login-options">
           <label class="login-check">
             <input v-model="rememberUsername" type="checkbox" />
-            <span>记住用户名</span>
+            <span>{{ t('auth.rememberUsername') }}</span>
           </label>
           <label class="login-check">
             <input v-model="autoLogin" type="checkbox" />
-            <span>自动登录</span>
+            <span>{{ t('auth.autoLogin') }}</span>
           </label>
         </div>
 
         <button class="btn-primary login-submit" :disabled="isSaving" type="submit">
           <Loader2 v-if="isSaving" class="spin" :size="18" />
           <LockKeyhole v-else :size="18" />
-          <span>登录</span>
+          <span>{{ t('auth.loginBtn') }}</span>
         </button>
         <p v-if="message" class="login-message">{{ message }}</p>
       </form>

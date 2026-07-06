@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ImagePlus, Loader2, Plus, X } from "@lucide/vue";
 import { ref } from "vue";
+import { useI18n } from "vue-i18n";
 import type { Category } from "../../types";
 import { readIconFileAsDataUrl } from "../../utils/imageInput";
 
@@ -21,6 +22,8 @@ defineEmits<{
   submit: [];
 }>();
 
+const { t } = useI18n();
+
 const fileInput = ref<HTMLInputElement | null>(null);
 const uploadError = ref("");
 
@@ -40,7 +43,7 @@ async function onIconFileChange(event: Event) {
   try {
     faviconUrl.value = await readIconFileAsDataUrl(file);
   } catch (error) {
-    uploadError.value = error instanceof Error ? error.message : "图片读取失败。";
+    uploadError.value = error instanceof Error ? error.message : t('settings.bookmarks.readIconFailed');
   }
 }
 </script>
@@ -50,43 +53,43 @@ async function onIconFileChange(event: Event) {
     <div class="modal-overlay" v-if="visible" @click.self="visible = false">
       <div class="modal-card">
         <header class="modal-header">
-          <h3>添加书签</h3>
+          <h3>{{ t('settings.bookmarks.addBookmark') }}</h3>
           <button class="btn-close" @click="visible = false">
             <X :size="20" />
           </button>
         </header>
         <div class="modal-body settings-form">
           <label>
-            <span>网页链接</span>
+            <span>{{ t('settings.bookmarks.url') }}</span>
             <input v-model="url" placeholder="https://example.com" @keyup.enter="$emit('submit')" />
           </label>
           <label>
-            <span>标题</span>
-            <input v-model="title" placeholder="可选，不填则自动抓取" @keyup.enter="$emit('submit')" />
+            <span>{{ t('settings.bookmarks.titleField') }}</span>
+            <input v-model="title" :placeholder="t('settings.bookmarks.optionalAuto')" @keyup.enter="$emit('submit')" />
           </label>
           <label>
-            <span>图标</span>
+            <span>{{ t('settings.bookmarks.icon') }}</span>
             <div class="icon-input-row">
-              <input v-model="faviconUrl" placeholder="可选，不填则自动抓取" @keyup.enter="$emit('submit')" />
+              <input v-model="faviconUrl" :placeholder="t('settings.bookmarks.optionalAuto')" @keyup.enter="$emit('submit')" />
               <button type="button" class="btn-secondary icon-upload-btn" @click="openFilePicker">
                 <ImagePlus :size="16" />
-                <span>上传</span>
+                <span>{{ t('settings.bookmarks.upload') }}</span>
               </button>
               <input ref="fileInput" class="visually-hidden" type="file" accept="image/*" @change="onIconFileChange" />
             </div>
             <small v-if="uploadError" class="field-error">{{ uploadError }}</small>
           </label>
           <label>
-            <span>分类</span>
+            <span>{{ t('settings.bookmarks.category') }}</span>
             <select v-model="category">
-              <option value="">AI 自动选择</option>
+              <option value="">{{ t('settings.bookmarks.aiAuto') }}</option>
               <option v-for="item in categories" :key="item.id" :value="item.name">
                 {{ item.name }}
               </option>
             </select>
           </label>
           <label class="bookmark-home-toggle">
-            <span>首页显示</span>
+            <span>{{ t('settings.bookmarks.showOnHome') }}</span>
             <button type="button" class="switch-toggle" :class="{ active: showOnHome }" @click="showOnHome = !showOnHome">
               <div></div>
             </button>
@@ -94,7 +97,7 @@ async function onIconFileChange(event: Event) {
           <button class="btn-primary settings-submit add-bookmark-submit" :disabled="isSaving" @click="$emit('submit')">
             <Loader2 v-if="isSaving" class="spin" :size="18" />
             <Plus v-else :size="18" />
-            <span>添加到 Linka</span>
+            <span>{{ t('settings.bookmarks.addToLinka') }}</span>
           </button>
           <p v-if="message" class="settings-message">{{ message }}</p>
         </div>
