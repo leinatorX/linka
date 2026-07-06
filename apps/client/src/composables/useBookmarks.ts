@@ -137,8 +137,15 @@ export function useBookmarks(options: UseBookmarksOptions = {}) {
   }
 
   async function removeBookmark(bookmark: Bookmark) {
-    await deleteBookmark(bookmark.id);
-    await loadBookmarks();
+    try {
+      console.log('Removing bookmark:', bookmark.id);
+      await deleteBookmark(bookmark.id);
+      console.log('Bookmark deleted from server, reloading...');
+      await loadBookmarks();
+    } catch (e: any) {
+      console.error('Failed to remove bookmark:', e);
+      window.alert('删除失败: ' + (e.message || '未知错误'));
+    }
   }
 
   function startEditingBookmark(bookmark: Bookmark) {

@@ -197,6 +197,7 @@ export default {
     restore: "恢复",
     archive: "归档",
     delete: "删除",
+    deleteConfirm: "确定要删除该书签吗？",
     emptyHomeTitle: "首页还没有常用书签",
     emptyHomeDesc: "在添加或编辑书签时打开首页显示。",
     emptyCategoryTitle: "这个分类还没有书签",

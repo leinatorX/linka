@@ -197,6 +197,7 @@ export default {
     restore: "復原",
     archive: "封存",
     delete: "刪除",
+    deleteConfirm: "確定要刪除該書籤嗎？",
     emptyHomeTitle: "首頁還沒有常用書籤",
     emptyHomeDesc: "在新增或編輯書籤時開啟首頁顯示。",
     emptyCategoryTitle: "這個分類還沒有書籤",

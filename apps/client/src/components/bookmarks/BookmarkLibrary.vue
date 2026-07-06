@@ -12,7 +12,7 @@ defineProps<{
   failedIconIds: Set<string>;
 }>();
 
-defineEmits<{
+const emit = defineEmits<{
   togglePinned: [bookmark: Bookmark];
   toggleArchived: [bookmark: Bookmark];
   removeBookmark: [bookmark: Bookmark];
@@ -25,6 +25,12 @@ function getFallbackIconText(bookmark: Bookmark) {
 }
 
 const { t } = useI18n();
+
+function confirmDelete(bookmark: Bookmark) {
+  if (window.confirm(t('library.deleteConfirm'))) {
+    emit('removeBookmark', bookmark);
+  }
+}
 </script>
 
 <template>
@@ -68,7 +74,7 @@ const { t } = useI18n();
               @click="$emit('toggleArchived', bookmark)">
               <Archive :size="16" />
             </button>
-            <button class="icon-action secondary-action danger" :title="t('library.delete')" @click="$emit('removeBookmark', bookmark)">
+            <button class="icon-action secondary-action danger" :title="t('library.delete')" @click.stop.prevent="confirmDelete(bookmark)">
               <Trash2 :size="16" />
             </button>
           </div>

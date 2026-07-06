@@ -406,6 +406,7 @@ onUnmounted(() => {
           :bookmarks="bookmarks"
           @show-add-bookmark="showAddBookmarkModal = true"
           @start-editing-bookmark="startEditingBookmark"
+          @remove-bookmark="removeBookmark"
         />
       </SettingsPage>
     </main>

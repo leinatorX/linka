@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Edit2, Link2, Plus } from "@lucide/vue";
+import { Edit2, Link2, Plus, Trash2 } from "@lucide/vue";
 import { useI18n } from "vue-i18n";
 import type { Bookmark } from "../../types";
 
@@ -7,12 +7,19 @@ defineProps<{
   bookmarks: Bookmark[];
 }>();
 
-defineEmits<{
+const emit = defineEmits<{
   showAddBookmark: [];
   startEditingBookmark: [bookmark: Bookmark];
+  removeBookmark: [bookmark: Bookmark];
 }>();
 
 const { t } = useI18n();
+
+function confirmDelete(bookmark: Bookmark) {
+  if (window.confirm(t('library.deleteConfirm'))) {
+    emit('removeBookmark', bookmark);
+  }
+}
 </script>
 
 <template>
@@ -41,9 +48,14 @@ const { t } = useI18n();
             </div>
             <span class="bookmark-manage-category" v-if="bookmark.category">{{ bookmark.category }}</span>
           </div>
-          <button class="mini-button icon-only" :title="t('settings.bookmarks.edit')" @click="$emit('startEditingBookmark', bookmark)">
-            <Edit2 :size="16" />
-          </button>
+          <div class="bookmark-manage-actions" style="display: flex; gap: 8px;">
+            <button class="mini-button icon-only" :title="t('settings.bookmarks.edit')" @click="$emit('startEditingBookmark', bookmark)">
+              <Edit2 :size="16" />
+            </button>
+            <button class="mini-button icon-only" style="color: var(--danger)" :title="t('library.delete')" @click.stop.prevent="confirmDelete(bookmark)">
+              <Trash2 :size="16" />
+            </button>
+          </div>
         </div>
       </div>
     </div>

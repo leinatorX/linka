@@ -197,6 +197,7 @@ export default {
     restore: "Restore",
     archive: "Archive",
     delete: "Delete",
+    deleteConfirm: "Are you sure you want to delete this bookmark?",
     emptyHomeTitle: "No frequent bookmarks on home",
     emptyHomeDesc: "Enable 'Show on Home' when adding or editing a bookmark.",
     emptyCategoryTitle: "No bookmarks in this category",

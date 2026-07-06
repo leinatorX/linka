@@ -1,12 +1,14 @@
 import type { AiProviderConfig, AiSettings, AiSettingsPayload, AssistantAttachment, AssistantConversation, AssistantMessage, AssistantResponse, AuthUser, Bookmark, Category } from "./types";
 
 async function request<T>(url: string, options?: RequestInit): Promise<T> {
+  const headers = new Headers(options?.headers);
+  if (options?.body && !headers.has("Content-Type")) {
+    headers.set("Content-Type", "application/json");
+  }
+
   const response = await fetch(url, {
-    headers: {
-      "Content-Type": "application/json",
-      ...options?.headers
-    },
-    ...options
+    ...options,
+    headers
   });
 
   if (!response.ok) {
