@@ -39,6 +39,14 @@ function getAttachmentKind(mimeType: string): AssistantAttachmentKind {
   return "file";
 }
 
+function createClientId() {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+
+  return `client-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
 function readFileAsDataUrl(file: File) {
   return new Promise<string>((resolve, reject) => {
     const reader = new FileReader();
@@ -196,7 +204,7 @@ export function useAssistant(options: UseAssistantOptions) {
     let attachments: AssistantAttachment[];
     try {
       attachments = await Promise.all(acceptedFiles.map(async (file) => ({
-        id: crypto.randomUUID(),
+        id: createClientId(),
         name: file.name || "未命名附件",
         mimeType: file.type || "application/octet-stream",
         size: file.size,
