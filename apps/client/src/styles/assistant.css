@@ -1111,6 +1111,10 @@
   cursor: pointer;
   transition: all var(--transition-fast);
   white-space: nowrap;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
 }
 
 .select-option:hover {
@@ -1122,6 +1126,15 @@
   background: var(--accent-primary);
   color: #ffffff;
   font-weight: 600;
+}
+
+.vision-icon {
+  opacity: 0.4;
+  flex-shrink: 0;
+}
+
+.select-option.active .vision-icon {
+  opacity: 0.8;
 }
 
 .btn-send {

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
-import { ChevronDown, FileText, History, Loader2, Mic, Plus, Search, Send, Square, Video, X, Package, Link } from "@lucide/vue";
+import { ChevronDown, FileText, History, Loader2, Mic, Plus, Search, Send, Square, Video, X, Package, Link, Image as ImageIcon } from "@lucide/vue";
 import type { AssistantUiMessage } from "../../composables/useAssistant";
 import type { AiModelConfig, AssistantAttachment, AssistantConversation, Bookmark, Category } from "../../types";
 import { listBookmarks, listCategories } from "../../api";
@@ -842,7 +842,8 @@ const previewImageUrl = ref<string | null>(null);
                   <div class="select-option" v-for="model in availableModels" :key="model.id"
                     @click="assistantModel = model.name; modelSelectOpen = false"
                     :class="{ active: assistantModel === model.name }">
-                    {{ model.name }}
+                    <span class="model-name-text">{{ model.name }}</span>
+                    <ImageIcon v-if="model.supportsVision" :size="12" class="vision-icon" title="支持图片输入" />
                   </div>
                   <div class="select-option" v-if="availableModels.length === 0"
                     @click="assistantModel = t('assistant.defaultModel'); modelSelectOpen = false">
