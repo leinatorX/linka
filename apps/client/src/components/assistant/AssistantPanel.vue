@@ -261,12 +261,58 @@ function onAttachmentInputChange(event: Event) {
   input.value = "";
 }
 
+function onInputPaste(event: ClipboardEvent) {
+  const items = event.clipboardData?.items;
+  if (!items) return;
+
+  const imageItems = Array.from(items).filter(item => item.type.startsWith('image/'));
+  if (imageItems.length > 0) {
+    const files = imageItems.map(item => item.getAsFile()).filter((file): file is File => file !== null);
+    if (files.length > 0) {
+      const dataTransfer = new DataTransfer();
+      files.forEach(file => dataTransfer.items.add(file));
+      emit("attachAssistantFiles", dataTransfer.files);
+      event.preventDefault();
+    }
+  }
+}
+
+const isDraggingOver = ref(false);
+
+function onDragOver(event: DragEvent) {
+  if (event.dataTransfer?.types.includes('Files')) {
+    isDraggingOver.value = true;
+  }
+}
+
+function onDragLeave(event: DragEvent) {
+  const currentTarget = event.currentTarget as HTMLElement;
+  const rect = currentTarget.getBoundingClientRect();
+  if (
+    event.clientX <= rect.left ||
+    event.clientX >= rect.right ||
+    event.clientY <= rect.top ||
+    event.clientY >= rect.bottom
+  ) {
+    isDraggingOver.value = false;
+  }
+}
+
+function onDrop(event: DragEvent) {
+  isDraggingOver.value = false;
+  if (event.dataTransfer?.files.length) {
+    emit("attachAssistantFiles", event.dataTransfer.files);
+  }
+}
+
 function formatFileSize(size: number) {
   if (size < 1024 * 1024) {
     return `${Math.max(1, Math.round(size / 1024))} KB`;
   }
   return `${(size / 1024 / 1024).toFixed(1)} MB`;
 }
+
+const previewImageUrl = ref<string | null>(null);
 </script>
 
 <template>
@@ -379,7 +425,8 @@ function formatFileSize(size: number) {
             <div v-if="message.attachments?.length" class="attachment-list message-attachment-list">
               <div v-for="attachment in message.attachments" :key="attachment.id" class="attachment-chip readonly"
                 :class="{ image: attachment.kind === 'image' }">
-                <img v-if="attachment.kind === 'image'" :src="attachment.dataUrl" :alt="attachment.name" />
+                <img v-if="attachment.kind === 'image'" :src="attachment.dataUrl" :alt="attachment.name"
+                  @click="previewImageUrl = attachment.dataUrl" class="previewable-image" />
                 <div v-else class="attachment-icon">
                   <Video v-if="attachment.kind === 'video'" :size="16" />
                   <FileText v-else :size="16" />
@@ -400,7 +447,11 @@ function formatFileSize(size: number) {
         </div>
       </div>
 
-      <div class="assistant-input-wrapper" v-if="!assistantHistoryOpen" :class="{ 'is-loading': isAssistantLoading }">
+      <div class="assistant-input-wrapper" v-if="!assistantHistoryOpen" 
+        :class="{ 'is-loading': isAssistantLoading, 'drag-over': isDraggingOver }"
+        @dragover.prevent="onDragOver"
+        @dragleave.prevent="onDragLeave"
+        @drop.prevent="onDrop">
         <div class="siri-glow-wave"></div>
         <div class="input-box-container">
           <div v-if="parseUserMessageCommand(assistantInput)" class="active-command-badge">
@@ -412,7 +463,8 @@ function formatFileSize(size: number) {
             @compositionend="onAssistantInputCompositionEnd"
             @keydown="onCommandKeydown"
             @keydown.delete="onInputDelete"
-            @keydown.enter.exact="onAssistantInputEnter"></textarea>
+            @keydown.enter.exact="onAssistantInputEnter"
+            @paste="onInputPaste"></textarea>
         </div>
         
         <transition name="fade">
@@ -432,7 +484,8 @@ function formatFileSize(size: number) {
         <div v-if="assistantAttachments.length" class="attachment-list input-attachment-list">
           <div v-for="attachment in assistantAttachments" :key="attachment.id" class="attachment-chip"
             :class="{ image: attachment.kind === 'image' }">
-            <img v-if="attachment.kind === 'image'" :src="attachment.dataUrl" :alt="attachment.name" />
+            <img v-if="attachment.kind === 'image'" :src="attachment.dataUrl" :alt="attachment.name"
+              @click="previewImageUrl = attachment.dataUrl" class="previewable-image" />
             <div v-else class="attachment-icon">
               <Video v-if="attachment.kind === 'video'" :size="16" />
               <FileText v-else :size="16" />
@@ -503,4 +556,15 @@ function formatFileSize(size: number) {
       </div>
     </aside>
   </transition>
+  
+  <teleport to="body">
+    <transition name="fade">
+      <div v-if="previewImageUrl" class="image-preview-overlay" @click="previewImageUrl = null">
+        <button class="preview-close-btn" @click="previewImageUrl = null">
+          <X :size="24" />
+        </button>
+        <img :src="previewImageUrl" alt="Preview" @click.stop />
+      </div>
+    </transition>
+  </teleport>
 </template>
