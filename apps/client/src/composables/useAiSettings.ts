@@ -53,6 +53,7 @@ export function useAiSettings(options: UseAiSettingsOptions) {
   const editingAiModel = ref<AiModelConfig | null>(null);
   const aiModelFormData = ref({ name: "", maxTokens: 1000, supportsVision: false });
   const aiSettingsForm = ref({
+    aiLanguage: "简体中文",
     activeProviderId: "openai",
     providers: [] as AiProviderConfig[]
   });
@@ -374,6 +375,7 @@ export function useAiSettings(options: UseAiSettingsOptions) {
     try {
       const result = await apiReorderAiProviders(orderedIds);
       aiSettingsForm.value = {
+        aiLanguage: result.settings.aiLanguage,
         activeProviderId: result.settings.activeProviderId,
         providers: result.settings.providers
       };

@@ -5,6 +5,16 @@ import { useI18n } from 'vue-i18n';
 import { setLocale } from '../../i18n';
 import { getWeatherSettings, saveWeatherSettings } from '../../api';
 import WebSearchSettings from './WebSearchSettings.vue';
+import type { AiSettingsPayload } from '../../types';
+
+const props = defineProps<{
+  aiSettingsForm?: AiSettingsPayload;
+  isAiSettingsSaving?: boolean;
+}>();
+
+const emit = defineEmits<{
+  saveAiSettings: [];
+}>();
 
 const { t, locale } = useI18n();
 
@@ -90,6 +100,35 @@ async function handleSaveWeather() {
             <option value="en-US">English</option>
           </select>
           <small class="settings-message" style="margin-top: 4px;">{{ t('settings.general.languageHint') }}</small>
+        </label>
+        
+        <label v-if="aiSettingsForm">
+          <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
+            <span>{{ t('settings.general.aiLanguage') }}</span>
+            <div v-if="isAiSettingsSaving" style="display: flex; align-items: center; gap: 4px; color: var(--text-secondary); font-size: 12px;">
+              <Loader2 class="spin" :size="12" />
+              <span>{{ t('settings.account.saving') }}</span>
+            </div>
+          </div>
+          <select v-model="aiSettingsForm.aiLanguage" @change="$emit('saveAiSettings')">
+            <option value="简体中文">简体中文</option>
+            <option value="繁體中文">繁體中文</option>
+            <option value="English">English</option>
+            <option value="日本語">日本語</option>
+            <option value="한국어">한국어</option>
+            <option value="Français">Français</option>
+            <option value="Deutsch">Deutsch</option>
+            <option value="Español">Español</option>
+            <option value="Português">Português</option>
+            <option value="Русский">Русский</option>
+            <option value="Italiano">Italiano</option>
+            <option value="العربية">العربية</option>
+            <option value="हिन्दी">हिन्दी</option>
+            <option value="Türkçe">Türkçe</option>
+            <option value="Tiếng Việt">Tiếng Việt</option>
+            <option value="ภาษาไทย">ภาษาไทย</option>
+          </select>
+          <small class="settings-message" style="margin-top: 4px;">{{ t('settings.general.aiLanguageHint') }}</small>
         </label>
       </div>
 

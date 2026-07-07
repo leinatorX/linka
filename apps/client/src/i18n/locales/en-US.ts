@@ -36,6 +36,8 @@ export default {
       desc: "Manage basic system display and behavior",
       language: "Interface Language",
       languageHint: "Select your preferred interface language",
+      aiLanguage: "Linka AI Language",
+      aiLanguageHint: "Select the default language the AI assistant uses to talk to you",
       weatherTitle: "Weather Widget",
       weatherDesc: "Display weather info on the top right (Powered by WeatherAPI)",
       weatherApiKey: "WeatherAPI Key",

@@ -94,6 +94,7 @@ export interface AiProviderConfig {
 }
 
 export interface AiSettings {
+  aiLanguage: string;
   activeProviderId: string;
   providers: AiProviderConfig[];
 }

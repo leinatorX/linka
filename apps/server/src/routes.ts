@@ -148,6 +148,7 @@ const aiProviderSchema = z.object({
 });
 
 const aiSettingsSchema = z.object({
+  aiLanguage: z.string().trim().min(1),
   activeProviderId: z.string().trim().min(1),
   providers: z.array(aiProviderSchema).min(1)
 });

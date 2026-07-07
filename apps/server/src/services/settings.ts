@@ -25,6 +25,7 @@ export interface AiProviderConfig {
 }
 
 export interface AiSettings {
+  aiLanguage: string;
   activeProviderId: string;
   providers: AiProviderConfig[];
 }
@@ -36,6 +37,7 @@ export interface PublicAiProviderConfig extends Omit<AiProviderConfig, "apiKey">
 }
 
 export interface PublicAiSettings {
+  aiLanguage: string;
   activeProviderId: string;
   providers: PublicAiProviderConfig[];
 }
@@ -50,6 +52,7 @@ type AiProviderConfigInput = Partial<Omit<AiProviderConfig, "models">> & {
 };
 
 type AiSettingsInput = {
+  aiLanguage?: unknown;
   activeProviderId?: unknown;
   providers?: AiProviderConfigInput[];
 };
@@ -67,6 +70,7 @@ const upsertSetting = db.prepare(`
 const DEFAULT_OPENAI_MODEL = config.openaiModel || "gpt-4.1-mini";
 
 const DEFAULT_AI_SETTINGS: AiSettings = {
+  aiLanguage: "简体中文",
   activeProviderId: "openai",
   providers: [
     {
@@ -205,6 +209,7 @@ function migrateLegacySettings(value: Record<string, unknown>): AiSettings | nul
   });
 
   return {
+    aiLanguage: "简体中文",
     activeProviderId: provider.id,
     providers: [provider]
   };
@@ -217,6 +222,7 @@ function normalizeSettings(value: AiSettingsInput): AiSettings {
   const activeProviderExists = providers.some((provider) => provider.id === value.activeProviderId);
 
   return {
+    aiLanguage: typeof value.aiLanguage === "string" && value.aiLanguage.trim() ? value.aiLanguage.trim() : "简体中文",
     activeProviderId: activeProviderExists ? String(value.activeProviderId) : providers.find((provider) => provider.enabled)?.id ?? providers[0].id,
     providers
   };
@@ -238,6 +244,7 @@ function mergeApiKeys(next: AiSettings, current: AiSettings): AiSettings {
   const currentProviders = new Map(current.providers.map((provider) => [provider.id, provider]));
 
   return {
+    aiLanguage: next.aiLanguage,
     activeProviderId: next.activeProviderId,
     providers: next.providers.map((provider) => {
       const currentProvider = currentProviders.get(provider.id);
@@ -268,6 +275,7 @@ export function getAiSettings(): AiSettings {
 export function getPublicAiSettings(): PublicAiSettings {
   const settings = getAiSettings();
   return {
+    aiLanguage: settings.aiLanguage,
     activeProviderId: settings.activeProviderId,
     providers: settings.providers.map((provider) => ({
       ...provider,
@@ -298,6 +306,7 @@ export function reorderAiProviders(orderedIds: string[]): PublicAiSettings {
     ...current.providers.filter((provider) => !headIds.includes(provider.id))
   ];
   return saveAiSettings({
+    aiLanguage: current.aiLanguage,
     activeProviderId: current.activeProviderId,
     providers: reordered
   });

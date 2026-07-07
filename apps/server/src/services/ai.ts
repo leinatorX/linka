@@ -1,16 +1,16 @@
 import { toBookmark } from "../db.js";
 import type { PageMetadata } from "./metadata.js";
-import { getActiveAiConfig } from "./settings.js";
+import { getActiveAiConfig, getAiSettings } from "./settings.js";
 import type { ActiveAiConfig } from "./settings.js";
 import {
   buildAssistantChatSystemPrompt,
-  ASSISTANT_TOOL_RESULT_SYSTEM_PROMPT,
+  buildAssistantToolResultSystemPrompt,
   buildAssistantToolSystemPrompt,
-  CLASSIFY_BOOKMARK_SYSTEM_PROMPT,
-  buildAssistantToolResultPrompt,
   buildAssistantUserPrompt,
+  buildClassifyBookmarkSystemPrompt,
+  buildClassifyBookmarkUserPrompt,
   buildAssistantToolUserPrompt,
-  buildClassifyBookmarkUserPrompt
+  buildAssistantToolResultPrompt
 } from "./prompts.js";
 
 export interface AiClassification {
@@ -647,9 +647,10 @@ async function* streamAi(messages: ChatMessage[], modelName?: string, effort?: R
 export async function classifyBookmark(metadata: PageMetadata, allowedCategories: string[]): Promise<AiClassification> {
   const prompt = buildClassifyBookmarkUserPrompt(metadata, allowedCategories);
 
+  const settings = getAiSettings();
   try {
     const content = await requestAi([
-      { role: "system", content: CLASSIFY_BOOKMARK_SYSTEM_PROMPT },
+      { role: "system", content: buildClassifyBookmarkSystemPrompt(settings.aiLanguage) },
       { role: "user", content: prompt }
     ], { jsonMode: true });
     const parsed = JSON.parse(extractJsonObject(content)) as Partial<AiClassification>;
@@ -674,13 +675,14 @@ export async function generateAssistantReply(message: string, bookmarks: Array<R
   const active = getActiveAiConfig();
   assertModelSupportsAttachments(active, attachments);
 
+  const settings = getAiSettings();
   const content = active.provider.apiFormat === "anthropic"
     ? await requestAnthropic(active, [
-      { role: "system", content: buildAssistantChatSystemPrompt() },
+      { role: "system", content: buildAssistantChatSystemPrompt(settings.aiLanguage) },
       { role: "user", content: buildAnthropicUserContent(prompt, attachments) }
     ])
     : await requestOpenAi(active, [
-    { role: "system", content: buildAssistantChatSystemPrompt() },
+    { role: "system", content: buildAssistantChatSystemPrompt(settings.aiLanguage) },
       { role: "user", content: buildOpenAiUserContent(prompt, attachments) }
     ], false);
 
@@ -705,10 +707,11 @@ export async function* streamAssistantReply(options: {
     webContext: options.webContext
   });
 
+  const settings = getAiSettings();
   const active = getActiveAiConfig(options.model);
   assertModelSupportsAttachments(active, options.attachments);
   const messages: ChatMessage[] = [
-    { role: "system", content: buildAssistantChatSystemPrompt() },
+    { role: "system", content: buildAssistantChatSystemPrompt(settings.aiLanguage) },
     {
       role: "user",
       content: active.provider.apiFormat === "anthropic"
@@ -735,9 +738,10 @@ export async function planAssistantToolCall(options: {
 }): Promise<AssistantToolPlan | null> {
   const prompt = buildAssistantToolUserPrompt(options);
 
+  const settings = getAiSettings();
   try {
     const content = await requestAi([
-      { role: "system", content: buildAssistantToolSystemPrompt({ webSearchEnabled: options.webSearchEnabled }) },
+      { role: "system", content: buildAssistantToolSystemPrompt({ webSearchEnabled: options.webSearchEnabled, aiLanguage: settings.aiLanguage }) },
       { role: "user", content: prompt }
     ], { jsonMode: true });
     const parsed = JSON.parse(extractJsonObject(content)) as Partial<AssistantToolPlan>;
@@ -787,9 +791,10 @@ export async function generateAssistantToolResultReply(options: {
   changed?: boolean;
   categoriesChanged?: boolean;
 }): Promise<string> {
+  const settings = getAiSettings();
   const prompt = buildAssistantToolResultPrompt(options);
   const content = await requestAi([
-    { role: "system", content: ASSISTANT_TOOL_RESULT_SYSTEM_PROMPT },
+    { role: "system", content: buildAssistantToolResultSystemPrompt(settings.aiLanguage) },
     { role: "user", content: prompt }
   ]);
 

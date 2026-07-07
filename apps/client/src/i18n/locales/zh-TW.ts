@@ -36,6 +36,8 @@ export default {
       desc: "管理系統的基礎顯示與行為",
       language: "介面語言",
       languageHint: "選擇您偏好的介面語言",
+      aiLanguage: "Linka AI 語言",
+      aiLanguageHint: "選擇 AI 助手與您對話時使用的預設語言",
       weatherTitle: "天氣組件",
       weatherDesc: "在導航列右上角顯示天氣資訊（由 WeatherAPI 提供）",
       weatherApiKey: "WeatherAPI 金鑰",

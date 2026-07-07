@@ -341,7 +341,12 @@ onUnmounted(() => {
         @open-guide="openGuide"
         @close-settings="closeSettings"
       >
-        <GeneralSettings v-if="settingsTab === 'general'" />
+        <GeneralSettings 
+          v-if="settingsTab === 'general'" 
+          :ai-settings-form="aiSettingsForm"
+          :is-ai-settings-saving="isAiSettingsSaving"
+          @save-ai-settings="saveAiSettings"
+        />
 
         <CategorySettings
           v-else-if="settingsTab === 'categories'"

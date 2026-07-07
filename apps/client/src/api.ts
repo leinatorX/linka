@@ -271,7 +271,7 @@ export function saveSearchSettings(payload: any): Promise<{ settings: any }> {
   });
 }
 
-export function reorderAiProviders(orderedIds: string[]): Promise<{ settings: { activeProviderId: string; providers: AiProviderConfig[] } }> {
+export function reorderAiProviders(orderedIds: string[]): Promise<{ settings: { aiLanguage: string; activeProviderId: string; providers: AiProviderConfig[] } }> {
   return request("/api/settings/ai/reorder", {
     method: "POST",
     body: JSON.stringify({ orderedIds })
