@@ -8,7 +8,7 @@ import { executeAssistantToolPlan, inferAssistantToolPlan } from "./services/ass
 import { clearSessionCookie, getSessionFromRequest, login, logout, requireAuth, updateAvatar, updateCredentials } from "./services/auth.js";
 import { createBookmark, deleteBookmark, getBookmarkById, listBookmarks, updateBookmark } from "./services/bookmarks.js";
 import { createCategory, deleteCategory, listCategories, reorderCategories, updateCategory } from "./services/categories.js";
-import { BookmarkRecord, toBookmark } from "./db.js";
+
 import { getPublicAiSettings, getProviderApiKey, reorderAiProviders, saveAiSettings } from "./services/settings.js";
 import { getPublicWeatherSettings, saveWeatherSettings, fetchCurrentWeather } from "./services/weather.js";
 import { getPublicSearchSettings, isSearchEnabled, saveSearchSettings } from "./services/webSearch.js";

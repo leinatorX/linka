@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref, watch, nextTick } from "vue";
+import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { ChevronDown, FileText, History, Loader2, Mic, Plus, Search, Send, Square, Video, X, Package, Link } from "@lucide/vue";
 import type { AssistantUiMessage } from "../../composables/useAssistant";
@@ -152,27 +152,43 @@ function checkMenuTrigger() {
   showMentionMenu.value = false;
 }
 
+function extractTextFromNode(node: Node): string {
+  if (node.nodeType === Node.TEXT_NODE) {
+    return node.textContent || "";
+  } else if (node.nodeType === Node.ELEMENT_NODE) {
+    const el = node as HTMLElement;
+    if (el.classList.contains('mention-badge')) {
+      const type = el.dataset.type;
+      const id = el.dataset.id;
+      const name = el.dataset.name;
+      return type === 'bookmark' ? `@[${name}](${id})` : `$[${name}](${id})`;
+    } else if (el.classList.contains('command-badge')) {
+      return el.dataset.name || "";
+    } else if (el.nodeName === 'BR') {
+      return "\n";
+    } else {
+      let text = "";
+      for (const child of node.childNodes) {
+        text += extractTextFromNode(child);
+      }
+      if (el.nodeName === 'DIV' || el.nodeName === 'P') {
+        return "\n" + text;
+      }
+      return text;
+    }
+  }
+  return "";
+}
+
 function onEditorInput() {
   if (!editorRef.value) return;
   let text = "";
   for (const node of editorRef.value.childNodes) {
-    if (node.nodeType === Node.TEXT_NODE) {
-      text += node.textContent || "";
-    } else if (node.nodeType === Node.ELEMENT_NODE) {
-      const el = node as HTMLElement;
-      if (el.classList.contains('mention-badge')) {
-        const type = el.dataset.type;
-        const id = el.dataset.id;
-        const name = el.dataset.name;
-        text += type === 'bookmark' ? `@[${name}](${id})` : `$[${name}](${id})`;
-      } else if (el.classList.contains('command-badge')) {
-        const name = el.dataset.name;
-        text += name;
-      } else if (el.nodeName === 'BR') {
-        text += "\n";
-      } else {
-        text += el.textContent || "";
-      }
+    const nodeText = extractTextFromNode(node);
+    if (node === editorRef.value.firstChild && (node.nodeName === 'DIV' || node.nodeName === 'P') && nodeText.startsWith('\n')) {
+      text += nodeText.substring(1);
+    } else {
+      text += nodeText;
     }
   }
   assistantInput.value = text;
@@ -431,19 +447,34 @@ function insertBadge(html: string) {
   savedRange = null;
 }
 
+function escapeHtml(unsafe: string) {
+  return unsafe
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
 function applyCommand(cmd: SlashCommand) {
   // 先关闭菜单，防止后续 Enter 事件二次触发
   showCommandMenu.value = false;
-  insertBadge(`<span class="active-command-badge command-badge" contenteditable="false" data-name="${cmd.template}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-package"><line x1="16.5" x2="7.5" y1="9.4" y2="4.21"/><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.29 7 12 12 20.71 7"/><line x1="12" x2="12" y1="22" y2="12"/></svg>${cmd.template.substring(1)}</span>`);
+  const name = escapeHtml(cmd.template);
+  const display = escapeHtml(cmd.template.substring(1));
+  insertBadge(`<span class="active-command-badge command-badge" contenteditable="false" data-name="${name}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-package"><line x1="16.5" x2="7.5" y1="9.4" y2="4.21"/><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.29 7 12 12 20.71 7"/><line x1="12" x2="12" y1="22" y2="12"/></svg>${display}</span>`);
 }
 
 function applyCombinedMention(option: CombinedMention) {
   // 先关闭菜单，防止后续 Enter 事件二次触发
   showMentionMenu.value = false;
   if (option.type === "bookmark") {
-    insertBadge(`<span class="active-command-badge mention-badge" contenteditable="false" data-type="bookmark" data-name="${option.data.title}" data-id="${option.data.id}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-link"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>${option.data.title}</span>`);
+    const title = escapeHtml(option.data.title);
+    const id = escapeHtml(option.data.id);
+    insertBadge(`<span class="active-command-badge mention-badge" contenteditable="false" data-type="bookmark" data-name="${title}" data-id="${id}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-link"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>${title}</span>`);
   } else {
-    insertBadge(`<span class="active-command-badge mention-badge" contenteditable="false" data-type="category" data-name="${option.data.name}" data-id="${option.data.id}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-package"><line x1="16.5" x2="7.5" y1="9.4" y2="4.21"/><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.29 7 12 12 20.71 7"/><line x1="12" x2="12" y1="22" y2="12"/></svg>${option.data.name}</span>`);
+    const name = escapeHtml(option.data.name);
+    const id = escapeHtml(option.data.id);
+    insertBadge(`<span class="active-command-badge mention-badge" contenteditable="false" data-type="category" data-name="${name}" data-id="${id}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-package"><line x1="16.5" x2="7.5" y1="9.4" y2="4.21"/><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.29 7 12 12 20.71 7"/><line x1="12" x2="12" y1="22" y2="12"/></svg>${name}</span>`);
   }
 }
 
