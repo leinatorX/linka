@@ -130,6 +130,7 @@
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
+.general-icon { background: #8e8e93; }     /* 灰色 */
 .account-icon { background: #007aff; }     /* 蓝色 */
 .category-icon { background: #ff9500; }    /* 橙色 */
 .bookmark-icon { background: #34c759; }    /* 绿色 */
@@ -543,18 +544,11 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  background: rgba(0, 0, 0, 0.2);
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  padding: 12px 16px;
-  border-radius: var(--radius-md);
-  transition: all var(--transition-fast);
+  position: relative;
 }
 
 .category-item:hover {
-  background: rgba(255, 255, 255, 0.05);
-  border-color: rgba(255, 255, 255, 0.1);
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  background: rgba(255, 255, 255, 0.02);
 }
 
 /* 拖拽相关视觉态。 */

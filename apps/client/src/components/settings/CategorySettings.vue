@@ -89,49 +89,56 @@ function onDrop(event: DragEvent, targetId: string) {
 
 <template>
   <section>
-    <div class="grand-panel">
-      <div class="section-title">
+    <div class="settings-section-title" style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 12px; margin-top: 8px;">
+      <div>
         <h3>{{ t('settings.categories.title') }}</h3>
-        <p>{{ t('settings.categories.desc') }}</p>
+        <p style="margin: 6px 0 0; font-size: 13px; color: var(--text-secondary); text-transform: none; font-weight: normal;">{{ t('settings.categories.desc') }}</p>
       </div>
+    </div>
 
-      <div class="category-create settings-form">
-        <input v-model="newCategoryName" :placeholder="t('settings.categories.newCategoryPlaceholder')" @keyup.enter="$emit('addCategory')" />
-        <button class="btn-primary compact icon-btn" :title="t('settings.categories.add')" @click="$emit('addCategory')">
-          <Plus />
+    <div class="settings-list-group">
+      <!-- Create category row -->
+      <div class="settings-list-item" style="padding-left: 20px; padding-right: 20px;">
+        <div style="flex: 1; display: flex; align-items: center; min-width: 0;">
+          <input v-model="newCategoryName" :placeholder="t('settings.categories.newCategoryPlaceholder')" @keyup.enter="$emit('addCategory')" style="background: transparent; border: none; font-size: 15px; padding: 0; width: 100%; color: var(--text-primary); outline: none;" />
+        </div>
+        <button class="btn-primary icon-btn compact" style="width: 28px; height: 28px; border-radius: 50%; padding: 0; display: flex; align-items: center; justify-content: center; flex-shrink: 0;" :title="t('settings.categories.add')" @click="$emit('addCategory')">
+          <Plus :size="16" />
         </button>
       </div>
 
-      <div class="category-list">
-        <div
-          v-for="category in categories"
-          :key="category.id"
-          class="category-item"
-          :class="{
-            'is-dragging': draggedId === category.id,
-            'drop-before': dropTargetId === category.id && dropPosition === 'before',
-            'drop-after': dropTargetId === category.id && dropPosition === 'after'
-          }"
-          draggable="true"
-          @dragstart="onDragStart($event, category.id)"
-          @dragover="onDragOver($event, category.id)"
-          @dragleave="onDragLeave(category.id)"
-          @dragend="onDragEnd"
-          @drop="onDrop($event, category.id)"
-        >
-          <span class="drag-handle" :title="t('settings.categories.dragSort')" :aria-label="t('settings.categories.dragSort')">
-            <GripVertical :size="16" />
-          </span>
-          <input class="settings-inline-input" :value="editingCategoryNames[category.id]"
+      <!-- Category List -->
+      <div
+        v-for="category in categories"
+        :key="category.id"
+        class="settings-list-item category-item"
+        :class="{
+          'is-dragging': draggedId === category.id,
+          'drop-before': dropTargetId === category.id && dropPosition === 'before',
+          'drop-after': dropTargetId === category.id && dropPosition === 'after'
+        }"
+        draggable="true"
+        @dragstart="onDragStart($event, category.id)"
+        @dragover="onDragOver($event, category.id)"
+        @dragleave="onDragLeave(category.id)"
+        @dragend="onDragEnd"
+        @drop="onDrop($event, category.id)"
+      >
+        <span class="drag-handle" :title="t('settings.categories.dragSort')" :aria-label="t('settings.categories.dragSort')">
+          <GripVertical :size="16" />
+        </span>
+        <div style="flex: 1; display: flex; align-items: center; min-width: 0;">
+          <input :value="editingCategoryNames[category.id]"
             :disabled="category.name === '未分类'"
             @input="editingCategoryNames[category.id] = ($event.target as HTMLInputElement).value"
-            @keyup.enter="$emit('saveCategory', category)" />
-          <div class="category-item-actions">
-            <button class="mini-button" :disabled="category.name === '未分类'"
-              @click="$emit('saveCategory', category)">{{ t('settings.categories.save') }}</button>
-            <button class="mini-button danger" :disabled="category.name === '未分类'"
-              @click="$emit('removeCategory', category)">{{ t('settings.categories.delete') }}</button>
-          </div>
+            @keyup.enter="$emit('saveCategory', category)" 
+            style="background: transparent; border: none; font-size: 15px; padding: 0; width: 100%; color: var(--text-primary); outline: none;" />
+        </div>
+        <div class="category-item-actions" style="display: flex; gap: 6px;">
+          <button class="btn-secondary" style="height: 28px; padding: 0 10px; font-size: 12px; border-radius: 6px;" :disabled="category.name === '未分类'"
+            @click="$emit('saveCategory', category)">{{ t('settings.categories.save') }}</button>
+          <button class="btn-secondary" style="height: 28px; padding: 0 10px; font-size: 12px; border-radius: 6px; color: var(--danger);" :disabled="category.name === '未分类'"
+            @click="$emit('removeCategory', category)">{{ t('settings.categories.delete') }}</button>
         </div>
       </div>
     </div>

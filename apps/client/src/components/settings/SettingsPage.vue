@@ -43,13 +43,6 @@ function clearTabMobile() {
           </div>
 
           <nav class="settings-sidebar-nav" :aria-label="t('settings.title')">
-            <button class="nav-item" :class="{ active: settingsTab === 'general' }" @click="settingsTab = 'general'">
-              <div class="icon-wrap general-icon">
-                <Settings :size="15" />
-              </div>
-              <span class="nav-label">{{ t('settings.tabs.general') }}</span>
-              <ChevronRight class="chevron" :size="14" />
-            </button>
             <button class="nav-item" :class="{ active: settingsTab === 'account' }" @click="settingsTab = 'account'">
               <div class="icon-wrap account-icon">
                 <User :size="15" />
@@ -76,6 +69,13 @@ function clearTabMobile() {
                 <Sparkles :size="15" />
               </div>
               <span class="nav-label">{{ t('settings.tabs.ai') }}</span>
+              <ChevronRight class="chevron" :size="14" />
+            </button>
+            <button class="nav-item" :class="{ active: settingsTab === 'general' }" @click="settingsTab = 'general'">
+              <div class="icon-wrap general-icon">
+                <Settings :size="15" />
+              </div>
+              <span class="nav-label">{{ t('settings.tabs.general') }}</span>
               <ChevronRight class="chevron" :size="14" />
             </button>
           </nav>

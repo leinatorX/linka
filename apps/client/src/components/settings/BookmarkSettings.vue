@@ -24,38 +24,42 @@ function confirmDelete(bookmark: Bookmark) {
 
 <template>
   <section>
-    <div class="grand-panel">
-      <div class="section-title bookmark-settings-title">
-        <div>
-          <h3>{{ t('settings.bookmarks.title') }}</h3>
-          <p>{{ t('settings.bookmarks.desc') }}</p>
-        </div>
-        <button class="btn-primary icon-btn bookmark-add-button" :title="t('settings.bookmarks.addBookmark')" @click="$emit('showAddBookmark')">
-          <Plus :size="20" />
-        </button>
+    <div class="settings-section-title" style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 12px; margin-top: 8px;">
+      <div>
+        <h3>{{ t('settings.bookmarks.title') }}</h3>
+        <p style="margin: 6px 0 0; font-size: 13px; color: var(--text-secondary); text-transform: none; font-weight: normal;">{{ t('settings.bookmarks.desc') }}</p>
+      </div>
+    </div>
+
+    <div class="settings-list-group">
+      <!-- Create bookmark row -->
+      <div class="settings-list-item" style="padding: 12px 20px; cursor: pointer;" @click="$emit('showAddBookmark')">
+         <div style="display: flex; align-items: center; gap: 12px; color: var(--accent-primary);">
+            <Plus :size="18" />
+            <span style="font-size: 15px; font-weight: 500;">{{ t('settings.bookmarks.addBookmark') }}</span>
+         </div>
       </div>
 
-      <div class="bookmark-manage-list">
-        <div v-for="bookmark in bookmarks" :key="bookmark.id" class="bookmark-manage-item">
-          <div class="bookmark-manage-info">
-            <img v-if="bookmark.faviconUrl" :src="bookmark.faviconUrl" alt="" class="bookmark-manage-icon" />
-            <div v-else class="bookmark-manage-icon-placeholder">
-              <Link2 :size="16" />
-            </div>
-            <div class="bookmark-manage-texts">
-              <h4>{{ bookmark.title || bookmark.domain }}</h4>
-              <p>{{ bookmark.url }}</p>
-            </div>
-            <span class="bookmark-manage-category" v-if="bookmark.category">{{ bookmark.category }}</span>
+      <!-- Bookmarks List -->
+      <div v-for="bookmark in bookmarks" :key="bookmark.id" class="settings-list-item bookmark-manage-item" style="padding: 12px 20px;">
+        <div class="bookmark-manage-info">
+          <img v-if="bookmark.faviconUrl" :src="bookmark.faviconUrl" alt="" class="bookmark-manage-icon" />
+          <div v-else class="bookmark-manage-icon-placeholder">
+            <Link2 :size="16" />
           </div>
-          <div class="bookmark-manage-actions" style="display: flex; gap: 8px;">
-            <button class="mini-button icon-only" :title="t('settings.bookmarks.edit')" @click="$emit('startEditingBookmark', bookmark)">
-              <Edit2 :size="16" />
-            </button>
-            <button class="mini-button icon-only" style="color: var(--danger)" :title="t('library.delete')" @click.stop.prevent="confirmDelete(bookmark)">
-              <Trash2 :size="16" />
-            </button>
+          <div class="bookmark-manage-texts">
+            <h4 style="margin: 0; font-size: 15px; font-weight: 500; color: var(--text-primary);">{{ bookmark.title || bookmark.domain }}</h4>
+            <p style="margin: 0; font-size: 13px; color: var(--text-secondary);">{{ bookmark.url }}</p>
           </div>
+          <span class="bookmark-manage-category" v-if="bookmark.category">{{ bookmark.category }}</span>
+        </div>
+        <div class="bookmark-manage-actions" style="display: flex; gap: 8px; margin-top: 0;">
+          <button class="btn-secondary compact" style="width: 28px; height: 28px; border-radius: 6px; padding: 0; display: flex; align-items: center; justify-content: center;" :title="t('settings.bookmarks.edit')" @click="$emit('startEditingBookmark', bookmark)">
+            <Edit2 :size="14" />
+          </button>
+          <button class="btn-secondary compact" style="width: 28px; height: 28px; border-radius: 6px; padding: 0; display: flex; align-items: center; justify-content: center; color: var(--danger);" :title="t('library.delete')" @click.stop.prevent="confirmDelete(bookmark)">
+            <Trash2 :size="14" />
+          </button>
         </div>
       </div>
     </div>

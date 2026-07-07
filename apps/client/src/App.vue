@@ -30,7 +30,7 @@ const HOME_CATEGORY = "首页";
 
 const route = useRoute();
 const router = useRouter();
-const settingsTab = ref<SettingsTab>("general");
+const settingsTab = ref<SettingsTab>("account");
 const isSettingsPage = computed(() => route.path === "/settings");
 
 const { t } = useI18n();
