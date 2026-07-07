@@ -1,10 +1,33 @@
-# Linka
+<div align="center">
+  <img src="./apps/client/public/logo.svg" alt="Linka Logo" width="120" />
+</div>
 
-> Save it. Let AI organize it.
+<h1 align="center">Linka</h1>
 
-[简体中文](./README.md) | English
+<p align="center">
+  <b>Save it. Let AI organize it.</b>
+</p>
 
-Linka is an AI-powered bookmark manager for personal and small team self-hosting scenarios. It fetches web page metadata, uses large language models to generate summaries, categories, and tags, and utilizes a conversational AI assistant for saving, retrieving, and understanding multi-modal content.
+<p align="center">
+  An AI-powered bookmark manager for personal and small team self-hosting scenarios.<br/>
+  Fetches web metadata, uses LLMs to generate summaries, categories, and tags, and utilizes a conversational AI assistant for saving, retrieving, and understanding multi-modal content.
+</p>
+
+<p align="center">
+  <b>English</b> ·
+  <a href="./README.md">简体中文</a> ·
+  <a href="#quick-start">Quick Start</a> ·
+  <a href="#features">Features</a> ·
+  <a href="#api-documentation">API Docs</a>
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/version-0.1.0-blue.svg" alt="version" />
+  <img src="https://img.shields.io/badge/license-MIT-green.svg" alt="license" />
+  <img src="https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey.svg" alt="platform" />
+  <img src="https://img.shields.io/badge/Vue-3.x-brightgreen.svg" alt="Vue" />
+  <img src="https://img.shields.io/badge/Fastify-4.x-black.svg" alt="Fastify" />
+</p>
 
 <p align="center">
   <img src="./assets/screenshot.png" alt="Linka screenshot" width="860" />

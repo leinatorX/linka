@@ -1,10 +1,33 @@
-# Linka
+<div align="center">
+  <img src="./apps/client/public/logo.svg" alt="Linka Logo" width="120" />
+</div>
 
-> Save it. Let AI organize it.
+<h1 align="center">Linka</h1>
 
-简体中文 | [English](./README_EN.md)
+<p align="center">
+  <b>Save it. Let AI organize it.</b>
+</p>
 
-Linka 是一款面向个人和小团队自托管场景的 AI 书签管理器。它可以抓取网页元数据，使用大语言模型生成摘要、分类和标签，并通过对话式 AI 助手完成收藏、检索和多模态内容理解。
+<p align="center">
+  面向个人和小团队自托管场景的 AI 书签管理器。<br/>
+  抓取网页元数据，使用大语言模型生成摘要、分类和标签，通过对话式 AI 助手完成收藏、检索和多模态内容理解。
+</p>
+
+<p align="center">
+  <a href="./README_EN.md">English</a> ·
+  <b>简体中文</b> ·
+  <a href="#快速开始">快速开始</a> ·
+  <a href="#功能特性">功能特性</a> ·
+  <a href="#api-文档">API 文档</a>
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/version-0.1.0-blue.svg" alt="version" />
+  <img src="https://img.shields.io/badge/license-MIT-green.svg" alt="license" />
+  <img src="https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey.svg" alt="platform" />
+  <img src="https://img.shields.io/badge/Vue-3.x-brightgreen.svg" alt="Vue" />
+  <img src="https://img.shields.io/badge/Fastify-4.x-black.svg" alt="Fastify" />
+</p>
 
 <p align="center">
   <img src="./assets/screenshot.png" alt="Linka screenshot" width="860" />
