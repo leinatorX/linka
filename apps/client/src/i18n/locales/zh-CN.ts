@@ -196,6 +196,20 @@ export default {
       medium: "中",
       high: "高",
       max: "最大"
+    },
+    commands: {
+      addBookmark: "/添加书签",
+      addBookmarkDesc: "收藏指定的网址",
+      delBookmark: "/删除书签",
+      delBookmarkDesc: "删除指定书签",
+      addCategory: "/添加分类",
+      addCategoryDesc: "创建一个新分类",
+      delCategory: "/删除分类",
+      delCategoryDesc: "删除指定的分类",
+      searchWeb: "/搜索",
+      searchWebDesc: "联网搜索实时信息",
+      fetchWeb: "/抓取",
+      fetchWebDesc: "抓取并读取指定网址内容"
     }
   },
   library: {

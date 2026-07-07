@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from "vue";
+import { computed, onMounted, onUnmounted, ref, watch, nextTick } from "vue";
 import { useI18n } from "vue-i18n";
-import { ChevronDown, FileText, History, Loader2, Mic, Plus, Search, Send, Square, Video, X } from "@lucide/vue";
+import { ChevronDown, FileText, History, Loader2, Mic, Plus, Search, Send, Square, Video, X, Package } from "@lucide/vue";
 import type { AssistantUiMessage } from "../../composables/useAssistant";
 import type { AiModelConfig, AssistantAttachment, AssistantConversation } from "../../types";
 import { renderAssistantMarkdown } from "../../utils/markdown";
@@ -43,6 +43,40 @@ const renderedMessages = computed(() =>
     html: message.role === "assistant" ? renderAssistantMarkdown(message.text) : ""
   }))
 );
+
+function parseUserMessageCommand(text: string) {
+  if (!text.startsWith("/")) return null;
+  const match = text.match(/^(\/[\w\u4e00-\u9fa5-]+)(.*)/);
+  if (!match) return null;
+  return {
+    command: match[1],
+    rest: match[2]
+  };
+}
+
+const inputTextRest = computed({
+  get() {
+    const parsed = parseUserMessageCommand(assistantInput.value);
+    return parsed ? parsed.rest.trimStart() : assistantInput.value;
+  },
+  set(val) {
+    const parsed = parseUserMessageCommand(assistantInput.value);
+    if (parsed) {
+      assistantInput.value = parsed.command + " " + val;
+    } else {
+      assistantInput.value = val;
+    }
+  }
+});
+
+function onInputDelete(event: KeyboardEvent) {
+  const parsed = parseUserMessageCommand(assistantInput.value);
+  if (parsed && inputTextRest.value.length === 0) {
+    event.preventDefault();
+    assistantInput.value = "";
+  }
+}
+
 const assistantPanelWidth = ref(420);
 const isResizingAssistant = ref(false);
 const isAssistantInputComposing = ref(false);
@@ -129,6 +163,59 @@ const emit = defineEmits<{
   stopAssistant: [];
 }>();
 
+interface SlashCommand {
+  name: string;
+  description: string;
+  template: string;
+}
+
+const slashCommands = computed<SlashCommand[]>(() => [
+  { name: t('assistant.commands.addBookmark'), description: t('assistant.commands.addBookmarkDesc'), template: `${t('assistant.commands.addBookmark')} ` },
+  { name: t('assistant.commands.delBookmark'), description: t('assistant.commands.delBookmarkDesc'), template: `${t('assistant.commands.delBookmark')} ` },
+  { name: t('assistant.commands.addCategory'), description: t('assistant.commands.addCategoryDesc'), template: `${t('assistant.commands.addCategory')} ` },
+  { name: t('assistant.commands.delCategory'), description: t('assistant.commands.delCategoryDesc'), template: `${t('assistant.commands.delCategory')} ` },
+  { name: t('assistant.commands.searchWeb'), description: t('assistant.commands.searchWebDesc'), template: `${t('assistant.commands.searchWeb')} ` },
+  { name: t('assistant.commands.fetchWeb'), description: t('assistant.commands.fetchWebDesc'), template: `${t('assistant.commands.fetchWeb')} ` },
+]);
+
+const showCommandMenu = computed(() => {
+  return assistantInput.value.startsWith("/") && !assistantInput.value.includes(" ");
+});
+
+const matchedCommands = computed(() => {
+  if (!showCommandMenu.value) return [];
+  const text = assistantInput.value.toLowerCase();
+  return slashCommands.value.filter(cmd => cmd.name.toLowerCase().startsWith(text));
+});
+
+const selectedCommandIndex = ref(0);
+
+watch(matchedCommands, () => {
+  selectedCommandIndex.value = 0;
+});
+
+function onCommandKeydown(event: KeyboardEvent) {
+  if (!showCommandMenu.value || matchedCommands.value.length === 0) {
+    return;
+  }
+
+  if (event.key === "ArrowUp") {
+    event.preventDefault();
+    selectedCommandIndex.value = (selectedCommandIndex.value - 1 + matchedCommands.value.length) % matchedCommands.value.length;
+  } else if (event.key === "ArrowDown") {
+    event.preventDefault();
+    selectedCommandIndex.value = (selectedCommandIndex.value + 1) % matchedCommands.value.length;
+  } else if (event.key === "Tab") {
+    event.preventDefault();
+    applyCommand(matchedCommands.value[selectedCommandIndex.value]);
+  }
+}
+
+function applyCommand(cmd: SlashCommand) {
+  assistantInput.value = cmd.template;
+  // wait for DOM update then focus could be done if we had textarea ref, but v-model syncs it
+}
+
 function onAssistantInputCompositionStart() {
   isAssistantInputComposing.value = true;
 }
@@ -143,6 +230,12 @@ function onAssistantInputCompositionEnd() {
 
 function onAssistantInputEnter(event: KeyboardEvent) {
   if (event.isComposing || isAssistantInputComposing.value || event.keyCode === 229) {
+    return;
+  }
+
+  if (showCommandMenu.value && matchedCommands.value.length > 0) {
+    event.preventDefault();
+    applyCommand(matchedCommands.value[selectedCommandIndex.value]);
     return;
   }
 
@@ -270,8 +363,19 @@ function formatFileSize(size: number) {
             </div>
             <div v-else-if="message.role === 'assistant' && (message.text || !message.reasoning)" class="markdown-body"
               v-html="message.html || message.text"></div>
-            <p v-else-if="message.text || !message.reasoning">{{ message.text }}<span v-if="message.streaming"
-                class="stream-cursor"></span></p>
+            <p v-else-if="message.text || !message.reasoning">
+              <template v-if="parseUserMessageCommand(message.text)">
+                <span class="user-slash-command">
+                  <Package :size="16" />
+                  {{ parseUserMessageCommand(message.text)!.command.substring(1) }}
+                </span>
+                {{ parseUserMessageCommand(message.text)!.rest }}
+              </template>
+              <template v-else>
+                {{ message.text }}
+              </template>
+              <span v-if="message.streaming" class="stream-cursor"></span>
+            </p>
             <div v-if="message.attachments?.length" class="attachment-list message-attachment-list">
               <div v-for="attachment in message.attachments" :key="attachment.id" class="attachment-chip readonly"
                 :class="{ image: attachment.kind === 'image' }">
@@ -298,10 +402,33 @@ function formatFileSize(size: number) {
 
       <div class="assistant-input-wrapper" v-if="!assistantHistoryOpen" :class="{ 'is-loading': isAssistantLoading }">
         <div class="siri-glow-wave"></div>
-        <textarea v-model="assistantInput" :placeholder="t('assistant.inputPlaceholder')"
-          @compositionstart="onAssistantInputCompositionStart"
-          @compositionend="onAssistantInputCompositionEnd"
-          @keydown.enter.exact="onAssistantInputEnter"></textarea>
+        <div class="input-box-container">
+          <div v-if="parseUserMessageCommand(assistantInput)" class="active-command-badge">
+            <Package :size="14" />
+            {{ parseUserMessageCommand(assistantInput)!.command.substring(1) }}
+          </div>
+          <textarea v-model="inputTextRest" :placeholder="t('assistant.inputPlaceholder')"
+            @compositionstart="onAssistantInputCompositionStart"
+            @compositionend="onAssistantInputCompositionEnd"
+            @keydown="onCommandKeydown"
+            @keydown.delete="onInputDelete"
+            @keydown.enter.exact="onAssistantInputEnter"></textarea>
+        </div>
+        
+        <transition name="fade">
+          <div v-if="showCommandMenu" class="command-menu">
+            <div v-if="matchedCommands.length === 0" class="command-menu-empty">
+              没有找到匹配的命令
+            </div>
+            <div v-for="(cmd, index) in matchedCommands" :key="cmd.name"
+                 class="command-menu-item"
+                 :class="{ active: index === selectedCommandIndex }"
+                 @click="applyCommand(cmd)">
+              <div class="command-name">{{ cmd.name }}</div>
+              <div class="command-desc">{{ cmd.description }}</div>
+            </div>
+          </div>
+        </transition>
         <div v-if="assistantAttachments.length" class="attachment-list input-attachment-list">
           <div v-for="attachment in assistantAttachments" :key="attachment.id" class="attachment-chip"
             :class="{ image: attachment.kind === 'image' }">

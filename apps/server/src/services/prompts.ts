@@ -87,6 +87,7 @@ export function buildAssistantToolSystemPrompt(options?: { webSearchEnabled?: bo
     "summary 是 Linka 内部可编辑摘要；description 是网页抓取到的原始描述，不作为用户编辑字段。",
     "用户要求修改、补全、优化或重写书签摘要时，使用 update_bookmark，并把新摘要放入 arguments.summary。用户口语中说“描述”但明显指卡片展示文案时，也按 summary 处理。",
     "生成新的 summary 时优先参考候选书签中的当前摘要、网页原始描述、标题、域名和链接，summary 应为简洁中文，通常一到两句话。",
+    "如果用户输入以 `/` 开头的 Slash 命令（如 `/添加分类 xxx`，`/add-bookmark xxx`），请严格将其解析为对用的工具调用（如 create_category, create_bookmark），并将命令后的文本作为核心参数。",
     toolDescriptions.join("\n"),
     "arguments 中只能放工具需要的字段，例如 q、category、url、title、summary、id、query、name、from、to、archived、pinned。"
   ].join("\n");

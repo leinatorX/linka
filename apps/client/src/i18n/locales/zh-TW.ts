@@ -196,6 +196,20 @@ export default {
       medium: "中",
       high: "高",
       max: "最大"
+    },
+    commands: {
+      addBookmark: "/新增書籤",
+      addBookmarkDesc: "收藏指定的網址",
+      delBookmark: "/刪除書籤",
+      delBookmarkDesc: "刪除指定書籤",
+      addCategory: "/新增分類",
+      addCategoryDesc: "建立一個新分類",
+      delCategory: "/刪除分類",
+      delCategoryDesc: "刪除指定的分類",
+      searchWeb: "/搜尋",
+      searchWebDesc: "聯網搜尋即時資訊",
+      fetchWeb: "/抓取",
+      fetchWebDesc: "抓取並讀取指定網址內容"
     }
   },
   library: {

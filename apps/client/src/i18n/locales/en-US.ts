@@ -196,6 +196,20 @@ export default {
       medium: "Medium",
       high: "High",
       max: "Max"
+    },
+    commands: {
+      addBookmark: "/bookmark",
+      addBookmarkDesc: "Bookmark a specific URL",
+      delBookmark: "/delete-bookmark",
+      delBookmarkDesc: "Delete a specific bookmark",
+      addCategory: "/category",
+      addCategoryDesc: "Create a new category",
+      delCategory: "/delete-category",
+      delCategoryDesc: "Delete a specific category",
+      searchWeb: "/search",
+      searchWebDesc: "Search the web for real-time information",
+      fetchWeb: "/fetch",
+      fetchWebDesc: "Fetch and read the content of a specific URL"
     }
   },
   library: {
