@@ -22,7 +22,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-0.2.0-blue.svg" alt="version" />
+  <img src="https://img.shields.io/badge/version-0.2.1-blue.svg" alt="version" />
   <img src="https://img.shields.io/badge/license-MIT-green.svg" alt="license" />
   <img src="https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey.svg" alt="platform" />
   <img src="https://img.shields.io/badge/Vue-3.x-brightgreen.svg" alt="Vue" />
@@ -183,6 +183,12 @@ http://localhost:3030
 Linka 提供了官方的 Docker 镜像，你可以通过 Docker Hub 获取：
 [hongleiyu/linka - Docker Hub](https://hub.docker.com/repository/docker/hongleiyu/linka/general)
 
+当前推荐使用固定版本标签，便于升级和回滚：
+
+```bash
+docker pull hongleiyu/linka:0.2.1
+```
+
 ### 方式一：使用 Docker Compose（推荐）
 
 创建一个 `docker-compose.yml` 文件：
@@ -191,12 +197,17 @@ Linka 提供了官方的 Docker 镜像，你可以通过 Docker Hub 获取：
 version: '3.8'
 services:
   linka:
-    image: hongleiyu/linka:latest
+    image: hongleiyu/linka:0.2.1
     container_name: linka
     ports:
       - "3030:3030"
     volumes:
       - ./data:/app/data
+    environment:
+      - LINKA_HOST=0.0.0.0
+      - LINKA_PORT=3030
+      - LINKA_DB_PATH=/app/data/linka.sqlite
+      - LINKA_APP_URL=http://localhost:3030
     restart: unless-stopped
 ```
 
@@ -213,8 +224,12 @@ docker run -d \
   --name linka \
   -p 3030:3030 \
   -v $(pwd)/data:/app/data \
+  -e LINKA_HOST=0.0.0.0 \
+  -e LINKA_PORT=3030 \
+  -e LINKA_DB_PATH=/app/data/linka.sqlite \
+  -e LINKA_APP_URL=http://localhost:3030 \
   --restart unless-stopped \
-  hongleiyu/linka:latest
+  hongleiyu/linka:0.2.1
 ```
 
 ### 方式三：从源码构建运行
@@ -227,6 +242,31 @@ docker compose up -d --build
 
 **数据持久化**：
 无论哪种部署方式，都会将容器内 `/app/data` 映射到本地 `./data`，用于保存 SQLite 数据库和相关的配置文件。部署到 NAS 或服务器时，强烈建议定期备份该目录以防数据丢失。
+
+### 群晖 / NAS 离线导入
+
+如果 NAS 无法直接访问 Docker Hub，可以在本机导出对应架构的离线包，再到群晖 Container Manager 中导入：
+
+```bash
+docker pull --platform linux/amd64 hongleiyu/linka:0.2.1
+docker save -o linka-0.2.1-linux-amd64.tar hongleiyu/linka:0.2.1
+```
+
+在群晖上导入后，使用镜像 `hongleiyu/linka:0.2.1` 创建容器。端口、存储和环境变量建议保持如下配置：
+
+```text
+端口：本地端口 3030 -> 容器端口 3030 / TCP
+存储：/volume1/docker/linka/data -> /app/data
+环境变量：
+LINKA_HOST=0.0.0.0
+LINKA_PORT=3030
+LINKA_DB_PATH=/app/data/linka.sqlite
+LINKA_APP_URL=http://<NAS_IP>:3030
+```
+
+从旧版本升级时，先停止旧容器，再用新镜像创建容器，并继续挂载同一个 `/app/data` 数据目录。确认新版本运行正常后，再删除旧容器。
+
+> 如果通过普通 HTTP 访问 NAS，浏览器可能限制部分安全上下文 API。Linka `0.2.1` 已兼容附件上传所需的客户端 ID 生成逻辑；对公网开放时仍建议使用反向代理和 HTTPS。
 
 ## API 文档
 
