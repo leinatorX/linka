@@ -96,7 +96,9 @@ async function handleSaveWeather() {
       <div class="section-title" style="margin-top: 32px; border-top: 1px solid var(--border-subtle); padding-top: 32px;">
         <div>
           <h3>{{ t('settings.general.weatherTitle') }}</h3>
-          <p>{{ t('settings.general.weatherDesc') }}</p>
+          <p>
+            {{ t('settings.general.weatherDesc').split('WeatherAPI')[0] }}<a href="https://www.weatherapi.com/" target="_blank" rel="noopener noreferrer" style="color: var(--accent-primary); text-decoration: none;">WeatherAPI</a>{{ t('settings.general.weatherDesc').split('WeatherAPI')[1] }}
+          </p>
         </div>
         <button type="button" class="switch-toggle" :class="{ active: weatherEnabled }" @click="toggleWeather">
           <div></div>
