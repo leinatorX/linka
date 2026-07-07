@@ -4,6 +4,7 @@ import { Loader2, Save } from "@lucide/vue";
 import { useI18n } from 'vue-i18n';
 import { setLocale } from '../../i18n';
 import { getWeatherSettings, saveWeatherSettings } from '../../api';
+import WebSearchSettings from './WebSearchSettings.vue';
 
 const { t, locale } = useI18n();
 
@@ -133,6 +134,8 @@ async function handleSaveWeather() {
           <span>{{ isSaving ? t('settings.account.saving') : t('common.save') }}</span>
         </button>
       </div>
+
+      <WebSearchSettings />
     </div>
   </section>
 </template>

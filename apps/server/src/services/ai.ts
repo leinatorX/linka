@@ -3,9 +3,9 @@ import type { PageMetadata } from "./metadata.js";
 import { getActiveAiConfig } from "./settings.js";
 import type { ActiveAiConfig } from "./settings.js";
 import {
-  ASSISTANT_CHAT_SYSTEM_PROMPT,
+  buildAssistantChatSystemPrompt,
   ASSISTANT_TOOL_RESULT_SYSTEM_PROMPT,
-  ASSISTANT_TOOL_SYSTEM_PROMPT,
+  buildAssistantToolSystemPrompt,
   CLASSIFY_BOOKMARK_SYSTEM_PROMPT,
   buildAssistantToolResultPrompt,
   buildAssistantUserPrompt,
@@ -71,7 +71,9 @@ export interface AssistantToolPlan {
     | "delete_category"
     | "move_bookmarks_to_category"
     | "archive_bookmark"
-    | "pin_bookmark";
+    | "pin_bookmark"
+    | "web_search"
+    | "web_fetch";
   arguments: Record<string, unknown>;
   confidence: number;
   requiresConfirmation: boolean;
@@ -667,18 +669,18 @@ export async function classifyBookmark(metadata: PageMetadata, allowedCategories
   }
 }
 
-export async function generateAssistantReply(message: string, bookmarks: Array<ReturnType<typeof toBookmark>>, attachments: AssistantAttachment[] = []): Promise<AssistantResult> {
-  const prompt = buildAssistantUserPrompt({ message, bookmarks });
+export async function generateAssistantReply(message: string, bookmarks: Array<ReturnType<typeof toBookmark>>, attachments: AssistantAttachment[] = [], webContext?: string): Promise<AssistantResult> {
+  const prompt = buildAssistantUserPrompt({ message, bookmarks, webContext });
   const active = getActiveAiConfig();
   assertModelSupportsAttachments(active, attachments);
 
   const content = active.provider.apiFormat === "anthropic"
     ? await requestAnthropic(active, [
-      { role: "system", content: ASSISTANT_CHAT_SYSTEM_PROMPT },
+      { role: "system", content: buildAssistantChatSystemPrompt() },
       { role: "user", content: buildAnthropicUserContent(prompt, attachments) }
     ])
     : await requestOpenAi(active, [
-    { role: "system", content: ASSISTANT_CHAT_SYSTEM_PROMPT },
+    { role: "system", content: buildAssistantChatSystemPrompt() },
       { role: "user", content: buildOpenAiUserContent(prompt, attachments) }
     ], false);
 
@@ -694,17 +696,19 @@ export async function* streamAssistantReply(options: {
   attachments?: AssistantAttachment[];
   model?: string;
   effort?: ReasoningEffort;
+  webContext?: string;
 }) {
   const prompt = buildAssistantUserPrompt({
     message: options.message,
     bookmarks: options.bookmarks,
-    history: options.history
+    history: options.history,
+    webContext: options.webContext
   });
 
   const active = getActiveAiConfig(options.model);
   assertModelSupportsAttachments(active, options.attachments);
   const messages: ChatMessage[] = [
-    { role: "system", content: ASSISTANT_CHAT_SYSTEM_PROMPT },
+    { role: "system", content: buildAssistantChatSystemPrompt() },
     {
       role: "user",
       content: active.provider.apiFormat === "anthropic"
@@ -727,17 +731,19 @@ export async function planAssistantToolCall(options: {
   activeCategory?: string;
   history?: AssistantHistoryMessage[];
   bookmarkHints: Array<Pick<ReturnType<typeof toBookmark>, "id" | "title" | "category" | "summary" | "description" | "url" | "domain">>;
+  webSearchEnabled?: boolean;
 }): Promise<AssistantToolPlan | null> {
   const prompt = buildAssistantToolUserPrompt(options);
 
   try {
     const content = await requestAi([
-      { role: "system", content: ASSISTANT_TOOL_SYSTEM_PROMPT },
+      { role: "system", content: buildAssistantToolSystemPrompt({ webSearchEnabled: options.webSearchEnabled }) },
       { role: "user", content: prompt }
     ], { jsonMode: true });
     const parsed = JSON.parse(extractJsonObject(content)) as Partial<AssistantToolPlan>;
     const tool = typeof parsed.tool === "string" ? parsed.tool : "none";
-    const allowedTools = new Set<AssistantToolPlan["tool"]>([
+    
+    const allowedToolsList: AssistantToolPlan["tool"][] = [
       "none",
       "list_bookmarks",
       "create_bookmark",
@@ -750,7 +756,13 @@ export async function planAssistantToolCall(options: {
       "move_bookmarks_to_category",
       "archive_bookmark",
       "pin_bookmark"
-    ]);
+    ];
+    
+    if (options.webSearchEnabled) {
+      allowedToolsList.push("web_search", "web_fetch");
+    }
+    
+    const allowedTools = new Set<AssistantToolPlan["tool"]>(allowedToolsList);
 
     if (!allowedTools.has(tool as AssistantToolPlan["tool"])) {
       return null;

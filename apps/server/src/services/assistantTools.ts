@@ -2,9 +2,10 @@ import type { AssistantToolPlan } from "./ai.js";
 import { createBookmark, deleteBookmark, getBookmarkById, listBookmarks, updateBookmark } from "./bookmarks.js";
 import { createCategory, deleteCategory, listCategories, updateCategory } from "./categories.js";
 import { extractFirstUrl, isValidUrl, normalizeUrl } from "../utils/url.js";
+import { fetchWebContent, formatSearchResults, searchWeb } from "./webSearch.js";
 
 export interface AssistantToolResult {
-  type: "bookmark_saved" | "search_results" | "message" | "tool_result";
+  type: "bookmark_saved" | "search_results" | "message" | "tool_result" | "web_context";
   message: string;
   bookmark?: ReturnType<typeof listBookmarks>[number];
   results?: ReturnType<typeof listBookmarks>;
@@ -392,6 +393,38 @@ export async function executeAssistantToolPlan(plan: AssistantToolPlan, message:
       message: deleted ? `已删除书签「${targets[0].title}」。` : "删除失败，书签可能已经不存在。",
       changed: deleted
     };
+  }
+
+  if (plan.tool === "web_search") {
+    const query = asText(args.query || args.q);
+    if (!query) {
+      return { type: "message", message: "搜索内容不能为空。" };
+    }
+    try {
+      const results = await searchWeb(query);
+      return {
+        type: "web_context",
+        message: formatSearchResults(results)
+      };
+    } catch (e: any) {
+      return { type: "message", message: `搜索失败：${e.message}` };
+    }
+  }
+
+  if (plan.tool === "web_fetch") {
+    const url = asText(args.url);
+    if (!isValidUrl(url)) {
+      return { type: "message", message: "提供的 URL 无效。" };
+    }
+    try {
+      const content = await fetchWebContent(url);
+      return {
+        type: "web_context",
+        message: content
+      };
+    } catch (e: any) {
+      return { type: "message", message: `抓取网页内容失败：${e.message}` };
+    }
   }
 
   return null;

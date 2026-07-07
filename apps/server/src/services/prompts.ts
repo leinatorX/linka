@@ -33,28 +33,64 @@ export const CLASSIFY_BOOKMARK_SYSTEM_PROMPT = [
   "不确定时，category 使用“未分类”。"
 ].join("\n");
 
+function getDateContext(): string {
+  const now = new Date();
+  const dateFormatter = new Intl.DateTimeFormat("zh-CN", { 
+    year: "numeric", 
+    month: "long", 
+    day: "numeric", 
+    weekday: "long",
+    timeZone: "Asia/Shanghai"
+  });
+  return `当前系统时间：${dateFormatter.format(now)}`;
+}
+
 // 助理对话的 system prompt：用于普通聊天和基于收藏上下文的检索问答。
-export const ASSISTANT_CHAT_SYSTEM_PROMPT = [
-  LINKA_AI_IDENTITY.persona,
-  LINKA_AI_BEHAVIOR_RULES,
-  "如果用户在找已收藏的内容，请优先基于给出的收藏上下文回答；如果上下文不足，请说明没有找到足够线索。",
-  "普通对话不能声称已经创建、修改、删除、归档或移动任何书签/分类；这些操作只有工具调用成功后才算完成。"
-].join("\n");
+export function buildAssistantChatSystemPrompt(): string {
+  return [
+    LINKA_AI_IDENTITY.persona,
+    LINKA_AI_BEHAVIOR_RULES,
+    getDateContext(),
+    "如果用户在找已收藏的内容，请优先基于给出的收藏上下文回答；如果上下文不足，请说明没有找到足够线索。",
+    "普通对话不能声称已经创建、修改、删除、归档或移动任何书签/分类；这些操作只有工具调用成功后才算完成。"
+  ].join("\n");
+}
 
 // 工具规划场景的 system prompt：用于把用户自然语言转成后端工具调用计划。
-export const ASSISTANT_TOOL_SYSTEM_PROMPT = [
-  LINKA_AI_IDENTITY.persona,
-  "你的任务是判断用户是否要管理 Linka 内的书签或分类，并返回一个严格 JSON 工具计划。",
-  "只返回严格 JSON，禁止输出 Markdown 代码块或解释性文字。",
-  "JSON 字段必须包含 tool、arguments、confidence、requiresConfirmation、reason。",
-  "只在用户明确表达管理意图时选择工具；普通知识问答或闲聊必须返回 tool 为 none。",
-  "删除书签、删除分类、批量修改必须设置 requiresConfirmation 为 true，除非用户消息中明确包含“确认删除”或“确认执行”。",
-  "summary 是 Linka 内部可编辑摘要；description 是网页抓取到的原始描述，不作为用户编辑字段。",
-  "用户要求修改、补全、优化或重写书签摘要时，使用 update_bookmark，并把新摘要放入 arguments.summary。用户口语中说“描述”但明显指卡片展示文案时，也按 summary 处理。",
-  "生成新的 summary 时优先参考候选书签中的当前摘要、网页原始描述、标题、域名和链接，summary 应为简洁中文，通常一到两句话。",
-  "可用工具：list_bookmarks、create_bookmark、update_bookmark、delete_bookmark、list_categories、create_category、update_category、delete_category、move_bookmarks_to_category、archive_bookmark、pin_bookmark、none。",
-  "arguments 中只能放工具需要的字段，例如 q、category、url、title、summary、id、query、name、from、to、archived、pinned。"
-].join("\n");
+export function buildAssistantToolSystemPrompt(options?: { webSearchEnabled?: boolean }): string {
+  const tools = [
+    "list_bookmarks", "create_bookmark", "update_bookmark", "delete_bookmark",
+    "list_categories", "create_category", "update_category", "delete_category",
+    "move_bookmarks_to_category", "archive_bookmark", "pin_bookmark", "none"
+  ];
+  const toolDescriptions = [
+    "可用工具：",
+    ` - ${tools.join("、")}`
+  ];
+
+  if (options?.webSearchEnabled) {
+    tools.splice(tools.length - 1, 0, "web_search", "web_fetch");
+    toolDescriptions.push(
+      " - web_search：搜索互联网获取实时信息。arguments: {query}。当用户的问题需要最新信息、超出你知识范围、涉及实时数据（价格、天气、新闻等）时使用。",
+      " - web_fetch：抓取指定 URL 的网页正文内容。arguments: {url}。当用户提供了 URL 并希望你分析、总结或理解网页内容时使用。"
+    );
+  }
+
+  return [
+    LINKA_AI_IDENTITY.persona,
+    getDateContext(),
+    "你的任务是判断用户是否要管理 Linka 内的书签或分类，并返回一个严格 JSON 工具计划。",
+    "只返回严格 JSON，禁止输出 Markdown 代码块或解释性文字。",
+    "JSON 字段必须包含 tool、arguments、confidence、requiresConfirmation、reason。",
+    "只在用户明确表达管理意图或需要使用搜索工具时选择工具；普通知识问答或闲聊必须返回 tool 为 none。",
+    "删除书签、删除分类、批量修改必须设置 requiresConfirmation 为 true，除非用户消息中明确包含“确认删除”或“确认执行”。",
+    "summary 是 Linka 内部可编辑摘要；description 是网页抓取到的原始描述，不作为用户编辑字段。",
+    "用户要求修改、补全、优化或重写书签摘要时，使用 update_bookmark，并把新摘要放入 arguments.summary。用户口语中说“描述”但明显指卡片展示文案时，也按 summary 处理。",
+    "生成新的 summary 时优先参考候选书签中的当前摘要、网页原始描述、标题、域名和链接，summary 应为简洁中文，通常一到两句话。",
+    toolDescriptions.join("\n"),
+    "arguments 中只能放工具需要的字段，例如 q、category、url、title、summary、id、query、name、from、to、archived、pinned。"
+  ].join("\n");
+}
 
 // 工具结果回复场景：工具已经执行完毕，模型只负责把真实结果说得自然一些。
 export const ASSISTANT_TOOL_RESULT_SYSTEM_PROMPT = [
@@ -72,8 +108,9 @@ export function buildAssistantUserPrompt(options: {
   message: string;
   bookmarks: Array<ReturnType<typeof toBookmark>>;
   history?: AssistantHistoryMessage[];
+  webContext?: string;
 }): string {
-  const { message, bookmarks, history = [] } = options;
+  const { message, bookmarks, history = [], webContext } = options;
 
   // 收藏上下文：限制 20 条，避免上下文超长。
   const context = bookmarks.slice(0, 20).map((bookmark) => [
@@ -92,8 +129,9 @@ export function buildAssistantUserPrompt(options: {
     "",
     `用户消息：${message}`,
     "",
-    context ? `收藏上下文：\n${context}` : "收藏上下文：当前没有匹配收藏。"
-  ].join("\n");
+    context ? `收藏上下文：\n${context}` : "收藏上下文：当前没有匹配收藏。",
+    webContext ? `\n网络搜索/抓取结果上下文：\n${webContext}` : ""
+  ].filter(Boolean).join("\n");
 }
 
 // 收藏整理场景的 user prompt 模板：把 metadata 拼成 user 消息，配合 system 提示词调用。

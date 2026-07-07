@@ -107,3 +107,14 @@ export interface WeatherSettings {
   showDate: boolean;
   dateFormat: string;
 }
+
+export type SearchEngine = "tavily" | "brave" | "searxng";
+
+export interface WebSearchSettings {
+  enabled: boolean;
+  engine: SearchEngine;
+  apiKeySet?: boolean;
+  apiKey?: string;
+  baseUrl: string;
+  maxResults: number;
+}

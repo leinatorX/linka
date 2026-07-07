@@ -258,6 +258,17 @@ export function getCurrentWeather(): Promise<any> {
   return request("/api/weather");
 }
 
+export function getSearchSettings(): Promise<{ settings: any }> {
+  return request("/api/settings/search");
+}
+
+export function saveSearchSettings(payload: any): Promise<{ settings: any }> {
+  return request("/api/settings/search", {
+    method: "PUT",
+    body: JSON.stringify(payload)
+  });
+}
+
 export function reorderAiProviders(orderedIds: string[]): Promise<{ settings: { activeProviderId: string; providers: AiProviderConfig[] } }> {
   return request("/api/settings/ai/reorder", {
     method: "POST",

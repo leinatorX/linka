@@ -10,6 +10,7 @@ import { createBookmark, deleteBookmark, getBookmarkById, listBookmarks, updateB
 import { createCategory, deleteCategory, listCategories, reorderCategories, updateCategory } from "./services/categories.js";
 import { getPublicAiSettings, getProviderApiKey, reorderAiProviders, saveAiSettings } from "./services/settings.js";
 import { getPublicWeatherSettings, saveWeatherSettings, fetchCurrentWeather } from "./services/weather.js";
+import { getPublicSearchSettings, isSearchEnabled, saveSearchSettings } from "./services/webSearch.js";
 import { isValidUrl } from "./utils/url.js";
 
 // 将 Zod 格式 schema 转换为 Fastify 原生 JSON Schema，保证 Swagger 能渲染出请求参数模型
@@ -528,6 +529,29 @@ export async function registerRoutes(app: FastifyInstance) {
     return { settings };
   });
 
+  app.get("/api/settings/search", async (request, reply) => {
+    if (!requireAuth(request, reply)) return;
+    return { settings: getPublicSearchSettings() };
+  });
+
+  app.put("/api/settings/search", async (request, reply) => {
+    if (!requireAuth(request, reply)) return;
+    
+    const payload = z.object({
+      enabled: z.boolean().optional(),
+      engine: z.enum(["tavily", "brave", "searxng"]).optional(),
+      apiKey: z.string().optional(),
+      baseUrl: z.string().optional(),
+      maxResults: z.number().optional()
+    }).safeParse(request.body);
+
+    if (!payload.success) {
+      return reply.code(400).send({ message: "参数格式错误" });
+    }
+    const settings = saveSearchSettings(payload.data);
+    return { settings };
+  });
+
   app.get("/api/settings/weather", async (request, reply) => {
     if (!requireAuth(request, reply)) return;
     return { settings: getPublicWeatherSettings() };
@@ -968,17 +992,24 @@ export async function registerRoutes(app: FastifyInstance) {
       categories: listCategories().map((category) => category.name),
       activeCategory,
       history,
-      bookmarkHints: results.map(toAssistantBookmarkHint)
+      bookmarkHints: results.map(toAssistantBookmarkHint),
+      webSearchEnabled: isSearchEnabled()
     });
     const toolResult = toolPlan ? await executeAssistantToolPlan(toolPlan, message, toolContext) : null;
 
+    let webContext: string | undefined = undefined;
+
     if (toolResult) {
-      const text = await renderAssistantToolMessage(message, toolResult);
-      addAssistantMessage(conversation.id, "assistant", text);
-      writeSse(reply.raw, "delta", { text });
-      writeSse(reply.raw, "done", { ...toolResult, message: text, conversation });
-      reply.raw.end();
-      return;
+      if (toolResult.type === "web_context") {
+        webContext = toolResult.message;
+      } else {
+        const text = await renderAssistantToolMessage(message, toolResult);
+        addAssistantMessage(conversation.id, "assistant", text);
+        writeSse(reply.raw, "delta", { text });
+        writeSse(reply.raw, "done", { ...toolResult, message: text, conversation });
+        reply.raw.end();
+        return;
+      }
     }
 
     if (isConfirmationOnly(message)) {
@@ -996,7 +1027,7 @@ export async function registerRoutes(app: FastifyInstance) {
 
     try {
       let fullText = "";
-      for await (const chunk of streamAssistantReply({ message, bookmarks: results, history, attachments: attachments as AssistantAttachment[] | undefined, model, effort })) {
+      for await (const chunk of streamAssistantReply({ message, bookmarks: results, history, attachments: attachments as AssistantAttachment[] | undefined, model, effort, webContext })) {
         if (chunk.type === "reasoning") {
           writeSse(reply.raw, "reasoning", { text: chunk.text });
           continue;
