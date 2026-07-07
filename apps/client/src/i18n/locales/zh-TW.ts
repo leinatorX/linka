@@ -187,7 +187,8 @@ export default {
     uploadAttachment: "上傳圖片、影片或附件",
     defaultModel: "預設模型",
     voiceInput: "語音輸入",
-    send: "傳送 (Enter)",
+    send: "發送 (Enter)",
+    stop: "停止生成",
     effort: {
       none: "關閉",
       default: "預設",

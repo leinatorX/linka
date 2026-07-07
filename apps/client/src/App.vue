@@ -131,6 +131,7 @@ const {
   attachAssistantFiles,
   removeAssistantAttachment,
   askAssistant,
+  stopAssistant,
   toggleReasoningCollapsed
 } = useAssistant({
   loadBookmarks,
@@ -442,6 +443,7 @@ onUnmounted(() => {
       @toggle-model-select="toggleModelSelect"
       @toggle-effort-select="toggleEffortSelect"
       @toggle-reasoning-collapsed="toggleReasoningCollapsed"
+      @stop-assistant="stopAssistant"
     />
   </div>
 

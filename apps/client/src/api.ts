@@ -142,14 +142,16 @@ export async function streamAssistantMessage(
     onDelta?: (data: { text: string }) => void;
     onDone?: (data: AssistantResponse & { conversation?: AssistantConversation }) => void;
     onError?: (message: string) => void;
-  }
+  },
+  options?: { signal?: AbortSignal }
 ) {
   const response = await fetch("/api/assistant/chat/stream", {
     method: "POST",
     headers: {
       "Content-Type": "application/json"
     },
-    body: JSON.stringify(payload)
+    body: JSON.stringify(payload),
+    signal: options?.signal
   });
 
   if (!response.ok || !response.body) {

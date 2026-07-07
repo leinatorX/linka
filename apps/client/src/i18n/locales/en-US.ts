@@ -188,6 +188,7 @@ export default {
     defaultModel: "Default Model",
     voiceInput: "Voice Input",
     send: "Send (Enter)",
+    stop: "Stop generating",
     effort: {
       none: "Off",
       default: "Default",

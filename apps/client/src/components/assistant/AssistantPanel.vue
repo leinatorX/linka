@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from "vue";
 import { useI18n } from "vue-i18n";
-import { ChevronDown, FileText, History, Loader2, Mic, Plus, Search, Send, Video, X } from "@lucide/vue";
+import { ChevronDown, FileText, History, Loader2, Mic, Plus, Search, Send, Square, Video, X } from "@lucide/vue";
 import type { AssistantUiMessage } from "../../composables/useAssistant";
 import type { AiModelConfig, AssistantAttachment, AssistantConversation } from "../../types";
 import { renderAssistantMarkdown } from "../../utils/markdown";
@@ -126,6 +126,7 @@ const emit = defineEmits<{
   toggleModelSelect: [event: Event];
   toggleEffortSelect: [event: Event];
   toggleReasoningCollapsed: [index: number];
+  stopAssistant: [];
 }>();
 
 function onAssistantInputCompositionStart() {
@@ -250,9 +251,6 @@ function formatFileSize(size: number) {
           <h3>{{ t('assistant.welcome') }}</h3>
         </div>
         <div v-for="(message, index) in renderedMessages" :key="index" class="message" :class="message.role">
-          <div v-if="message.role === 'assistant'" class="message-avatar">
-            <img src="/assistant-bot.png" alt="AI" />
-          </div>
           <div class="message-content">
             <div v-if="message.reasoning" class="message-reasoning" :class="{ collapsed: message.reasoningCollapsed }">
               <button class="message-reasoning-toggle" type="button"
@@ -366,12 +364,12 @@ function formatFileSize(size: number) {
             </div>
           </div>
           <div class="toolbar-right">
-            <button class="tool-btn" :title="t('assistant.voiceInput')">
+            <button class="tool-btn" :title="t('assistant.voiceInput')" disabled>
               <Mic :size="18" />
             </button>
-            <button class="btn-send" :title="t('assistant.send')" :disabled="isAssistantLoading" @click="$emit('askAssistant')">
-              <Loader2 v-if="isAssistantLoading" class="spin" :size="16" />
-              <Send v-else :size="16" />
+            <button :class="['btn-send', { 'btn-stop': isAssistantLoading }]" :title="isAssistantLoading ? t('assistant.stop') : t('assistant.send')" @click="isAssistantLoading ? $emit('stopAssistant') : $emit('askAssistant')">
+              <Square v-if="isAssistantLoading" :size="12" fill="currentColor" />
+              <Send v-else :size="14" class="send-icon" />
             </button>
           </div>
         </div>

@@ -188,6 +188,7 @@ export default {
     defaultModel: "默认模型",
     voiceInput: "语音输入",
     send: "发送 (Enter)",
+    stop: "停止生成",
     effort: {
       none: "关闭",
       default: "默认",

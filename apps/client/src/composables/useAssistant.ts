@@ -65,6 +65,7 @@ export function useAssistant(options: UseAssistantOptions) {
   const assistantMessages = ref<AssistantUiMessage[]>([]);
   const assistantAttachments = ref<AssistantAttachment[]>([]);
   const isAssistantLoading = ref(false);
+  let currentAbortController: AbortController | null = null;
 
   const activeConversation = computed(() => assistantConversations.value.find((conversation) => conversation.id === activeConversationId.value));
   const filteredAssistantConversations = computed(() => {
@@ -223,6 +224,10 @@ export function useAssistant(options: UseAssistantOptions) {
       return;
     }
 
+    if (isAssistantLoading.value) {
+      return;
+    }
+
     const attachments = [...assistantAttachments.value];
     assistantMessages.value.unshift({ role: "user", text: message || "请分析这些附件。", attachments });
     assistantMessages.value.unshift({ role: "assistant", text: "", reasoningCollapsed: false, streaming: true });
@@ -232,6 +237,7 @@ export function useAssistant(options: UseAssistantOptions) {
     isAssistantLoading.value = true;
 
     try {
+      currentAbortController = new AbortController();
       const assistantMessage = assistantMessages.value[0];
       await streamAssistantMessage({
         conversationId: activeConversationId.value ?? undefined,
@@ -277,14 +283,19 @@ export function useAssistant(options: UseAssistantOptions) {
           assistantMessage.reasoningCollapsed = Boolean(assistantMessage.reasoning);
           assistantMessage.text = messageText;
         }
-      });
+      }, { signal: currentAbortController.signal });
       await loadAssistantConversations();
-    } catch (error) {
-      assistantMessages.value[0] = {
-        role: "assistant",
-        text: error instanceof Error ? error.message : "助手暂时不可用"
-      };
+    } catch (error: any) {
+      if (error.name === "AbortError") {
+        assistantMessages.value[0].text += " [已终止]";
+      } else {
+        assistantMessages.value[0] = {
+          role: "assistant",
+          text: error instanceof Error ? error.message : "助手暂时不可用"
+        };
+      }
     } finally {
+      currentAbortController = null;
       assistantMessages.value[0].streaming = false;
       assistantMessages.value[0].reasoningCollapsed = Boolean(assistantMessages.value[0].reasoning);
       isAssistantLoading.value = false;
@@ -294,6 +305,13 @@ export function useAssistant(options: UseAssistantOptions) {
   function toggleReasoningCollapsed(index: number) {
     if (assistantMessages.value[index]) {
       assistantMessages.value[index].reasoningCollapsed = !assistantMessages.value[index].reasoningCollapsed;
+    }
+  }
+
+  function stopAssistant() {
+    if (currentAbortController) {
+      currentAbortController.abort();
+      currentAbortController = null;
     }
   }
 
@@ -329,6 +347,7 @@ export function useAssistant(options: UseAssistantOptions) {
     attachAssistantFiles,
     removeAssistantAttachment,
     askAssistant,
+    stopAssistant,
     toggleReasoningCollapsed
   };
 }
