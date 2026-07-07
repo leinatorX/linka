@@ -823,36 +823,6 @@
 .bookmark-card:hover .icon-action.secondary-action:nth-child(3) { transition-delay: 60ms; }
 .bookmark-card:hover .icon-action.secondary-action:nth-child(4) { transition-delay: 90ms; }
 
-.bookmark-card .open-link-btn {
-  position: absolute;
-  top: 18px;
-  right: 18px;
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  background: var(--bg-panel);
-  border: 1px solid var(--border-subtle);
-  color: var(--text-secondary);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all var(--transition-fast);
-  z-index: 10;
-  opacity: 0;
-  visibility: hidden;
-}
-
-.bookmark-card:hover .open-link-btn {
-  opacity: 1;
-  visibility: visible;
-}
-
-.bookmark-card .open-link-btn:hover {
-  background: var(--accent-primary);
-  color: white;
-  border-color: transparent;
-  transform: scale(1.05);
-}
 
 .icon-action:hover {
   background: var(--bg-surface-hover);

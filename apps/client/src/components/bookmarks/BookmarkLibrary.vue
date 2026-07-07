@@ -31,6 +31,12 @@ function confirmDelete(bookmark: Bookmark) {
     emit('removeBookmark', bookmark);
   }
 }
+
+function openUrl(url: string) {
+  if (url) {
+    window.open(url, '_blank', 'noopener,noreferrer');
+  }
+}
 </script>
 
 <template>
@@ -38,10 +44,8 @@ function confirmDelete(bookmark: Bookmark) {
     <section class="library">
       <transition-group name="fade" tag="div" class="card-grid" v-if="bookmarks.length">
         <article v-for="(bookmark, index) in bookmarks" :key="bookmark.id" class="bookmark-card"
-          :style="{ '--stagger-delay': `${Math.min(index * 0.03, 0.5)}s` }">
-          <a class="open-link-btn" :href="bookmark.url" target="_blank" rel="noreferrer" :title="t('library.openLink')">
-            <ExternalLink :size="20" />
-          </a>
+          :style="{ '--stagger-delay': `${Math.min(index * 0.03, 0.5)}s`, cursor: 'pointer' }"
+          @click="openUrl(bookmark.url)">
 
           <div class="card-header">
             <div class="site-icon"
@@ -63,15 +67,15 @@ function confirmDelete(bookmark: Bookmark) {
 
           <div class="card-actions-overlay">
             <button class="icon-action secondary-action" :class="{ selected: bookmark.pinned }" :title="t('library.pin')"
-              @click="$emit('togglePinned', bookmark)">
+              @click.stop="$emit('togglePinned', bookmark)">
               <Pin :size="16" />
             </button>
             <button class="icon-action secondary-action" :title="t('library.edit')"
-              @click="$emit('editBookmark', bookmark)">
+              @click.stop="$emit('editBookmark', bookmark)">
               <Edit2 :size="16" />
             </button>
             <button class="icon-action secondary-action" :title="showArchived ? t('library.restore') : t('library.archive')"
-              @click="$emit('toggleArchived', bookmark)">
+              @click.stop="$emit('toggleArchived', bookmark)">
               <Archive :size="16" />
             </button>
             <button class="icon-action secondary-action danger" :title="t('library.delete')" @click.stop.prevent="confirmDelete(bookmark)">
