@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
-import { Loader2, Save } from "@lucide/vue";
+import { Loader2, Save, Eye, EyeOff } from "@lucide/vue";
 import { useI18n } from 'vue-i18n';
 import { getSearchSettings, saveSearchSettings } from '../../api';
 
 const { t } = useI18n();
+
+const showSearchApiKey = ref(false);
 
 const searchEnabled = ref(false);
 const searchEngine = ref<'tavily' | 'brave' | 'searxng'>('tavily');
@@ -84,7 +86,13 @@ async function handleSaveSearch() {
       </label>
       <label v-if="searchEngine !== 'searxng'">
         <span>{{ t('settings.general.searchApiKey') }}</span>
-        <input type="password" v-model="searchApiKey" :placeholder="t('settings.general.searchApiKeyPlaceholder')" />
+        <div class="login-password-field" style="width: 100%;">
+          <input :type="showSearchApiKey ? 'text' : 'password'" v-model="searchApiKey" :placeholder="t('settings.general.searchApiKeyPlaceholder')" />
+          <button type="button" @click="showSearchApiKey = !showSearchApiKey">
+            <EyeOff v-if="showSearchApiKey" :size="16" />
+            <Eye v-else :size="16" />
+          </button>
+        </div>
       </label>
       <label v-if="searchEngine === 'searxng'">
         <span>{{ t('settings.general.searchBaseUrl') }}</span>

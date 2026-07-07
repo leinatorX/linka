@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
-import { Loader2, Save } from "@lucide/vue";
+import { Loader2, Save, Eye, EyeOff } from "@lucide/vue";
 import { useI18n } from 'vue-i18n';
 import { setLocale } from '../../i18n';
 import { getWeatherSettings, saveWeatherSettings } from '../../api';
@@ -8,6 +8,7 @@ import WebSearchSettings from './WebSearchSettings.vue';
 
 const { t, locale } = useI18n();
 
+const showWeatherApiKey = ref(false);
 const weatherEnabled = ref(false);
 const weatherApiKey = ref('');
 const weatherLocation = ref('');
@@ -119,7 +120,13 @@ async function handleSaveWeather() {
         <div style="grid-column: 1 / -1; height: 1px; background: var(--border-subtle); margin: 8px 0;"></div>
         <label>
           <span>{{ t('settings.general.weatherApiKey') }}</span>
-          <input type="password" v-model="weatherApiKey" :placeholder="t('settings.general.weatherApiKeyPlaceholder')" />
+          <div class="login-password-field" style="width: 100%;">
+            <input :type="showWeatherApiKey ? 'text' : 'password'" v-model="weatherApiKey" :placeholder="t('settings.general.weatherApiKeyPlaceholder')" />
+            <button type="button" @click="showWeatherApiKey = !showWeatherApiKey">
+              <EyeOff v-if="showWeatherApiKey" :size="16" />
+              <Eye v-else :size="16" />
+            </button>
+          </div>
         </label>
         <label>
           <span>{{ t('settings.general.weatherLocation') }}</span>
