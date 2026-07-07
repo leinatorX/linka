@@ -119,16 +119,20 @@ const showCommandMenu = ref(false);
 const showMentionMenu = ref(false);
 const currentSearchText = ref("");
 
-function confirmAction(action: string, message: AssistantUiMessage) {
+function confirmAction(action: string, index: number) {
   if (props.isAssistantLoading) return;
-  message.confirmationRequest = undefined;
+  if (props.assistantMessages[index]) {
+    delete props.assistantMessages[index].confirmationRequest;
+  }
   assistantInput.value = action;
   emit('askAssistant');
 }
 
-function cancelAction(message: AssistantUiMessage) {
+function cancelAction(index: number) {
   if (props.isAssistantLoading) return;
-  message.confirmationRequest = undefined;
+  if (props.assistantMessages[index]) {
+    delete props.assistantMessages[index].confirmationRequest;
+  }
   assistantInput.value = "取消执行";
   emit('askAssistant');
 }
@@ -763,11 +767,11 @@ const previewImageUrl = ref<string | null>(null);
               </a>
             </div>
             <div v-if="message.confirmationRequest" class="confirmation-card">
-              <button class="btn-primary" :disabled="isAssistantLoading" @click="confirmAction(message.confirmationRequest, message)">
+              <button class="btn-primary" :disabled="isAssistantLoading" @click="confirmAction(message.confirmationRequest, index)">
                 <Check :size="16" />
                 {{ message.confirmationRequest }}
               </button>
-              <button class="btn-secondary" :disabled="isAssistantLoading" @click="cancelAction(message)">
+              <button class="btn-secondary" :disabled="isAssistantLoading" @click="cancelAction(index)">
                 <X :size="16" />
                 {{ t('assistant.cancel') }}
               </button>
