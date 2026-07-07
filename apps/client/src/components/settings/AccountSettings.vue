@@ -76,19 +76,18 @@ function clearAvatar() {
         <div class="account-avatar-field">
           <span>{{ t('settings.account.avatar') }}</span>
           <div class="account-avatar-row">
-            <button type="button" class="account-avatar-preview" :title="t('settings.account.uploadAvatar')" :disabled="isAvatarSaving" @click="openFilePicker">
-              <img v-if="avatarUrl" :src="avatarUrl" alt="" />
-              <Loader2 v-else-if="isAvatarSaving" class="spin" :size="22" />
-              <span v-else>{{ username.slice(0, 1).toUpperCase() || "U" }}</span>
-              <small>{{ isAvatarSaving ? t('settings.account.saving') : t('settings.account.upload') }}</small>
-            </button>
-            <div class="account-avatar-actions">
-              <button v-if="avatarUrl" type="button" class="btn-secondary" :disabled="isAvatarSaving" @click="clearAvatar">
-                <X :size="16" />
-                <span>{{ t('settings.account.clear') }}</span>
+            <div class="account-avatar-wrapper">
+              <button type="button" class="account-avatar-preview" :title="t('settings.account.uploadAvatar')" :disabled="isAvatarSaving" @click="openFilePicker">
+                <img v-if="avatarUrl" :src="avatarUrl" alt="" />
+                <Loader2 v-else-if="isAvatarSaving" class="spin" :size="22" />
+                <span v-else>{{ username.slice(0, 1).toUpperCase() || "U" }}</span>
+                <small>{{ isAvatarSaving ? t('settings.account.saving') : t('settings.account.upload') }}</small>
               </button>
-              <input ref="fileInput" class="visually-hidden" type="file" accept="image/*" @change="onAvatarFileChange" />
+              <button v-if="avatarUrl" type="button" class="account-avatar-clear" :title="t('settings.account.clear')" :disabled="isAvatarSaving" @click="clearAvatar">
+                <X :size="12" />
+              </button>
             </div>
+            <input ref="fileInput" class="visually-hidden" type="file" accept="image/*" @change="onAvatarFileChange" />
           </div>
           <small v-if="uploadError" class="field-error">{{ uploadError }}</small>
           <small v-else-if="avatarMessage" class="settings-message">{{ avatarMessage }}</small>
