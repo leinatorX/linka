@@ -180,11 +180,53 @@ http://localhost:3030
 
 ## Docker Deployment
 
+Linka provides an official Docker image available on Docker Hub:
+[hongleiyu/linka - Docker Hub](https://hub.docker.com/repository/docker/hongleiyu/linka/general)
+
+### Method 1: Using Docker Compose (Recommended)
+
+Create a `docker-compose.yml` file:
+
+```yaml
+version: '3.8'
+services:
+  linka:
+    image: hongleiyu/linka:latest
+    container_name: linka
+    ports:
+      - "3030:3030"
+    volumes:
+      - ./data:/app/data
+    restart: unless-stopped
+```
+
+Then run:
+
+```bash
+docker compose up -d
+```
+
+### Method 2: Using Docker CLI
+
+```bash
+docker run -d \
+  --name linka \
+  -p 3030:3030 \
+  -v $(pwd)/data:/app/data \
+  --restart unless-stopped \
+  hongleiyu/linka:latest
+```
+
+### Method 3: Build from Source
+
+If you clone this repository, you can also build and run it directly from source:
+
 ```bash
 docker compose up -d --build
 ```
 
-By default, the container's `/app/data` is mapped to the local `./data` directory to save the SQLite database. When deploying to a NAS or server, regular backups of this directory are recommended.
+**Data Persistence**:
+Regardless of the deployment method, the container's `/app/data` is mapped to the local `./data` directory to save the SQLite database and configuration files. When deploying to a NAS or server, regular backups of this directory are strongly recommended to prevent data loss.
 
 ## API Documentation
 

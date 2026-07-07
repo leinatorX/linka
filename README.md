@@ -180,11 +180,53 @@ http://localhost:3030
 
 ## Docker 部署
 
+Linka 提供了官方的 Docker 镜像，你可以通过 Docker Hub 获取：
+[hongleiyu/linka - Docker Hub](https://hub.docker.com/repository/docker/hongleiyu/linka/general)
+
+### 方式一：使用 Docker Compose（推荐）
+
+创建一个 `docker-compose.yml` 文件：
+
+```yaml
+version: '3.8'
+services:
+  linka:
+    image: hongleiyu/linka:latest
+    container_name: linka
+    ports:
+      - "3030:3030"
+    volumes:
+      - ./data:/app/data
+    restart: unless-stopped
+```
+
+然后运行：
+
+```bash
+docker compose up -d
+```
+
+### 方式二：使用 Docker CLI
+
+```bash
+docker run -d \
+  --name linka \
+  -p 3030:3030 \
+  -v $(pwd)/data:/app/data \
+  --restart unless-stopped \
+  hongleiyu/linka:latest
+```
+
+### 方式三：从源码构建运行
+
+如果你克隆了本仓库，也可以直接从源码构建：
+
 ```bash
 docker compose up -d --build
 ```
 
-默认会将容器内 `/app/data` 映射到本地 `./data`，用于保存 SQLite 数据库。部署到 NAS 或服务器时，建议定期备份该目录。
+**数据持久化**：
+无论哪种部署方式，都会将容器内 `/app/data` 映射到本地 `./data`，用于保存 SQLite 数据库和相关的配置文件。部署到 NAS 或服务器时，强烈建议定期备份该目录以防数据丢失。
 
 ## API 文档
 
