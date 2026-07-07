@@ -60,21 +60,25 @@ function clearAvatar() {
 
 <template>
   <section>
-    <div class="grand-panel account-panel settings-form">
-      <div class="section-title account-title">
-        <div>
-          <h3>{{ t('settings.account.title') }}</h3>
-          <p>{{ t('settings.account.desc', { username: user.username }) }}</p>
-        </div>
-        <button type="button" class="btn-secondary" @click="$emit('logout')">
-          <LogOut :size="16" />
-          <span>{{ t('settings.account.logout') }}</span>
-        </button>
+    <div class="settings-section-title" style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 12px; margin-top: 8px;">
+      <div>
+        <h3>{{ t('settings.account.title') }}</h3>
+        <p style="margin: 6px 0 0; font-size: 13px; color: var(--text-secondary); text-transform: none; letter-spacing: 0; font-weight: normal;">{{ t('settings.account.desc', { username: user.username }) }}</p>
       </div>
+      <button type="button" class="btn-secondary" style="height: 32px; font-size: 13px; padding: 0 12px; border-radius: var(--radius-sm); margin-bottom: 2px; display: flex; align-items: center; gap: 6px;" @click="$emit('logout')">
+        <LogOut :size="14" />
+        <span>{{ t('settings.account.logout') }}</span>
+      </button>
+    </div>
 
-      <div class="account-form-grid">
-        <div class="account-avatar-field">
-          <span>{{ t('settings.account.avatar') }}</span>
+    <div class="settings-list-group">
+      <div class="settings-list-item" style="align-items: center; padding-top: 20px; padding-bottom: 20px;">
+        <div class="settings-item-label">
+          <div class="settings-item-title">{{ t('settings.account.avatar') }}</div>
+          <small v-if="uploadError" class="field-error" style="margin-top: 8px; display: block;">{{ uploadError }}</small>
+          <small v-else-if="avatarMessage" class="settings-message" style="margin-top: 8px; display: block;">{{ avatarMessage }}</small>
+        </div>
+        <div class="settings-item-control">
           <div class="account-avatar-row">
             <div class="account-avatar-wrapper">
               <button type="button" class="account-avatar-preview" :title="t('settings.account.uploadAvatar')" :disabled="isAvatarSaving" @click="openFilePicker">
@@ -89,34 +93,56 @@ function clearAvatar() {
             </div>
             <input ref="fileInput" class="visually-hidden" type="file" accept="image/*" @change="onAvatarFileChange" />
           </div>
-          <small v-if="uploadError" class="field-error">{{ uploadError }}</small>
-          <small v-else-if="avatarMessage" class="settings-message">{{ avatarMessage }}</small>
         </div>
-        <label>
-          <span>{{ t('settings.account.username') }}</span>
-          <input v-model="username" autocomplete="username" />
-        </label>
-        <label>
-          <span>{{ t('settings.account.currentPassword') }}</span>
-          <input v-model="currentPassword" type="password" autocomplete="current-password" :placeholder="t('settings.account.currentPasswordPlaceholder')" />
-        </label>
-        <label>
-          <span>{{ t('settings.account.newPassword') }}</span>
-          <input v-model="newPassword" type="password" autocomplete="new-password" :placeholder="t('settings.account.newPasswordPlaceholder')" />
-        </label>
-        <label>
-          <span>{{ t('settings.account.confirmPassword') }}</span>
-          <input v-model="confirmPassword" type="password" autocomplete="new-password" :placeholder="t('settings.account.confirmPasswordPlaceholder')" />
-        </label>
       </div>
 
-      <div class="account-actions">
-        <button type="button" class="btn-primary" :disabled="isSaving" @click="$emit('save')">
-          <Loader2 v-if="isSaving" class="spin" :size="16" />
-          <Save v-else :size="16" />
-          <span>{{ t('settings.account.saveAccount') }}</span>
-        </button>
-        <p v-if="message" class="settings-message">{{ message }}</p>
+      <div class="settings-list-item">
+        <div class="settings-item-label">
+          <div class="settings-item-title">{{ t('settings.account.username') }}</div>
+        </div>
+        <div class="settings-item-control">
+          <input v-model="username" autocomplete="username" />
+        </div>
+      </div>
+
+      <div class="settings-list-item">
+        <div class="settings-item-label">
+          <div class="settings-item-title">{{ t('settings.account.currentPassword') }}</div>
+        </div>
+        <div class="settings-item-control">
+          <input v-model="currentPassword" type="password" autocomplete="current-password" :placeholder="t('settings.account.currentPasswordPlaceholder')" />
+        </div>
+      </div>
+
+      <div class="settings-list-item">
+        <div class="settings-item-label">
+          <div class="settings-item-title">{{ t('settings.account.newPassword') }}</div>
+        </div>
+        <div class="settings-item-control">
+          <input v-model="newPassword" type="password" autocomplete="new-password" :placeholder="t('settings.account.newPasswordPlaceholder')" />
+        </div>
+      </div>
+
+      <div class="settings-list-item">
+        <div class="settings-item-label">
+          <div class="settings-item-title">{{ t('settings.account.confirmPassword') }}</div>
+        </div>
+        <div class="settings-item-control">
+          <input v-model="confirmPassword" type="password" autocomplete="new-password" :placeholder="t('settings.account.confirmPasswordPlaceholder')" />
+        </div>
+      </div>
+
+      <div class="settings-list-item" style="background: rgba(0,0,0,0.02); justify-content: space-between; align-items: center;">
+        <div>
+           <p v-if="message" class="settings-message" style="margin: 0; font-size: 13px;">{{ message }}</p>
+        </div>
+        <div class="settings-item-control">
+          <button type="button" class="btn-primary" :disabled="isSaving" @click="$emit('save')">
+            <Loader2 v-if="isSaving" class="spin" :size="16" />
+            <Save v-else :size="16" />
+            <span>{{ t('settings.account.saveAccount') }}</span>
+          </button>
+        </div>
       </div>
     </div>
   </section>

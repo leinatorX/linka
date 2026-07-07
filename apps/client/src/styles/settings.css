@@ -741,3 +741,160 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* --------------------------------- */
+/* 设置项列表新布局 (iOS/macOS Style)   */
+/* --------------------------------- */
+
+.settings-section-title {
+  margin-bottom: 8px;
+  padding-left: 4px;
+}
+
+.settings-section-title h3 {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.settings-list-group {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  margin-bottom: 24px;
+  box-shadow: var(--shadow-sm);
+}
+
+.settings-list-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border-subtle);
+  gap: 16px;
+}
+
+.settings-list-item:last-child {
+  border-bottom: none;
+}
+
+.settings-list-item.is-header {
+  background: rgba(0, 0, 0, 0.02);
+}
+:root.dark-theme .settings-list-item.is-header {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.settings-item-label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+}
+
+.settings-item-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.settings-item-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.settings-item-desc {
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.settings-item-desc a {
+  color: var(--accent-primary);
+  text-decoration: none;
+}
+
+.settings-item-control {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+  flex: 0 1 420px;
+  justify-content: flex-end;
+}
+
+.settings-item-control select,
+.settings-item-control input:not([type="checkbox"]) {
+  min-width: 240px;
+  max-width: 420px;
+  width: 100%;
+  height: 36px;
+  background: rgba(0, 0, 0, 0.05);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-primary);
+  border-radius: var(--radius-sm);
+  padding: 0 12px;
+  font-size: 14px;
+  transition: all var(--transition-fast);
+}
+
+:root.dark-theme .settings-item-control select,
+:root.dark-theme .settings-item-control input:not([type="checkbox"]) {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.settings-item-control select {
+  appearance: none;
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238e8e93' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 14px;
+  padding-right: 32px;
+}
+
+.settings-item-control input:not([type="checkbox"]):focus,
+.settings-item-control select:focus {
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 0 3px var(--accent-glow);
+  background: var(--bg-surface);
+  outline: none;
+}
+
+/* 为包含密码框特殊处理宽度 */
+.settings-item-control .login-password-field {
+  min-width: 240px;
+  max-width: 420px;
+  width: 100%;
+  display: flex;
+}
+.settings-item-control .login-password-field input {
+  min-width: 100%;
+  max-width: 100%;
+}
+
+@media (max-width: 768px) {
+  .settings-list-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  .settings-list-item.is-header {
+    flex-direction: row;
+    align-items: center;
+  }
+  .settings-item-control {
+    width: 100%;
+  }
+  .settings-item-control select,
+  .settings-item-control input:not([type="checkbox"]),
+  .settings-item-control .login-password-field {
+    width: 100%;
+    max-width: none;
+  }
+}
+

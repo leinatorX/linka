@@ -66,59 +66,88 @@ async function handleSaveSearch() {
 </script>
 
 <template>
-  <div>
-    <div class="section-title" style="margin-top: 32px; border-top: 1px solid var(--border-subtle); padding-top: 32px;">
-      <div>
-        <h3>{{ t('settings.general.searchTitle') }}</h3>
-        <p>{{ t('settings.general.searchDesc') }}</p>
-      </div>
-      <button type="button" class="switch-toggle" :class="{ active: searchEnabled }" @click="toggleSearch">
-        <div></div>
-      </button>
+  <section>
+    <!-- 网页搜索 -->
+    <div class="settings-section-title" style="margin-top: 32px;">
+      <h3>{{ t('settings.general.searchTitle') }}</h3>
     </div>
-
-    <div class="account-form-grid" v-if="searchEnabled">
-      <label>
-        <span>{{ t('settings.general.searchEngine') }}</span>
-        <select v-model="searchEngine">
-          <option value="tavily">Tavily</option>
-          <option value="brave">Brave Search</option>
-          <option value="searxng">SearXNG</option>
-        </select>
-      </label>
-      <label v-if="searchEngine !== 'searxng'">
-        <span>
-          {{ t('settings.general.searchApiKey') }}
-          <a v-if="searchEngine === 'tavily'" href="https://app.tavily.com/" target="_blank" rel="noopener noreferrer" style="font-size: 11px; margin-left: 8px; color: var(--accent-primary); text-decoration: none;">(获取密钥)</a>
-          <a v-else-if="searchEngine === 'brave'" href="https://api.search.brave.com/app/keys" target="_blank" rel="noopener noreferrer" style="font-size: 11px; margin-left: 8px; color: var(--accent-primary); text-decoration: none;">(获取密钥)</a>
-        </span>
-        <div class="login-password-field" style="width: 100%;">
-          <input :type="showSearchApiKey ? 'text' : 'password'" v-model="searchApiKey" :placeholder="t('settings.general.searchApiKeyPlaceholder')" />
-          <button type="button" @click="showSearchApiKey = !showSearchApiKey">
-            <EyeOff v-if="showSearchApiKey" :size="16" />
-            <Eye v-else :size="16" />
+    <div class="settings-list-group">
+      <div class="settings-list-item is-header">
+        <div class="settings-item-label">
+          <div class="settings-item-title">{{ t('settings.general.searchTitle') }}</div>
+          <div class="settings-item-desc">{{ t('settings.general.searchDesc') }}</div>
+        </div>
+        <div class="settings-item-control">
+          <button type="button" class="switch-toggle" :class="{ active: searchEnabled }" @click="toggleSearch">
+            <div></div>
           </button>
         </div>
-      </label>
-      <label v-if="searchEngine === 'searxng'">
-        <span>
-          {{ t('settings.general.searchBaseUrl') }}
-          <a href="https://docs.searxng.org/" target="_blank" rel="noopener noreferrer" style="font-size: 11px; margin-left: 8px; color: var(--accent-primary); text-decoration: none;">(部署指南)</a>
-        </span>
-        <input type="text" v-model="searchBaseUrl" :placeholder="t('settings.general.searchBaseUrlPlaceholder')" />
-      </label>
-      <label>
-        <span>{{ t('settings.general.searchMaxResults') }}</span>
-        <input type="number" v-model.number="searchMaxResults" min="3" max="10" />
-      </label>
-    </div>
+      </div>
 
-    <div class="account-actions" v-if="searchEnabled" style="margin-top: 16px;">
-      <button type="button" class="btn-primary" :disabled="isSaving" @click="handleSaveSearch">
-        <Loader2 v-if="isSaving" class="spin" :size="16" />
-        <Save v-else :size="16" />
-        <span>{{ isSaving ? t('settings.account.saving') : t('common.save') }}</span>
-      </button>
+      <template v-if="searchEnabled">
+        <div class="settings-list-item">
+          <div class="settings-item-label">
+            <div class="settings-item-title">{{ t('settings.general.searchEngine') }}</div>
+          </div>
+          <div class="settings-item-control">
+            <select v-model="searchEngine">
+              <option value="tavily">Tavily</option>
+              <option value="brave">Brave Search</option>
+              <option value="searxng">SearXNG</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="settings-list-item" v-if="searchEngine !== 'searxng'">
+          <div class="settings-item-label">
+            <div class="settings-item-title-row">
+              <span class="settings-item-title">{{ t('settings.general.searchApiKey') }}</span>
+              <a v-if="searchEngine === 'tavily'" href="https://app.tavily.com/" target="_blank" rel="noopener noreferrer" style="font-size: 11px; color: var(--accent-primary); text-decoration: none;">(获取密钥)</a>
+              <a v-else-if="searchEngine === 'brave'" href="https://api.search.brave.com/app/keys" target="_blank" rel="noopener noreferrer" style="font-size: 11px; color: var(--accent-primary); text-decoration: none;">(获取密钥)</a>
+            </div>
+          </div>
+          <div class="settings-item-control">
+            <div class="login-password-field">
+              <input :type="showSearchApiKey ? 'text' : 'password'" v-model="searchApiKey" :placeholder="t('settings.general.searchApiKeyPlaceholder')" />
+              <button type="button" @click="showSearchApiKey = !showSearchApiKey">
+                <EyeOff v-if="showSearchApiKey" :size="16" />
+                <Eye v-else :size="16" />
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="settings-list-item" v-if="searchEngine === 'searxng'">
+          <div class="settings-item-label">
+            <div class="settings-item-title-row">
+              <span class="settings-item-title">{{ t('settings.general.searchBaseUrl') }}</span>
+              <a href="https://docs.searxng.org/" target="_blank" rel="noopener noreferrer" style="font-size: 11px; color: var(--accent-primary); text-decoration: none;">(部署指南)</a>
+            </div>
+          </div>
+          <div class="settings-item-control">
+            <input type="text" v-model="searchBaseUrl" :placeholder="t('settings.general.searchBaseUrlPlaceholder')" />
+          </div>
+        </div>
+
+        <div class="settings-list-item">
+          <div class="settings-item-label">
+            <div class="settings-item-title">{{ t('settings.general.searchMaxResults') }}</div>
+          </div>
+          <div class="settings-item-control">
+            <input type="number" v-model.number="searchMaxResults" min="3" max="10" />
+          </div>
+        </div>
+
+        <div class="settings-list-item" style="background: rgba(0,0,0,0.02); justify-content: flex-end;">
+          <div class="settings-item-control">
+            <button type="button" class="btn-primary" :disabled="isSaving" @click="handleSaveSearch">
+              <Loader2 v-if="isSaving" class="spin" :size="16" />
+              <Save v-else :size="16" />
+              <span>{{ isSaving ? t('settings.account.saving') : t('common.save') }}</span>
+            </button>
+          </div>
+        </div>
+      </template>
     </div>
-  </div>
+  </section>
 </template>
