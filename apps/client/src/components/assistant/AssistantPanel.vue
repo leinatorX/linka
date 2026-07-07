@@ -250,45 +250,50 @@ function formatFileSize(size: number) {
           <h3>{{ t('assistant.welcome') }}</h3>
         </div>
         <div v-for="(message, index) in renderedMessages" :key="index" class="message" :class="message.role">
-          <div v-if="message.reasoning" class="message-reasoning" :class="{ collapsed: message.reasoningCollapsed }">
-            <button class="message-reasoning-toggle" type="button"
-              @click="$emit('toggleReasoningCollapsed', index)">
-              <span>{{ message.streaming ? t('assistant.thinking') : t('assistant.thoughtDone') }}</span>
-              <ChevronDown :size="14" />
-            </button>
-            <p v-if="!message.reasoningCollapsed">{{ message.reasoning }}<span v-if="message.streaming && !message.text"
+          <div v-if="message.role === 'assistant'" class="message-avatar">
+            <img src="/assistant-bot.png" alt="AI" />
+          </div>
+          <div class="message-content">
+            <div v-if="message.reasoning" class="message-reasoning" :class="{ collapsed: message.reasoningCollapsed }">
+              <button class="message-reasoning-toggle" type="button"
+                @click="$emit('toggleReasoningCollapsed', index)">
+                <span>{{ message.streaming ? t('assistant.thinking') : t('assistant.thoughtDone') }}</span>
+                <ChevronDown :size="14" />
+              </button>
+              <p v-if="!message.reasoningCollapsed">{{ message.reasoning }}<span v-if="message.streaming && !message.text"
+                  class="stream-cursor"></span></p>
+            </div>
+            <!-- assistant 消息走 markdown 渲染（已经过 XSS 过滤），user 消息保持纯文本。 -->
+            <div v-if="message.role === 'assistant' && message.streaming && !message.text && !message.reasoning"
+              class="assistant-waiting" :aria-label="t('assistant.processingAria')">
+              <span></span>
+              <span></span>
+              <span></span>
+            </div>
+            <div v-else-if="message.role === 'assistant' && (message.text || !message.reasoning)" class="markdown-body"
+              v-html="message.html || message.text"></div>
+            <p v-else-if="message.text || !message.reasoning">{{ message.text }}<span v-if="message.streaming"
                 class="stream-cursor"></span></p>
-          </div>
-          <!-- assistant 消息走 markdown 渲染（已经过 XSS 过滤），user 消息保持纯文本。 -->
-          <div v-if="message.role === 'assistant' && message.streaming && !message.text && !message.reasoning"
-            class="assistant-waiting" :aria-label="t('assistant.processingAria')">
-            <span></span>
-            <span></span>
-            <span></span>
-          </div>
-          <div v-else-if="message.role === 'assistant' && (message.text || !message.reasoning)" class="markdown-body"
-            v-html="message.html || message.text"></div>
-          <p v-else-if="message.text || !message.reasoning">{{ message.text }}<span v-if="message.streaming"
-              class="stream-cursor"></span></p>
-          <div v-if="message.attachments?.length" class="attachment-list message-attachment-list">
-            <div v-for="attachment in message.attachments" :key="attachment.id" class="attachment-chip readonly"
-              :class="{ image: attachment.kind === 'image' }">
-              <img v-if="attachment.kind === 'image'" :src="attachment.dataUrl" :alt="attachment.name" />
-              <div v-else class="attachment-icon">
-                <Video v-if="attachment.kind === 'video'" :size="16" />
-                <FileText v-else :size="16" />
-              </div>
-              <div v-if="attachment.kind !== 'image'" class="attachment-meta">
-                <strong>{{ attachment.name }}</strong>
-                <span>{{ formatFileSize(attachment.size) }}</span>
+            <div v-if="message.attachments?.length" class="attachment-list message-attachment-list">
+              <div v-for="attachment in message.attachments" :key="attachment.id" class="attachment-chip readonly"
+                :class="{ image: attachment.kind === 'image' }">
+                <img v-if="attachment.kind === 'image'" :src="attachment.dataUrl" :alt="attachment.name" />
+                <div v-else class="attachment-icon">
+                  <Video v-if="attachment.kind === 'video'" :size="16" />
+                  <FileText v-else :size="16" />
+                </div>
+                <div v-if="attachment.kind !== 'image'" class="attachment-meta">
+                  <strong>{{ attachment.name }}</strong>
+                  <span>{{ formatFileSize(attachment.size) }}</span>
+                </div>
               </div>
             </div>
-          </div>
-          <div v-if="message.results?.length" class="result-list">
-            <a v-for="result in message.results" :key="result.id" :href="result.url" target="_blank" rel="noreferrer">
-              {{ result.title }}
-              <span>{{ result.category }}</span>
-            </a>
+            <div v-if="message.results?.length" class="result-list">
+              <a v-for="result in message.results" :key="result.id" :href="result.url" target="_blank" rel="noreferrer">
+                {{ result.title }}
+                <span>{{ result.category }}</span>
+              </a>
+            </div>
           </div>
         </div>
       </div>
