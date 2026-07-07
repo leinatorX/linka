@@ -1,10 +1,9 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, watch, nextTick } from "vue";
 import { useI18n } from "vue-i18n";
-import { ChevronDown, FileText, History, Loader2, Mic, Plus, Search, Send, Square, Video, X, Package, Link } from "@lucide/vue";
+import { ChevronDown, FileText, History, Loader2, Mic, Plus, Search, Send, Square, Video, X, Package } from "@lucide/vue";
 import type { AssistantUiMessage } from "../../composables/useAssistant";
-import type { AiModelConfig, AssistantAttachment, AssistantConversation, Bookmark, Category } from "../../types";
-import { listBookmarks, listCategories } from "../../api";
+import type { AiModelConfig, AssistantAttachment, AssistantConversation } from "../../types";
 import { renderAssistantMarkdown } from "../../utils/markdown";
 
 const props = defineProps<{
@@ -21,31 +20,6 @@ const props = defineProps<{
 }>();
 
 const { t } = useI18n();
-
-const assistantOpen = defineModel<boolean>("assistantOpen", { required: true });
-const assistantHistoryOpen = defineModel<boolean>("assistantHistoryOpen", { required: true });
-const assistantHistoryManage = defineModel<boolean>("assistantHistoryManage", { required: true });
-const historySearchInput = defineModel<string>("historySearchInput", { required: true });
-const assistantInput = defineModel<string>("assistantInput", { required: true });
-const assistantModel = defineModel<string>("assistantModel", { required: true });
-const assistantEffort = defineModel<string>("assistantEffort", { required: true });
-const modelSelectOpen = defineModel<boolean>("modelSelectOpen", { required: true });
-const effortSelectOpen = defineModel<boolean>("effortSelectOpen", { required: true });
-
-const emit = defineEmits<{
-  askAssistant: [];
-  toggleAssistantHistory: [];
-  startNewAssistantConversation: [];
-  toggleConversationSelected: [conversationId: string];
-  openAssistantConversation: [conversationId: string];
-  removeSelectedConversations: [];
-  attachAssistantFiles: [files: FileList];
-  removeAssistantAttachment: [attachmentId: string];
-  toggleModelSelect: [event: Event];
-  toggleEffortSelect: [event: Event];
-  toggleReasoningCollapsed: [index: number];
-  stopAssistant: [];
-}>();
 
 const effortMap: Record<string, string> = {
   "关闭": "none",
@@ -70,121 +44,38 @@ const renderedMessages = computed(() =>
   }))
 );
 
-interface RichTextSegment {
-  type: 'text' | 'command' | 'bookmark' | 'category';
-  text?: string;
-  name?: string;
-  id?: string;
+function parseUserMessageCommand(text: string) {
+  if (!text.startsWith("/")) return null;
+  const match = text.match(/^(\/[\w\u4e00-\u9fa5-]+)(.*)/);
+  if (!match) return null;
+  return {
+    command: match[1],
+    rest: match[2]
+  };
 }
 
-function parseRichTextSegments(text: string) {
-  const segments: RichTextSegment[] = [];
-  let rest = text;
-  const regex = /(\/[\w\u4e00-\u9fa5-]+ )|(@\[.*?\]\(.*?\))|(\$\[.*?\]\(.*?\))/;
-  while (true) {
-    const match = rest.match(regex);
-    if (!match) {
-      if (rest) segments.push({ type: 'text', text: rest });
-      break;
+const inputTextRest = computed({
+  get() {
+    const parsed = parseUserMessageCommand(assistantInput.value);
+    return parsed ? parsed.rest.trimStart() : assistantInput.value;
+  },
+  set(val) {
+    const parsed = parseUserMessageCommand(assistantInput.value);
+    if (parsed) {
+      assistantInput.value = parsed.command + " " + val;
+    } else {
+      assistantInput.value = val;
     }
-    if (match.index! > 0) {
-      segments.push({ type: 'text', text: rest.substring(0, match.index) });
-    }
-    if (match[1]) {
-      segments.push({ type: 'command', name: match[1] });
-    } else if (match[2]) {
-      const mentionMatch = match[2].match(/^@\[(.*?)\]\((.*?)\)/);
-      if (mentionMatch) {
-        segments.push({ type: 'bookmark', name: mentionMatch[1], id: mentionMatch[2] });
-      }
-    } else if (match[3]) {
-      const catMatch = match[3].match(/^\$\[(.*?)\]\((.*?)\)/);
-      if (catMatch) {
-        segments.push({ type: 'category', name: catMatch[1], id: catMatch[2] });
-      }
-    }
-    rest = rest.substring(match.index! + match[0].length);
-  }
-  return segments;
-}
-
-const editorRef = ref<HTMLElement | null>(null);
-const showCommandMenu = ref(false);
-const showMentionMenu = ref(false);
-const currentSearchText = ref("");
-// 保存触发菜单时的光标位置，确保点击菜单项时仍能正确插入徽章
-let savedRange: Range | null = null;
-
-function checkMenuTrigger() {
-  const sel = window.getSelection();
-  if (!sel || sel.rangeCount === 0 || !editorRef.value?.contains(sel.anchorNode)) {
-    showCommandMenu.value = false;
-    showMentionMenu.value = false;
-    return;
-  }
-  
-  const node = sel.anchorNode;
-  if (node && node.nodeType === Node.TEXT_NODE) {
-    const textBeforeCursor = node.textContent?.substring(0, sel.anchorOffset) || "";
-    
-    const commandMatch = textBeforeCursor.match(/(?:^|\s)(\/[\w\u4e00-\u9fa5-]*)$/);
-    if (commandMatch) {
-      showCommandMenu.value = true;
-      showMentionMenu.value = false;
-      currentSearchText.value = commandMatch[1].toLowerCase();
-      // 保存当前光标位置
-      savedRange = sel.getRangeAt(0).cloneRange();
-      return;
-    }
-    
-    const mentionMatch = textBeforeCursor.match(/(?:^|\s)@([^@\s]*)$/);
-    if (mentionMatch) {
-      showMentionMenu.value = true;
-      showCommandMenu.value = false;
-      currentSearchText.value = mentionMatch[1].toLowerCase();
-      // 保存当前光标位置
-      savedRange = sel.getRangeAt(0).cloneRange();
-      return;
-    }
-  }
-  
-  showCommandMenu.value = false;
-  showMentionMenu.value = false;
-}
-
-function onEditorInput() {
-  if (!editorRef.value) return;
-  let text = "";
-  for (const node of editorRef.value.childNodes) {
-    if (node.nodeType === Node.TEXT_NODE) {
-      text += node.textContent || "";
-    } else if (node.nodeType === Node.ELEMENT_NODE) {
-      const el = node as HTMLElement;
-      if (el.classList.contains('mention-badge')) {
-        const type = el.dataset.type;
-        const id = el.dataset.id;
-        const name = el.dataset.name;
-        text += type === 'bookmark' ? `@[${name}](${id})` : `$[${name}](${id})`;
-      } else if (el.classList.contains('command-badge')) {
-        const name = el.dataset.name;
-        text += name;
-      } else if (el.nodeName === 'BR') {
-        text += "\n";
-      } else {
-        text += el.textContent || "";
-      }
-    }
-  }
-  assistantInput.value = text;
-  checkMenuTrigger();
-}
-
-watch(() => assistantInput.value, (newVal) => {
-  if (!editorRef.value) return;
-  if (newVal === "") {
-    editorRef.value.innerHTML = "";
   }
 });
+
+function onInputDelete(event: KeyboardEvent) {
+  const parsed = parseUserMessageCommand(assistantInput.value);
+  if (parsed && inputTextRest.value.length === 0) {
+    event.preventDefault();
+    assistantInput.value = "";
+  }
+}
 
 const assistantPanelWidth = ref(420);
 const isResizingAssistant = ref(false);
@@ -247,6 +138,30 @@ onUnmounted(() => {
   stopAssistantResize();
 });
 
+const assistantOpen = defineModel<boolean>("assistantOpen", { required: true });
+const assistantHistoryOpen = defineModel<boolean>("assistantHistoryOpen", { required: true });
+const assistantHistoryManage = defineModel<boolean>("assistantHistoryManage", { required: true });
+const historySearchInput = defineModel<string>("historySearchInput", { required: true });
+const assistantInput = defineModel<string>("assistantInput", { required: true });
+const assistantModel = defineModel<string>("assistantModel", { required: true });
+const assistantEffort = defineModel<string>("assistantEffort", { required: true });
+const modelSelectOpen = defineModel<boolean>("modelSelectOpen", { required: true });
+const effortSelectOpen = defineModel<boolean>("effortSelectOpen", { required: true });
+
+const emit = defineEmits<{
+  askAssistant: [];
+  toggleAssistantHistory: [];
+  startNewAssistantConversation: [];
+  toggleConversationSelected: [conversationId: string];
+  openAssistantConversation: [conversationId: string];
+  removeSelectedConversations: [];
+  attachAssistantFiles: [files: FileList];
+  removeAssistantAttachment: [attachmentId: string];
+  toggleModelSelect: [event: Event];
+  toggleEffortSelect: [event: Event];
+  toggleReasoningCollapsed: [index: number];
+  stopAssistant: [];
+}>();
 
 interface SlashCommand {
   name: string;
@@ -263,9 +178,14 @@ const slashCommands = computed<SlashCommand[]>(() => [
   { name: t('assistant.commands.fetchWeb'), description: t('assistant.commands.fetchWebDesc'), template: `${t('assistant.commands.fetchWeb')} ` },
 ]);
 
+const showCommandMenu = computed(() => {
+  return assistantInput.value.startsWith("/") && !assistantInput.value.includes(" ");
+});
+
 const matchedCommands = computed(() => {
   if (!showCommandMenu.value) return [];
-  return slashCommands.value.filter(cmd => cmd.name.toLowerCase().startsWith(currentSearchText.value));
+  const text = assistantInput.value.toLowerCase();
+  return slashCommands.value.filter(cmd => cmd.name.toLowerCase().startsWith(text));
 });
 
 const selectedCommandIndex = ref(0);
@@ -274,177 +194,26 @@ watch(matchedCommands, () => {
   selectedCommandIndex.value = 0;
 });
 
-const matchedBookmarks = ref<Bookmark[]>([]);
-const allCategories = ref<Category[]>([]);
-const matchedCategories = computed(() => {
-  if (!currentSearchText.value) return allCategories.value;
-  return allCategories.value.filter(c => c.name.toLowerCase().includes(currentSearchText.value));
-});
-
-type CombinedMention = { type: 'bookmark'; data: Bookmark } | { type: 'category'; data: Category };
-
-const combinedMentions = computed<CombinedMention[]>(() => {
-  if (!showMentionMenu.value) return [];
-  const options: CombinedMention[] = [];
-  matchedBookmarks.value.forEach(b => options.push({ type: 'bookmark', data: b }));
-  matchedCategories.value.forEach(c => options.push({ type: 'category', data: c }));
-  return options;
-});
-
-const selectedMentionIndex = ref(0);
-
-watch([showMentionMenu, currentSearchText], async ([show, val]) => {
-  selectedMentionIndex.value = 0;
-  if (show) {
-    if (allCategories.value.length === 0) {
-      try {
-        const catRes = await listCategories();
-        allCategories.value = catRes.categories;
-      } catch (e) {
-        console.error("Failed to fetch categories", e);
-      }
-    }
-
-    const params = new URLSearchParams();
-    if (val) {
-      params.append("q", val as string);
-    }
-    params.append("limit", "10");
-    try {
-      const res = await listBookmarks(params);
-      matchedBookmarks.value = res.bookmarks;
-    } catch (e) {
-      console.error("Failed to fetch bookmarks for mention", e);
-      matchedBookmarks.value = [];
-    }
-  } else {
-    matchedBookmarks.value = [];
-  }
-});
-
 function onCommandKeydown(event: KeyboardEvent) {
-  // 命令菜单打开时拦截方向键、Tab 和 Escape
-  // 注意：Enter 键由 onAssistantInputEnter 统一处理，这里不能处理 Enter
-  // 否则会先关闭菜单再触发 onAssistantInputEnter，导致消息被误发送
-  if (showCommandMenu.value) {
-    if (matchedCommands.value.length > 0) {
-      if (event.key === "ArrowUp") {
-        event.preventDefault();
-        selectedCommandIndex.value = (selectedCommandIndex.value - 1 + matchedCommands.value.length) % matchedCommands.value.length;
-      } else if (event.key === "ArrowDown") {
-        event.preventDefault();
-        selectedCommandIndex.value = (selectedCommandIndex.value + 1) % matchedCommands.value.length;
-      } else if (event.key === "Tab") {
-        event.preventDefault();
-        applyCommand(matchedCommands.value[selectedCommandIndex.value]);
-      }
-    } else if (event.key === "Tab") {
-      event.preventDefault();
-    }
-    if (event.key === "Escape") {
-      event.preventDefault();
-      showCommandMenu.value = false;
-      savedRange = null;
-    }
+  if (!showCommandMenu.value || matchedCommands.value.length === 0) {
     return;
   }
 
-  // @ 提及菜单打开时拦截方向键、Tab 和 Escape
-  if (showMentionMenu.value) {
-    if (combinedMentions.value.length > 0) {
-      if (event.key === "ArrowUp") {
-        event.preventDefault();
-        selectedMentionIndex.value = (selectedMentionIndex.value - 1 + combinedMentions.value.length) % combinedMentions.value.length;
-      } else if (event.key === "ArrowDown") {
-        event.preventDefault();
-        selectedMentionIndex.value = (selectedMentionIndex.value + 1) % combinedMentions.value.length;
-      } else if (event.key === "Tab") {
-        event.preventDefault();
-        applyCombinedMention(combinedMentions.value[selectedMentionIndex.value]);
-      }
-    } else if (event.key === "Tab") {
-      event.preventDefault();
-    }
-    if (event.key === "Escape") {
-      event.preventDefault();
-      showMentionMenu.value = false;
-      savedRange = null;
-    }
-    return;
+  if (event.key === "ArrowUp") {
+    event.preventDefault();
+    selectedCommandIndex.value = (selectedCommandIndex.value - 1 + matchedCommands.value.length) % matchedCommands.value.length;
+  } else if (event.key === "ArrowDown") {
+    event.preventDefault();
+    selectedCommandIndex.value = (selectedCommandIndex.value + 1) % matchedCommands.value.length;
+  } else if (event.key === "Tab") {
+    event.preventDefault();
+    applyCommand(matchedCommands.value[selectedCommandIndex.value]);
   }
-}
-
-function insertBadge(html: string) {
-  if (!editorRef.value) return;
-  // 确保编辑器拥有焦点
-  editorRef.value.focus();
-
-  // 优先使用保存的光标位置（点击菜单项时当前选区可能已丢失）
-  let range: Range | null = null;
-  const sel = window.getSelection();
-  if (savedRange && editorRef.value.contains(savedRange.startContainer)) {
-    range = savedRange;
-  } else if (sel && sel.rangeCount > 0) {
-    range = sel.getRangeAt(0);
-  }
-  if (!range) return;
-
-  const node = range.startContainer;
-  if (node.nodeType === Node.TEXT_NODE) {
-    const text = node.textContent || "";
-    const offset = range.startOffset;
-    const textBeforeCursor = text.substring(0, offset);
-    
-    let matchIndex = textBeforeCursor.search(/(?:^|\s)[@\/][^@\s\/]*$/);
-    if (matchIndex !== -1) {
-      if (textBeforeCursor[matchIndex] === ' ' || textBeforeCursor[matchIndex] === '\n') {
-        matchIndex++;
-      }
-      range.setStart(node, matchIndex);
-      range.setEnd(node, offset);
-      range.deleteContents();
-      
-      const badgeFragment = document.createElement("template");
-      badgeFragment.innerHTML = html;
-      const el = badgeFragment.content.firstChild as HTMLElement;
-      range.insertNode(el);
-      
-      range.setStartAfter(el);
-      range.setEndAfter(el);
-      
-      const space = document.createTextNode(" ");
-      range.insertNode(space);
-      range.setStartAfter(space);
-      range.collapse(true);
-      if (sel) {
-        sel.removeAllRanges();
-        sel.addRange(range);
-      }
-      
-      // 清除已使用的保存位置
-      savedRange = null;
-      onEditorInput();
-      return;
-    }
-  }
-  // 插入失败时也清除保存位置
-  savedRange = null;
 }
 
 function applyCommand(cmd: SlashCommand) {
-  // 先关闭菜单，防止后续 Enter 事件二次触发
-  showCommandMenu.value = false;
-  insertBadge(`<span class="active-command-badge command-badge" contenteditable="false" data-name="${cmd.template}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-package"><line x1="16.5" x2="7.5" y1="9.4" y2="4.21"/><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.29 7 12 12 20.71 7"/><line x1="12" x2="12" y1="22" y2="12"/></svg>${cmd.template.substring(1)}</span>`);
-}
-
-function applyCombinedMention(option: CombinedMention) {
-  // 先关闭菜单，防止后续 Enter 事件二次触发
-  showMentionMenu.value = false;
-  if (option.type === "bookmark") {
-    insertBadge(`<span class="active-command-badge mention-badge" contenteditable="false" data-type="bookmark" data-name="${option.data.title}" data-id="${option.data.id}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-link"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>${option.data.title}</span>`);
-  } else {
-    insertBadge(`<span class="active-command-badge mention-badge" contenteditable="false" data-type="category" data-name="${option.data.name}" data-id="${option.data.id}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-package"><line x1="16.5" x2="7.5" y1="9.4" y2="4.21"/><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.29 7 12 12 20.71 7"/><line x1="12" x2="12" y1="22" y2="12"/></svg>${option.data.name}</span>`);
-  }
+  assistantInput.value = cmd.template;
+  // wait for DOM update then focus could be done if we had textarea ref, but v-model syncs it
 }
 
 function onAssistantInputCompositionStart() {
@@ -464,20 +233,9 @@ function onAssistantInputEnter(event: KeyboardEvent) {
     return;
   }
 
-  // 任何菜单打开时，一律拦截 Enter，绝不发送消息
-  if (showCommandMenu.value) {
+  if (showCommandMenu.value && matchedCommands.value.length > 0) {
     event.preventDefault();
-    if (matchedCommands.value.length > 0) {
-      applyCommand(matchedCommands.value[selectedCommandIndex.value]);
-    }
-    return;
-  }
-
-  if (showMentionMenu.value) {
-    event.preventDefault();
-    if (combinedMentions.value.length > 0) {
-      applyCombinedMention(combinedMentions.value[selectedMentionIndex.value]);
-    }
+    applyCommand(matchedCommands.value[selectedCommandIndex.value]);
     return;
   }
 
@@ -515,29 +273,7 @@ function onInputPaste(event: ClipboardEvent) {
       files.forEach(file => dataTransfer.items.add(file));
       emit("attachAssistantFiles", dataTransfer.files);
       event.preventDefault();
-      return;
     }
-  }
-
-  event.preventDefault();
-  const text = event.clipboardData?.getData("text/plain");
-  if (text) {
-    const sel = window.getSelection();
-    if (sel && sel.rangeCount) {
-      const range = sel.getRangeAt(0);
-      range.deleteContents();
-      range.insertNode(document.createTextNode(text));
-      range.collapse(false);
-      sel.removeAllRanges();
-      sel.addRange(range);
-      onEditorInput();
-    }
-  }
-}
-
-function focusEditor() {
-  if (editorRef.value) {
-    editorRef.value.focus();
   }
 }
 
@@ -674,19 +410,15 @@ const previewImageUrl = ref<string | null>(null);
             <div v-else-if="message.role === 'assistant' && (message.text || !message.reasoning)" class="markdown-body"
               v-html="message.html || message.text"></div>
             <p v-else-if="message.text || !message.reasoning">
-              <template v-for="(seg, i) in parseRichTextSegments(message.text)" :key="i">
-                <span v-if="seg.type === 'command'" class="user-slash-command">
+              <template v-if="parseUserMessageCommand(message.text)">
+                <span class="user-slash-command">
                   <Package :size="16" />
-                  {{ seg.name!.substring(1) }}
+                  {{ parseUserMessageCommand(message.text)!.command.substring(1) }}
                 </span>
-                <span v-else-if="seg.type === 'bookmark' || seg.type === 'category'" class="user-slash-command mention-badge">
-                  <Link v-if="seg.type === 'bookmark'" :size="16" />
-                  <Package v-else :size="16" />
-                  {{ seg.name }}
-                </span>
-                <template v-else>
-                  {{ seg.text }}
-                </template>
+                {{ parseUserMessageCommand(message.text)!.rest }}
+              </template>
+              <template v-else>
+                {{ message.text }}
               </template>
               <span v-if="message.streaming" class="stream-cursor"></span>
             </p>
@@ -721,19 +453,18 @@ const previewImageUrl = ref<string | null>(null);
         @dragleave.prevent="onDragLeave"
         @drop.prevent="onDrop">
         <div class="siri-glow-wave"></div>
-        <div class="input-box-container" @click="focusEditor">
-          <div
-            ref="editorRef"
-            contenteditable="true"
-            class="rich-input-editor"
-            :data-placeholder="t('assistant.inputPlaceholder')"
-            @input="onEditorInput"
+        <div class="input-box-container">
+          <div v-if="parseUserMessageCommand(assistantInput)" class="active-command-badge">
+            <Package :size="14" />
+            {{ parseUserMessageCommand(assistantInput)!.command.substring(1) }}
+          </div>
+          <textarea v-model="inputTextRest" :placeholder="t('assistant.inputPlaceholder')"
             @compositionstart="onAssistantInputCompositionStart"
             @compositionend="onAssistantInputCompositionEnd"
             @keydown="onCommandKeydown"
-            @keydown.enter.exact.prevent="onAssistantInputEnter"
-            @paste="onInputPaste"
-          ></div>
+            @keydown.delete="onInputDelete"
+            @keydown.enter.exact="onAssistantInputEnter"
+            @paste="onInputPaste"></textarea>
         </div>
         
         <transition name="fade">
@@ -744,37 +475,12 @@ const previewImageUrl = ref<string | null>(null);
             <div v-for="(cmd, index) in matchedCommands" :key="cmd.name"
                  class="command-menu-item"
                  :class="{ active: index === selectedCommandIndex }"
-                 @mousedown.prevent
                  @click="applyCommand(cmd)">
               <div class="command-name">{{ cmd.name }}</div>
               <div class="command-desc">{{ cmd.description }}</div>
             </div>
           </div>
         </transition>
-
-        <transition name="fade">
-          <div class="command-menu" v-if="showMentionMenu">
-            <div v-if="combinedMentions.length === 0" class="command-menu-empty">
-              {{ t('assistant.mentions.noBookmarksFound') || '没有找到匹配的书签或分类' }}
-            </div>
-            <template v-for="(item, index) in combinedMentions" :key="item.type + '-' + item.data.id">
-              <div v-if="index === 0 || item.type !== combinedMentions[index - 1].type" class="command-menu-group-header">
-                {{ item.type === 'bookmark' ? '书签' : '分类' }}
-              </div>
-              <div class="command-menu-item"
-                   :class="{ active: index === selectedMentionIndex }"
-                   @mousedown.prevent
-                   @click="applyCombinedMention(item)">
-                <div class="command-name" style="display:flex;align-items:center;gap:4px;flex-shrink:0;">
-                  <component :is="item.type === 'bookmark' ? Link : Package" :size="14" />
-                  {{ item.type === 'bookmark' ? (item.data as Bookmark).title : (item.data as Category).name }}
-                </div>
-                <div v-if="item.type === 'bookmark'" class="command-desc">{{ (item.data as Bookmark).summary || (item.data as Bookmark).url }}</div>
-              </div>
-            </template>
-          </div>
-        </transition>
-
         <div v-if="assistantAttachments.length" class="attachment-list input-attachment-list">
           <div v-for="attachment in assistantAttachments" :key="attachment.id" class="attachment-chip"
             :class="{ image: attachment.kind === 'image' }">

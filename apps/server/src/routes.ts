@@ -8,6 +8,7 @@ import { executeAssistantToolPlan, inferAssistantToolPlan } from "./services/ass
 import { clearSessionCookie, getSessionFromRequest, login, logout, requireAuth, updateAvatar, updateCredentials } from "./services/auth.js";
 import { createBookmark, deleteBookmark, getBookmarkById, listBookmarks, updateBookmark } from "./services/bookmarks.js";
 import { createCategory, deleteCategory, listCategories, reorderCategories, updateCategory } from "./services/categories.js";
+import { BookmarkRecord, toBookmark } from "./db.js";
 import { getPublicAiSettings, getProviderApiKey, reorderAiProviders, saveAiSettings } from "./services/settings.js";
 import { getPublicWeatherSettings, saveWeatherSettings, fetchCurrentWeather } from "./services/weather.js";
 import { getPublicSearchSettings, isSearchEnabled, saveSearchSettings } from "./services/webSearch.js";
@@ -919,24 +920,50 @@ export async function registerRoutes(app: FastifyInstance) {
       return reply.code(400).send({ message: "请输入消息内容" });
     }
 
-    const results = findAssistantBookmarkCandidates(payload.data.message);
+    let rawMessage = payload.data.message;
+    let effectiveMessage = rawMessage;
+    let webContext: string | undefined = undefined;
+    let mentionBookmarks: NonNullable<Awaited<ReturnType<typeof getBookmarkById>>>[] = [];
+
+    const mentionRegex = /@\[(.*?)\]\((.*?)\)/g;
+    effectiveMessage = effectiveMessage.replace(mentionRegex, (match, title) => `[${title}] `).trim();
+
+    for (const match of rawMessage.matchAll(mentionRegex)) {
+      const bm = await getBookmarkById(match[2]);
+      if (bm) mentionBookmarks.push(bm);
+    }
+
+    if (mentionBookmarks.length > 0) {
+      webContext = mentionBookmarks.map(bm => `用户指定了上下文书签：[${bm.title}](${bm.url})\n摘要：${bm.summary}`).join("\n\n") + "\n";
+    }
+
+    const catRegex = /\$\[(.*?)\]\((.*?)\)/g;
+    effectiveMessage = effectiveMessage.replace(catRegex, (match, name) => `[${name}分类] `).trim();
+
+    const results = findAssistantBookmarkCandidates(effectiveMessage);
+    for (const bm of mentionBookmarks) {
+      if (!results.some(b => b.id === bm.id)) {
+        results.unshift(bm);
+      }
+    }
+
     const toolContext = { activeCategory: payload.data.activeCategory };
-    const toolPlan = inferAssistantToolPlan(payload.data.message, toolContext) ?? await planAssistantToolCall({
-      message: payload.data.message,
+    const toolPlan = inferAssistantToolPlan(effectiveMessage, toolContext) ?? await planAssistantToolCall({
+      message: effectiveMessage,
       categories: listCategories().map((category) => category.name),
       activeCategory: payload.data.activeCategory,
       bookmarkHints: results.map(toAssistantBookmarkHint)
     });
-    const toolResult = toolPlan ? await executeAssistantToolPlan(toolPlan, payload.data.message, toolContext) : null;
+    const toolResult = toolPlan ? await executeAssistantToolPlan(toolPlan, effectiveMessage, toolContext) : null;
 
     if (toolResult) {
       return {
         ...toolResult,
-        message: await renderAssistantToolMessage(payload.data.message, toolResult)
+        message: await renderAssistantToolMessage(effectiveMessage, toolResult)
       };
     }
 
-    if (isConfirmationOnly(payload.data.message)) {
+    if (isConfirmationOnly(effectiveMessage)) {
       return {
         type: "message",
         message: "没有找到可执行的待确认操作。请把要操作的书签或分类名称一起说清楚。"
@@ -944,7 +971,7 @@ export async function registerRoutes(app: FastifyInstance) {
     }
 
     try {
-      const answer = await generateAssistantReply(payload.data.message, results, payload.data.attachments as AssistantAttachment[] | undefined);
+      const answer = await generateAssistantReply(effectiveMessage, results, payload.data.attachments as AssistantAttachment[] | undefined, webContext);
       return {
         type: "message",
         message: answer.message,
@@ -979,31 +1006,55 @@ export async function registerRoutes(app: FastifyInstance) {
       "X-Accel-Buffering": "no"
     });
 
-    const { message, model, effort, conversationId, activeCategory, attachments } = payload.data;
-    const conversation = ensureAssistantConversation(conversationId, message);
+    const { model, effort, conversationId, activeCategory, attachments } = payload.data;
+    let rawMessage = payload.data.message;
+    let effectiveMessage = rawMessage;
+    let webContext: string | undefined = undefined;
+    let mentionBookmarks: NonNullable<Awaited<ReturnType<typeof getBookmarkById>>>[] = [];
+
+    const mentionRegex = /@\[(.*?)\]\((.*?)\)/g;
+    effectiveMessage = effectiveMessage.replace(mentionRegex, (match, title) => `[${title}] `).trim();
+
+    for (const match of rawMessage.matchAll(mentionRegex)) {
+      const bm = await getBookmarkById(match[2]);
+      if (bm) mentionBookmarks.push(bm);
+    }
+
+    if (mentionBookmarks.length > 0) {
+      webContext = mentionBookmarks.map(bm => `用户指定了上下文书签：[${bm.title}](${bm.url})\n摘要：${bm.summary}`).join("\n\n") + "\n";
+    }
+
+    const catRegex = /\$\[(.*?)\]\((.*?)\)/g;
+    effectiveMessage = effectiveMessage.replace(catRegex, (match, name) => `[${name}分类] `).trim();
+
+    const conversation = ensureAssistantConversation(conversationId, rawMessage);
     const history = buildConversationContext(conversation.id);
     writeSse(reply.raw, "meta", { conversation });
-    addAssistantMessage(conversation.id, "user", message, attachments as AssistantAttachment[] | undefined);
+    addAssistantMessage(conversation.id, "user", rawMessage, attachments as AssistantAttachment[] | undefined);
 
-    const results = findAssistantBookmarkCandidates(message);
+    const results = findAssistantBookmarkCandidates(effectiveMessage);
+    for (const bm of mentionBookmarks) {
+      if (!results.some(b => b.id === bm.id)) {
+        results.unshift(bm);
+      }
+    }
+
     const toolContext = { activeCategory, history };
-    const toolPlan = inferAssistantToolPlan(message, toolContext) ?? await planAssistantToolCall({
-      message,
+    const toolPlan = inferAssistantToolPlan(effectiveMessage, toolContext) ?? await planAssistantToolCall({
+      message: effectiveMessage,
       categories: listCategories().map((category) => category.name),
       activeCategory,
       history,
       bookmarkHints: results.map(toAssistantBookmarkHint),
       webSearchEnabled: isSearchEnabled()
     });
-    const toolResult = toolPlan ? await executeAssistantToolPlan(toolPlan, message, toolContext) : null;
-
-    let webContext: string | undefined = undefined;
+    const toolResult = toolPlan ? await executeAssistantToolPlan(toolPlan, effectiveMessage, toolContext) : null;
 
     if (toolResult) {
       if (toolResult.type === "web_context") {
-        webContext = toolResult.message;
+        webContext = (webContext ? webContext + "\n" : "") + toolResult.message;
       } else {
-        const text = await renderAssistantToolMessage(message, toolResult);
+        const text = await renderAssistantToolMessage(effectiveMessage, toolResult);
         addAssistantMessage(conversation.id, "assistant", text);
         writeSse(reply.raw, "delta", { text });
         writeSse(reply.raw, "done", { ...toolResult, message: text, conversation });
@@ -1012,7 +1063,7 @@ export async function registerRoutes(app: FastifyInstance) {
       }
     }
 
-    if (isConfirmationOnly(message)) {
+    if (isConfirmationOnly(effectiveMessage)) {
       const text = "没有找到可执行的待确认操作。请把要操作的书签或分类名称一起说清楚。";
       addAssistantMessage(conversation.id, "assistant", text);
       writeSse(reply.raw, "delta", { text });
@@ -1027,7 +1078,7 @@ export async function registerRoutes(app: FastifyInstance) {
 
     try {
       let fullText = "";
-      for await (const chunk of streamAssistantReply({ message, bookmarks: results, history, attachments: attachments as AssistantAttachment[] | undefined, model, effort, webContext })) {
+      for await (const chunk of streamAssistantReply({ message: effectiveMessage, bookmarks: results, history, attachments: attachments as AssistantAttachment[] | undefined, model, effort, webContext })) {
         if (chunk.type === "reasoning") {
           writeSse(reply.raw, "reasoning", { text: chunk.text });
           continue;
