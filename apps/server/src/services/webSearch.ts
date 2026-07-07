@@ -20,7 +20,7 @@ export interface WebSearchSettings {
 export interface PublicWebSearchSettings {
   enabled: boolean;
   engine: SearchEngine;
-  apiKeySet: boolean;
+  apiKey: string;
   baseUrl: string;
   maxResults: number;
 }
@@ -75,7 +75,7 @@ export function getPublicSearchSettings(): PublicWebSearchSettings {
   return {
     enabled: settings.enabled,
     engine: settings.engine,
-    apiKeySet: Boolean(settings.apiKey),
+    apiKey: settings.apiKey,
     baseUrl: settings.baseUrl,
     maxResults: settings.maxResults
   };

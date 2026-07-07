@@ -20,7 +20,7 @@ onMounted(async () => {
     const { settings } = await getSearchSettings();
     searchEnabled.value = settings.enabled;
     searchEngine.value = settings.engine || 'tavily';
-    searchApiKey.value = settings.apiKeySet ? '********' : '';
+    searchApiKey.value = settings.apiKey || '';
     searchBaseUrl.value = settings.baseUrl || '';
     searchMaxResults.value = settings.maxResults || 5;
   } catch (error) {
@@ -45,14 +45,16 @@ async function handleSaveSearch() {
       baseUrl: searchBaseUrl.value,
       maxResults: searchMaxResults.value,
     };
-    // 仅在用户修改过密钥时才提交
-    if (searchApiKey.value && searchApiKey.value !== '********') {
+    // Allow clearing the API key
+    if (searchApiKey.value) {
       payload.apiKey = searchApiKey.value;
+    } else {
+      payload.apiKey = '';
     }
     const { settings } = await saveSearchSettings(payload);
     searchEnabled.value = settings.enabled;
     searchEngine.value = settings.engine || 'tavily';
-    searchApiKey.value = settings.apiKeySet ? '********' : '';
+    searchApiKey.value = settings.apiKey || '';
     searchBaseUrl.value = settings.baseUrl || '';
     searchMaxResults.value = settings.maxResults || 5;
   } catch (error) {

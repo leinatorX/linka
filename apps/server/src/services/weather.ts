@@ -10,7 +10,7 @@ export interface WeatherSettings {
 
 export interface PublicWeatherSettings {
   enabled: boolean;
-  apiKeySet: boolean;
+  apiKey: string;
   location: string;
   showDate: boolean;
   dateFormat: string;
@@ -57,7 +57,7 @@ export function getPublicWeatherSettings(): PublicWeatherSettings {
   const settings = getWeatherSettings();
   return {
     enabled: settings.enabled,
-    apiKeySet: Boolean(settings.apiKey),
+    apiKey: settings.apiKey,
     location: settings.location,
     showDate: settings.showDate,
     dateFormat: settings.dateFormat

@@ -20,7 +20,7 @@ onMounted(async () => {
   try {
     const { settings } = await getWeatherSettings();
     weatherEnabled.value = settings.enabled;
-    weatherApiKey.value = settings.apiKeySet ? '********' : '';
+    weatherApiKey.value = settings.apiKey || '';
     weatherLocation.value = settings.location;
     weatherShowDate.value = settings.showDate;
     weatherDateFormat.value = settings.dateFormat || 'full';
@@ -51,12 +51,14 @@ async function handleSaveWeather() {
       showDate: weatherShowDate.value,
       dateFormat: weatherDateFormat.value,
     };
-    if (weatherApiKey.value && weatherApiKey.value !== '********') {
+    if (weatherApiKey.value) {
       payload.apiKey = weatherApiKey.value;
+    } else {
+      payload.apiKey = ''; // Allow clearing the API key
     }
     const { settings } = await saveWeatherSettings(payload);
     weatherEnabled.value = settings.enabled;
-    weatherApiKey.value = settings.apiKeySet ? '********' : '';
+    weatherApiKey.value = settings.apiKey || '';
     weatherLocation.value = settings.location;
     weatherShowDate.value = settings.showDate;
     weatherDateFormat.value = settings.dateFormat || 'full';
