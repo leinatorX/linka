@@ -2,6 +2,8 @@
 
 > Save it. Let AI organize it.
 
+简体中文 | [English](./README_EN.md)
+
 Linka 是一款面向个人和小团队自托管场景的 AI 书签管理器。它可以抓取网页元数据，使用大语言模型生成摘要、分类和标签，并通过对话式 AI 助手完成收藏、检索和多模态内容理解。
 
 <p align="center">
