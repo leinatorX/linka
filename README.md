@@ -30,7 +30,7 @@
 </p>
 
 <p align="center">
-  <img src="./assets/screenshot.png" alt="Linka screenshot" width="860" />
+  <img src="./assets/screenshot.gif" alt="Linka screenshot" width="860" />
 </p>
 
 ## 功能特性
