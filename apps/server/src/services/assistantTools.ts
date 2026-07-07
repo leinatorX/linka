@@ -5,8 +5,9 @@ import { extractFirstUrl, isValidUrl, normalizeUrl } from "../utils/url.js";
 import { fetchWebContent, formatSearchResults, searchWeb } from "./webSearch.js";
 
 export interface AssistantToolResult {
-  type: "bookmark_saved" | "search_results" | "message" | "tool_result" | "web_context";
+  type: "bookmark_saved" | "search_results" | "message" | "tool_result" | "web_context" | "confirmation_request";
   message: string;
+  action?: string;
   bookmark?: ReturnType<typeof listBookmarks>[number];
   results?: ReturnType<typeof listBookmarks>;
   changed?: boolean;
@@ -191,8 +192,9 @@ export async function executeAssistantToolPlan(plan: AssistantToolPlan, message:
 
   if (plan.requiresConfirmation && !hasConfirmation(message)) {
     return {
-      type: "message",
-      message: `这个操作可能会修改或删除数据。我理解的操作是：${plan.reason || plan.tool}。请在同一句里明确写“确认执行”或“确认删除”后再让我执行。`
+      type: "confirmation_request",
+      message: `这个操作可能会修改或删除数据。我理解的操作是：${plan.reason || plan.tool}。需确认以防误删。`,
+      action: "确认执行"
     };
   }
 
@@ -311,8 +313,12 @@ export async function executeAssistantToolPlan(plan: AssistantToolPlan, message:
     if (!targets.length) {
       return { type: "message", message: "没有找到要移动的书签。" };
     }
-    if (targets.length > 5 && !hasConfirmation(message)) {
-      return { type: "message", message: `这会修改 ${targets.length} 条书签的分类。请明确回复“确认执行”后再让我处理。` };
+    if (!hasConfirmation(message) && targets.length > 1) {
+      return {
+        type: "confirmation_request",
+        message: `这会修改 ${targets.length} 条书签的分类。请确认执行。`,
+        action: "确认执行"
+      };
     }
 
     createCategory(category);

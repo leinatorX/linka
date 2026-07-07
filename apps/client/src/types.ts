@@ -33,8 +33,9 @@ export interface AuthUser {
 }
 
 export interface AssistantResponse {
-  type: "bookmark_saved" | "search_results" | "message" | "tool_result";
+  type: "bookmark_saved" | "search_results" | "message" | "tool_result" | "web_context" | "confirmation_request";
   message: string;
+  action?: string;
   bookmark?: Bookmark;
   results?: Bookmark[];
   changed?: boolean;

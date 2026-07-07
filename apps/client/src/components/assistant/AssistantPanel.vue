@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
-import { ChevronDown, FileText, History, Loader2, Mic, Plus, Search, Send, Square, Video, X, Package, Link, Image as ImageIcon } from "@lucide/vue";
+import { ChevronDown, FileText, History, Loader2, Mic, Plus, Search, Send, Square, Video, X, Package, Link, Image as ImageIcon, Check } from "@lucide/vue";
 import type { AssistantUiMessage } from "../../composables/useAssistant";
 import type { AiModelConfig, AssistantAttachment, AssistantConversation, Bookmark, Category } from "../../types";
 import { listBookmarks, listCategories } from "../../api";
@@ -118,6 +118,20 @@ const editorRef = ref<HTMLElement | null>(null);
 const showCommandMenu = ref(false);
 const showMentionMenu = ref(false);
 const currentSearchText = ref("");
+
+function confirmAction(action: string, message: AssistantUiMessage) {
+  if (props.isAssistantLoading) return;
+  message.confirmationRequest = undefined;
+  assistantInput.value = action;
+  emit('askAssistant');
+}
+
+function cancelAction(message: AssistantUiMessage) {
+  if (props.isAssistantLoading) return;
+  message.confirmationRequest = undefined;
+  props.assistantMessages.unshift({ role: "user", text: "取消执行" });
+  props.assistantMessages.unshift({ role: "assistant", text: "好的，操作已取消。" });
+}
 // 保存触发菜单时的光标位置，确保点击菜单项时仍能正确插入徽章
 let savedRange: Range | null = null;
 
@@ -747,6 +761,16 @@ const previewImageUrl = ref<string | null>(null);
                 {{ result.title }}
                 <span>{{ result.category }}</span>
               </a>
+            </div>
+            <div v-if="message.confirmationRequest" class="confirmation-card">
+              <button class="btn-primary" :disabled="isAssistantLoading" @click="confirmAction(message.confirmationRequest, message)">
+                <Check :size="16" />
+                {{ message.confirmationRequest }}
+              </button>
+              <button class="btn-secondary" :disabled="isAssistantLoading" @click="cancelAction(message)">
+                <X :size="16" />
+                {{ t('assistant.cancel') }}
+              </button>
             </div>
           </div>
         </div>

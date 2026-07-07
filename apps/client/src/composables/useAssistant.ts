@@ -16,6 +16,7 @@ export interface AssistantUiMessage {
   reasoningCollapsed?: boolean;
   results?: Bookmark[];
   streaming?: boolean;
+  confirmationRequest?: string;
 }
 
 interface UseAssistantOptions {
@@ -265,6 +266,7 @@ export function useAssistant(options: UseAssistantOptions) {
           assistantMessage.reasoningCollapsed = Boolean(assistantMessage.reasoning);
           assistantMessage.text = response.message || assistantMessage.text;
           assistantMessage.results = response.results ?? (response.bookmark ? [response.bookmark] : undefined);
+          assistantMessage.confirmationRequest = response.action;
           if (response.conversation) {
             assistantConversations.value = [
               response.conversation,
