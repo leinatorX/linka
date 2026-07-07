@@ -87,7 +87,11 @@ async function handleSaveSearch() {
         </select>
       </label>
       <label v-if="searchEngine !== 'searxng'">
-        <span>{{ t('settings.general.searchApiKey') }}</span>
+        <span>
+          {{ t('settings.general.searchApiKey') }}
+          <a v-if="searchEngine === 'tavily'" href="https://app.tavily.com/" target="_blank" rel="noopener noreferrer" style="font-size: 11px; margin-left: 8px; color: var(--accent-primary); text-decoration: none;">(获取密钥)</a>
+          <a v-else-if="searchEngine === 'brave'" href="https://api.search.brave.com/app/keys" target="_blank" rel="noopener noreferrer" style="font-size: 11px; margin-left: 8px; color: var(--accent-primary); text-decoration: none;">(获取密钥)</a>
+        </span>
         <div class="login-password-field" style="width: 100%;">
           <input :type="showSearchApiKey ? 'text' : 'password'" v-model="searchApiKey" :placeholder="t('settings.general.searchApiKeyPlaceholder')" />
           <button type="button" @click="showSearchApiKey = !showSearchApiKey">
@@ -97,7 +101,10 @@ async function handleSaveSearch() {
         </div>
       </label>
       <label v-if="searchEngine === 'searxng'">
-        <span>{{ t('settings.general.searchBaseUrl') }}</span>
+        <span>
+          {{ t('settings.general.searchBaseUrl') }}
+          <a href="https://docs.searxng.org/" target="_blank" rel="noopener noreferrer" style="font-size: 11px; margin-left: 8px; color: var(--accent-primary); text-decoration: none;">(部署指南)</a>
+        </span>
         <input type="text" v-model="searchBaseUrl" :placeholder="t('settings.general.searchBaseUrlPlaceholder')" />
       </label>
       <label>
