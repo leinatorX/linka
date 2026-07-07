@@ -70,6 +70,12 @@ const renderedMessages = computed(() =>
   }))
 );
 
+const selectedModelSupportsVision = computed(() => {
+  if (!assistantModel.value) return false;
+  const model = props.availableModels.find(m => m.name === assistantModel.value);
+  return model ? model.supportsVision : false;
+});
+
 interface RichTextSegment {
   type: 'text' | 'command' | 'bookmark' | 'category';
   text?: string;
@@ -835,6 +841,7 @@ const previewImageUrl = ref<string | null>(null);
             <div class="custom-select" :class="{ open: modelSelectOpen }">
               <div class="select-trigger" @click="$emit('toggleModelSelect', $event)">
                 <span>{{ assistantModel || t('assistant.defaultModel') }}</span>
+                <ImageIcon v-if="selectedModelSupportsVision" :size="12" class="vision-icon" title="支持图片输入" />
                 <ChevronDown :size="14" class="select-icon" />
               </div>
               <transition name="fade">
