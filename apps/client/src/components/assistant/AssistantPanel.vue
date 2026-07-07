@@ -129,8 +129,8 @@ function confirmAction(action: string, message: AssistantUiMessage) {
 function cancelAction(message: AssistantUiMessage) {
   if (props.isAssistantLoading) return;
   message.confirmationRequest = undefined;
-  props.assistantMessages.unshift({ role: "user", text: "取消执行" });
-  props.assistantMessages.unshift({ role: "assistant", text: "好的，操作已取消。" });
+  assistantInput.value = "取消执行";
+  emit('askAssistant');
 }
 // 保存触发菜单时的光标位置，确保点击菜单项时仍能正确插入徽章
 let savedRange: Range | null = null;

@@ -171,6 +171,7 @@ export default {
     history: "歷史紀錄",
     newConversation: "新增對話",
     close: "關閉",
+    cancel: "取消",
     searchHistory: "搜尋歷史紀錄...",
     done: "完成",
     manage: "管理",

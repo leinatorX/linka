@@ -171,6 +171,7 @@ export default {
     history: "History",
     newConversation: "New Conversation",
     close: "Close",
+    cancel: "Cancel",
     searchHistory: "Search history...",
     done: "Done",
     manage: "Manage",
