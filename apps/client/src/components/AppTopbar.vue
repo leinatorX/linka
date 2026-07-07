@@ -42,7 +42,7 @@ onMounted(async () => {
     const { settings } = await getWeatherSettings();
     showDateConfig.value = settings.showDate;
     dateFormatConfig.value = settings.dateFormat || 'full';
-    if (settings.enabled && settings.apiKeySet) {
+    if (settings.enabled && settings.apiKey) {
       const data = await getCurrentWeather();
       weather.value = data.current;
     }
