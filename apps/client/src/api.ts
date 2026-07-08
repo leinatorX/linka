@@ -127,6 +127,19 @@ export function getAssistantConversation(id: string): Promise<{ conversation: As
   return request(`/api/assistant/conversations/${id}`);
 }
 
+export function updateAssistantConversationTitle(id: string, title: string): Promise<{ conversation: AssistantConversation }> {
+  return request(`/api/assistant/conversations/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify({ title })
+  });
+}
+
+export function deleteAssistantConversation(id: string): Promise<{ deleted: number }> {
+  return request(`/api/assistant/conversations/${id}`, {
+    method: "DELETE"
+  });
+}
+
 export function deleteAssistantConversations(ids: string[]): Promise<{ deleted: number }> {
   return request("/api/assistant/conversations/delete", {
     method: "POST",

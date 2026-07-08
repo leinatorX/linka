@@ -150,7 +150,7 @@
 .history-item {
   width: 100%;
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 10px;
   padding: 12px;
   border-radius: var(--radius-md);
@@ -158,6 +158,8 @@
   border: 1px solid transparent;
   color: var(--text-primary);
   text-align: left;
+  cursor: pointer;
+  transition: background var(--transition-fast), border-color var(--transition-fast);
 }
 
 .history-item:hover,
@@ -166,14 +168,16 @@
   border-color: rgba(255, 255, 255, 0.08);
 }
 
-.history-item input {
+.history-item>input {
   width: 16px;
   height: 16px;
-  margin-top: 2px;
+  margin: 0;
   accent-color: var(--accent-primary);
+  flex: 0 0 auto;
 }
 
-.history-item div {
+.history-item-main {
+  flex: 1;
   min-width: 0;
   display: grid;
   gap: 6px;
@@ -191,6 +195,76 @@
 .history-item span {
   font-size: 12px;
   color: var(--text-secondary);
+}
+
+.history-item-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  opacity: 0.52;
+  transition: opacity var(--transition-fast);
+}
+
+.history-item:hover .history-item-actions,
+.history-item:focus-within .history-item-actions,
+.history-item.active .history-item-actions {
+  opacity: 1;
+}
+
+.history-icon-btn {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-secondary);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  flex: 0 0 auto;
+  transition: color var(--transition-fast), background var(--transition-fast), border-color var(--transition-fast), transform var(--transition-fast);
+}
+
+.history-icon-btn:hover {
+  color: var(--text-primary);
+  background: var(--bg-surface-hover);
+  border-color: var(--border-strong);
+}
+
+.history-icon-btn:active {
+  transform: scale(0.94);
+}
+
+.history-icon-btn.danger:hover {
+  color: var(--danger);
+  background: var(--danger-bg);
+  border-color: var(--danger);
+}
+
+.history-title-edit {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.history-title-edit input {
+  flex: 1;
+  min-width: 0;
+  height: 32px;
+  border-radius: 8px;
+  border: 1px solid var(--border-strong);
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text-primary);
+  padding: 0 10px;
+  outline: none;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.history-title-edit input:focus {
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 0 2px rgba(122, 132, 255, 0.16);
 }
 
 .history-empty {

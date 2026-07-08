@@ -1,10 +1,12 @@
 import { computed, ref } from "vue";
 import {
   createAssistantConversation,
+  deleteAssistantConversation,
   deleteAssistantConversations,
   getAssistantConversation,
   listAssistantConversations,
-  streamAssistantMessage
+  streamAssistantMessage,
+  updateAssistantConversationTitle
 } from "../api";
 import type { AssistantAttachment, AssistantAttachmentKind, AssistantConversation, Bookmark } from "../types";
 
@@ -179,6 +181,43 @@ export function useAssistant(options: UseAssistantOptions) {
     }
   }
 
+  async function renameAssistantConversation(conversationId: string, title: string) {
+    const normalizedTitle = title.replace(/\s+/g, " ").trim();
+    if (!normalizedTitle) {
+      addAssistantNotice("历史记录标题不能为空。");
+      return;
+    }
+
+    try {
+      const result = await updateAssistantConversationTitle(conversationId, normalizedTitle);
+      assistantConversations.value = assistantConversations.value.map((conversation) =>
+        conversation.id === conversationId ? result.conversation : conversation
+      );
+    } catch (error) {
+      addAssistantNotice(error instanceof Error ? error.message : "历史记录标题修改失败。");
+    }
+  }
+
+  async function removeAssistantConversation(conversationId: string) {
+    try {
+      await deleteAssistantConversation(conversationId);
+      assistantConversations.value = assistantConversations.value.filter((conversation) => conversation.id !== conversationId);
+      const nextSelectedConversationIds = new Set(selectedConversationIds.value);
+      nextSelectedConversationIds.delete(conversationId);
+      selectedConversationIds.value = nextSelectedConversationIds;
+
+      if (activeConversationId.value === conversationId) {
+        activeConversationId.value = null;
+        assistantMessages.value = [{
+          role: "assistant",
+          text: "历史记录已删除，可以开始新的对话。"
+        }];
+      }
+    } catch (error) {
+      addAssistantNotice(error instanceof Error ? error.message : "历史记录删除失败。");
+    }
+  }
+
   async function attachAssistantFiles(files: FileList | File[]) {
     const nextFiles = Array.from(files);
     if (!nextFiles.length) {
@@ -258,9 +297,10 @@ export function useAssistant(options: UseAssistantOptions) {
       }, {
         onMeta(data) {
           activeConversationId.value = data.conversation.id;
-          if (!assistantConversations.value.some((conversation) => conversation.id === data.conversation.id)) {
-            assistantConversations.value.unshift(data.conversation);
-          }
+          assistantConversations.value = [
+            data.conversation,
+            ...assistantConversations.value.filter((conversation) => conversation.id !== data.conversation.id)
+          ];
         },
         onReasoning(data) {
           assistantMessage.reasoningCollapsed = false;
@@ -354,6 +394,8 @@ export function useAssistant(options: UseAssistantOptions) {
     toggleAssistantHistory,
     toggleConversationSelected,
     removeSelectedConversations,
+    renameAssistantConversation,
+    removeAssistantConversation,
     attachAssistantFiles,
     removeAssistantAttachment,
     askAssistant,

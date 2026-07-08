@@ -1,9 +1,9 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { z } from "zod";
 import { config } from "./config.js";
-import { generateAssistantReply, generateAssistantToolResultReply, planAssistantToolCall, streamAssistantReply, testAiConnection } from "./services/ai.js";
+import { generateAssistantConversationTitle, generateAssistantReply, generateAssistantToolResultReply, planAssistantToolCall, streamAssistantReply, testAiConnection } from "./services/ai.js";
 import type { AssistantAttachment } from "./services/ai.js";
-import { addAssistantMessage, buildConversationContext, createAssistantConversation, deleteAssistantConversations, ensureAssistantConversation, getAssistantConversation, listAssistantConversations } from "./services/assistant.js";
+import { addAssistantMessage, buildConversationContext, createAssistantConversation, deleteAssistantConversations, ensureAssistantConversation, getAssistantConversation, listAssistantConversations, updateAssistantConversationAutoTitle, updateAssistantConversationTitle } from "./services/assistant.js";
 import { executeAssistantToolPlan, inferAssistantToolPlan } from "./services/assistantTools.js";
 import { clearSessionCookie, getSessionFromRequest, login, logout, requireAuth, updateAvatar, updateCredentials } from "./services/auth.js";
 import { createBookmark, deleteBookmark, getBookmarkById, listBookmarks, updateBookmark } from "./services/bookmarks.js";
@@ -113,6 +113,10 @@ const assistantStreamSchema = z.object({
 
 const deleteConversationsSchema = z.object({
   ids: z.array(z.string().min(1)).min(1)
+});
+
+const updateConversationTitleSchema = z.object({
+  title: z.string().trim().min(1).max(80)
 });
 
 const categorySchema = z.object({
@@ -873,6 +877,34 @@ export async function registerRoutes(app: FastifyInstance) {
     return conversation;
   });
 
+  app.patch("/api/assistant/conversations/:id", {
+    schema: {
+      description: "更新单个对话会话标题",
+      tags: ["AI 助手"],
+      params: {
+        type: "object",
+        required: ["id"],
+        properties: {
+          id: { type: "string", description: "会话 ID" }
+        }
+      },
+      body: zodToJSON(updateConversationTitleSchema)
+    }
+  }, async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const payload = updateConversationTitleSchema.safeParse(request.body);
+    if (!payload.success) {
+      return reply.code(400).send({ message: "请输入有效的历史记录标题" });
+    }
+
+    const conversation = updateAssistantConversationTitle(id, payload.data.title);
+    if (!conversation) {
+      return reply.code(404).send({ message: "对话不存在" });
+    }
+
+    return { conversation };
+  });
+
   app.delete("/api/assistant/conversations/:id", {
     schema: {
       description: "删除单个会话历史",
@@ -1028,10 +1060,22 @@ export async function registerRoutes(app: FastifyInstance) {
     const catRegex = /\$\[(.*?)\]\((.*?)\)/g;
     effectiveMessage = effectiveMessage.replace(catRegex, (match, name) => `[${name}分类] `).trim();
 
-    const conversation = ensureAssistantConversation(conversationId, rawMessage);
+    let conversation = ensureAssistantConversation(conversationId, rawMessage);
     const history = buildConversationContext(conversation.id);
+    const shouldGenerateTitle = history.length === 0;
     writeSse(reply.raw, "meta", { conversation });
     addAssistantMessage(conversation.id, "user", rawMessage, attachments as AssistantAttachment[] | undefined);
+
+    async function refreshConversationTitle(assistantReply: string) {
+      if (!shouldGenerateTitle) {
+        return;
+      }
+
+      const title = await generateAssistantConversationTitle({ userMessage: rawMessage, assistantReply, model });
+      if (title) {
+        conversation = updateAssistantConversationAutoTitle(conversation.id, rawMessage, title) ?? conversation;
+      }
+    }
 
     const results = findAssistantBookmarkCandidates(effectiveMessage);
     for (const bm of mentionBookmarks) {
@@ -1057,6 +1101,7 @@ export async function registerRoutes(app: FastifyInstance) {
       } else {
         const text = await renderAssistantToolMessage(effectiveMessage, toolResult);
         addAssistantMessage(conversation.id, "assistant", text);
+        await refreshConversationTitle(text);
         writeSse(reply.raw, "delta", { text });
         writeSse(reply.raw, "done", { ...toolResult, message: text, conversation });
         reply.raw.end();
@@ -1067,6 +1112,7 @@ export async function registerRoutes(app: FastifyInstance) {
     if (isConfirmationOnly(effectiveMessage)) {
       const text = "没有找到可执行的待确认操作。请把要操作的书签或分类名称一起说清楚。";
       addAssistantMessage(conversation.id, "assistant", text);
+      await refreshConversationTitle(text);
       writeSse(reply.raw, "delta", { text });
       writeSse(reply.raw, "done", {
         type: "message",
@@ -1091,6 +1137,7 @@ export async function registerRoutes(app: FastifyInstance) {
 
       const finalText = fullText.trim() || "我暂时没有生成有效回复。";
       addAssistantMessage(conversation.id, "assistant", finalText);
+      await refreshConversationTitle(finalText);
       writeSse(reply.raw, "done", {
         type: "message",
         message: finalText,

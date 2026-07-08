@@ -108,6 +108,47 @@ export function ensureAssistantConversation(conversationId: string | undefined, 
   return createAssistantConversation(createTitle(firstMessage));
 }
 
+export function updateAssistantConversationAutoTitle(conversationId: string, firstMessage: string, title: string) {
+  const normalizedTitle = title.replace(/\s+/g, " ").trim();
+  if (!normalizedTitle) {
+    return null;
+  }
+
+  const conversation = selectConversationById.get(conversationId) as AssistantConversationRecord | undefined;
+  if (!conversation) {
+    return null;
+  }
+
+  const fallbackTitle = createTitle(firstMessage);
+  if (conversation.title !== "新对话" && conversation.title !== fallbackTitle) {
+    return toAssistantConversation(conversation);
+  }
+
+  if (conversation.title === normalizedTitle) {
+    return toAssistantConversation(conversation);
+  }
+
+  const now = new Date().toISOString();
+  updateConversation.run(normalizedTitle, now, conversationId);
+  return toAssistantConversation(selectConversationById.get(conversationId) as AssistantConversationRecord);
+}
+
+export function updateAssistantConversationTitle(conversationId: string, title: string) {
+  const normalizedTitle = title.replace(/\s+/g, " ").trim();
+  if (!normalizedTitle) {
+    return null;
+  }
+
+  const conversation = selectConversationById.get(conversationId) as AssistantConversationRecord | undefined;
+  if (!conversation) {
+    return null;
+  }
+
+  const now = new Date().toISOString();
+  updateConversation.run(normalizedTitle, now, conversationId);
+  return toAssistantConversation(selectConversationById.get(conversationId) as AssistantConversationRecord);
+}
+
 export function addAssistantMessage(conversationId: string, role: "user" | "assistant", content: string, attachments: AssistantAttachment[] = []) {
   const now = new Date().toISOString();
   const id = randomUUID();

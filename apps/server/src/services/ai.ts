@@ -6,6 +6,8 @@ import {
   buildAssistantChatSystemPrompt,
   buildAssistantToolResultSystemPrompt,
   buildAssistantToolSystemPrompt,
+  buildAssistantTitleSystemPrompt,
+  buildAssistantTitleUserPrompt,
   buildAssistantUserPrompt,
   buildClassifyBookmarkSystemPrompt,
   buildClassifyBookmarkUserPrompt,
@@ -124,6 +126,20 @@ function extractJsonObject(content: string) {
   }
 
   return content.slice(start, end + 1);
+}
+
+function sanitizeConversationTitle(title: string) {
+  const normalized = title
+    .replace(/[\r\n\t]+/g, " ")
+    .replace(/^["'“”‘’《<（(【[]+|["'“”‘’》>）)】\].。！？!?]+$/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  if (!normalized) {
+    return "";
+  }
+
+  return normalized.slice(0, 32);
 }
 
 function getConfigIdentity(active: ActiveAiConfig) {
@@ -799,6 +815,30 @@ export async function generateAssistantToolResultReply(options: {
   ]);
 
   return content.trim() || options.resultMessage;
+}
+
+export async function generateAssistantConversationTitle(options: {
+  userMessage: string;
+  assistantReply: string;
+  model?: string;
+}): Promise<string | null> {
+  const settings = getAiSettings();
+  const active = getActiveAiConfig(options.model);
+  const messages: ChatMessage[] = [
+    { role: "system", content: buildAssistantTitleSystemPrompt(settings.aiLanguage) },
+    { role: "user", content: buildAssistantTitleUserPrompt(options) }
+  ];
+
+  try {
+    const content = active.provider.apiFormat === "anthropic"
+      ? await requestAnthropic(active, messages)
+      : await requestOpenAi(active, messages, true);
+    const parsed = JSON.parse(extractJsonObject(content)) as Partial<{ title: string }>;
+    const title = sanitizeConversationTitle(String(parsed.title ?? ""));
+    return title || null;
+  } catch {
+    return null;
+  }
 }
 
 export async function testAiConnection(provider: {

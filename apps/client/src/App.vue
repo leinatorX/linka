@@ -128,6 +128,8 @@ const {
   toggleAssistantHistory,
   toggleConversationSelected,
   removeSelectedConversations,
+  renameAssistantConversation,
+  removeAssistantConversation,
   attachAssistantFiles,
   removeAssistantAttachment,
   askAssistant,
@@ -443,6 +445,8 @@ onUnmounted(() => {
       @toggle-conversation-selected="toggleConversationSelected"
       @open-assistant-conversation="openAssistantConversation"
       @remove-selected-conversations="removeSelectedConversations"
+      @rename-assistant-conversation="renameAssistantConversation"
+      @remove-assistant-conversation="removeAssistantConversation"
       @attach-assistant-files="attachAssistantFiles"
       @remove-assistant-attachment="removeAssistantAttachment"
       @toggle-model-select="toggleModelSelect"

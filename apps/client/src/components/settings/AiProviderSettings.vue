@@ -128,9 +128,14 @@ function getApiFormatLabel(format: AiApiFormat) {
   <section>
     <div class="ai-provider-layout">
       <div class="ai-provider-sidebar">
-        <div class="sidebar-header">
-          <h3>{{ t('settings.ai.title') }}</h3>
-          <p>{{ t('settings.ai.desc') }}</p>
+        <div class="sidebar-header ai-sidebar-header">
+          <div class="ai-header-text">
+            <h3>{{ t('settings.ai.title') }}</h3>
+            <p>{{ t('settings.ai.desc') }}</p>
+          </div>
+          <button class="add-provider-icon-btn" @click="$emit('addAiProvider')" :title="t('settings.ai.addProvider')">
+            <Plus :size="16" />
+          </button>
         </div>
 
         <div class="ai-provider-cards">
@@ -174,11 +179,6 @@ function getApiFormatLabel(format: AiApiFormat) {
               <i></i>
             </span>
           </div>
-
-          <button class="add-provider-btn" @click="$emit('addAiProvider')">
-            <Plus :size="16" />
-            <span>{{ t('settings.ai.addProvider') }}</span>
-          </button>
         </div>
       </div>
 

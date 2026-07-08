@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
-import { ChevronDown, FileText, History, Loader2, Mic, Plus, Search, Send, Square, Video, X, Package, Link, Image as ImageIcon, Check } from "@lucide/vue";
+import { ChevronDown, FileText, History, Loader2, Mic, Plus, Search, Send, Square, Video, X, Package, Link, Image as ImageIcon, Check, Pencil, Trash2 } from "@lucide/vue";
 import type { AssistantUiMessage } from "../../composables/useAssistant";
 import type { AiModelConfig, AssistantAttachment, AssistantConversation, Bookmark, Category } from "../../types";
 import { listBookmarks, listCategories } from "../../api";
@@ -39,6 +39,8 @@ const emit = defineEmits<{
   toggleConversationSelected: [conversationId: string];
   openAssistantConversation: [conversationId: string];
   removeSelectedConversations: [];
+  renameAssistantConversation: [conversationId: string, title: string];
+  removeAssistantConversation: [conversationId: string];
   attachAssistantFiles: [files: FileList];
   removeAssistantAttachment: [attachmentId: string];
   toggleModelSelect: [event: Event];
@@ -118,6 +120,48 @@ const editorRef = ref<HTMLElement | null>(null);
 const showCommandMenu = ref(false);
 const showMentionMenu = ref(false);
 const currentSearchText = ref("");
+const editingConversationId = ref<string | null>(null);
+const editingConversationTitle = ref("");
+
+function openHistoryConversation(conversationId: string) {
+  if (assistantHistoryManage.value || editingConversationId.value) {
+    return;
+  }
+
+  emit("openAssistantConversation", conversationId);
+}
+
+function startEditingConversation(conversation: AssistantConversation) {
+  editingConversationId.value = conversation.id;
+  editingConversationTitle.value = conversation.title;
+}
+
+function cancelEditingConversation() {
+  editingConversationId.value = null;
+  editingConversationTitle.value = "";
+}
+
+function saveEditingConversation() {
+  if (!editingConversationId.value) {
+    return;
+  }
+
+  const title = editingConversationTitle.value.replace(/\s+/g, " ").trim();
+  if (!title) {
+    return;
+  }
+
+  emit("renameAssistantConversation", editingConversationId.value, title);
+  cancelEditingConversation();
+}
+
+function removeHistoryConversation(conversation: AssistantConversation) {
+  if (!window.confirm(`删除历史记录“${conversation.title}”？`)) {
+    return;
+  }
+
+  emit("removeAssistantConversation", conversation.id);
+}
 
 function confirmAction(action: string, index: number) {
   if (props.isAssistantLoading) return;
@@ -678,16 +722,45 @@ const previewImageUrl = ref<string | null>(null);
           </button>
         </div>
         <div class="history-list">
-          <button v-for="conversation in filteredConversations" :key="conversation.id" class="history-item"
+          <div v-for="conversation in filteredConversations" :key="conversation.id" class="history-item"
             :class="{ active: activeConversationId === conversation.id }"
-            @click="assistantHistoryManage ? $emit('toggleConversationSelected', conversation.id) : $emit('openAssistantConversation', conversation.id)">
+            role="button"
+            tabindex="0"
+            @click="openHistoryConversation(conversation.id)"
+            @keydown.enter.prevent="openHistoryConversation(conversation.id)">
             <input v-if="assistantHistoryManage" type="checkbox" :checked="selectedConversationIds.has(conversation.id)"
               @click.stop="$emit('toggleConversationSelected', conversation.id)" />
-            <div>
-              <strong>{{ conversation.title }}</strong>
-              <span>{{ new Date(conversation.updatedAt).toLocaleString() }}</span>
+            <div class="history-item-main">
+              <form v-if="editingConversationId === conversation.id" class="history-title-edit" @submit.prevent.stop="saveEditingConversation">
+                <input
+                  v-model="editingConversationTitle"
+                  maxlength="80"
+                  autofocus
+                  @click.stop
+                  @keydown.enter.prevent.stop="saveEditingConversation"
+                  @keydown.esc.prevent.stop="cancelEditingConversation"
+                />
+                <button type="submit" class="history-icon-btn" title="保存标题" @click.stop>
+                  <Check :size="15" />
+                </button>
+                <button type="button" class="history-icon-btn" title="取消修改" @click.stop="cancelEditingConversation">
+                  <X :size="15" />
+                </button>
+              </form>
+              <template v-else>
+                <strong>{{ conversation.title }}</strong>
+                <span>{{ new Date(conversation.updatedAt).toLocaleString() }}</span>
+              </template>
             </div>
-          </button>
+            <div v-if="!assistantHistoryManage && editingConversationId !== conversation.id" class="history-item-actions">
+              <button type="button" class="history-icon-btn" title="修改标题" @click.stop="startEditingConversation(conversation)">
+                <Pencil :size="15" />
+              </button>
+              <button type="button" class="history-icon-btn danger" title="删除历史记录" @click.stop="removeHistoryConversation(conversation)">
+                <Trash2 :size="15" />
+              </button>
+            </div>
+          </div>
           <div v-if="filteredConversations.length === 0" class="history-empty">
             {{ t('assistant.emptyHistory') }}
           </div>
