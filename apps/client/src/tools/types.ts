@@ -1,6 +1,6 @@
 import type { Component } from 'vue';
 
-export type ToolCategory = 'ai' | 'dev' | 'utility';
+export type ToolCategory = 'ai' | 'dev' | 'utility' | 'design';
 
 export interface IToolWidget {
   id: string;

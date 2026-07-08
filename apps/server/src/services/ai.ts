@@ -881,13 +881,8 @@ export async function* streamGenericChat(options: {
   const active = getActiveAiConfig(options.model);
   if (active.provider.apiFormat === "anthropic") {
     yield* streamAnthropic(active, options.messages, options.effort);
-  } else if (active.provider.apiFormat === "openai") {
-    yield* streamOpenAi(active, options.messages, options.effort);
-  } else if (active.provider.apiFormat === "ollama") {
-    yield* streamOllama(active, options.messages, options.effort);
-  } else if (active.provider.apiFormat === "gemini") {
-    yield* streamGemini(active, options.messages, options.effort);
-  } else if (active.provider.apiFormat === "xai") {
-    yield* streamXai(active, options.messages, options.effort);
+    return;
   }
+
+  yield* streamOpenAi(active, options.messages, options.effort);
 }

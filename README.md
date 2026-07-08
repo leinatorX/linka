@@ -22,7 +22,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-0.2.1-blue.svg" alt="version" />
+  <img src="https://img.shields.io/badge/version-0.3.0-blue.svg" alt="version" />
   <img src="https://img.shields.io/badge/license-MIT-green.svg" alt="license" />
   <img src="https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey.svg" alt="platform" />
   <img src="https://img.shields.io/badge/Vue-3.x-brightgreen.svg" alt="Vue" />
@@ -47,6 +47,7 @@
 - 多供应商配置：支持 OpenAI 兼容接口和 Anthropic 消息接口。
 - 模型能力配置：可为每个模型设置上下文长度、默认模型和是否支持视觉理解。
 - 历史会话：保存 AI 助手对话上下文，支持多会话切换，并保留附件历史记录。
+- 工具箱：内置 AI 翻译、宽高比计算、时间戳转换、颜色格式转换、Base64 / URL 编解码等常用效率工具。
 - 本地存储：SQLite 持久化，适合桌面、本机服务器和 NAS 部署。
 - Docker 部署：提供 Dockerfile 和 Docker Compose 配置。
 
@@ -58,6 +59,7 @@
 | 后端 | Node.js, Fastify, TypeScript |
 | 数据库 | SQLite, better-sqlite3 |
 | AI 接口 | OpenAI compatible, Anthropic Messages compatible |
+| 工具箱 | AI 翻译、宽高比、时间戳、颜色转换、编解码 |
 | 文档 | Swagger UI / OpenAPI |
 | 部署 | Docker, Docker Compose |
 
@@ -186,7 +188,7 @@ Linka 提供了官方的 Docker 镜像，你可以通过 Docker Hub 获取：
 当前推荐使用固定版本标签，便于升级和回滚：
 
 ```bash
-docker pull hongleiyu/linka:0.2.1
+docker pull hongleiyu/linka:0.3.0
 ```
 
 ### 方式一：使用 Docker Compose（推荐）
@@ -197,7 +199,7 @@ docker pull hongleiyu/linka:0.2.1
 version: '3.8'
 services:
   linka:
-    image: hongleiyu/linka:0.2.1
+    image: hongleiyu/linka:0.3.0
     container_name: linka
     ports:
       - "3030:3030"
@@ -229,7 +231,7 @@ docker run -d \
   -e LINKA_DB_PATH=/app/data/linka.sqlite \
   -e LINKA_APP_URL=http://localhost:3030 \
   --restart unless-stopped \
-  hongleiyu/linka:0.2.1
+  hongleiyu/linka:0.3.0
 ```
 
 ### 方式三：从源码构建运行
@@ -248,11 +250,11 @@ docker compose up -d --build
 如果 NAS 无法直接访问 Docker Hub，可以在本机导出对应架构的离线包，再到群晖 Container Manager 中导入：
 
 ```bash
-docker pull --platform linux/amd64 hongleiyu/linka:0.2.1
-docker save -o linka-0.2.1-linux-amd64.tar hongleiyu/linka:0.2.1
+docker pull --platform linux/amd64 hongleiyu/linka:0.3.0
+docker save -o linka-0.3.0-linux-amd64.tar hongleiyu/linka:0.3.0
 ```
 
-在群晖上导入后，使用镜像 `hongleiyu/linka:0.2.1` 创建容器。端口、存储和环境变量建议保持如下配置：
+在群晖上导入后，使用镜像 `hongleiyu/linka:0.3.0` 创建容器。端口、存储和环境变量建议保持如下配置：
 
 ```text
 端口：本地端口 3030 -> 容器端口 3030 / TCP
@@ -266,7 +268,7 @@ LINKA_APP_URL=http://<NAS_IP>:3030
 
 从旧版本升级时，先停止旧容器，再用新镜像创建容器，并继续挂载同一个 `/app/data` 数据目录。确认新版本运行正常后，再删除旧容器。
 
-> 如果通过普通 HTTP 访问 NAS，浏览器可能限制部分安全上下文 API。Linka `0.2.1` 已兼容附件上传所需的客户端 ID 生成逻辑；对公网开放时仍建议使用反向代理和 HTTPS。
+> 如果通过普通 HTTP 访问 NAS，浏览器可能限制部分安全上下文 API。对公网开放时建议使用反向代理和 HTTPS；AI 助手流式对话和工具箱 AI 翻译都依赖长连接，请在反代中关闭缓冲并适当调大超时时间。
 
 ## API 文档
 
@@ -282,6 +284,7 @@ LINKA_APP_URL=http://<NAS_IP>:3030
 - 分类管理
 - AI 供应商和模型配置
 - AI 助手会话与 SSE 流式对话
+- 工具箱 AI 通用流式对话
 
 ## API 示例
 

@@ -22,7 +22,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-0.2.0-blue.svg" alt="version" />
+  <img src="https://img.shields.io/badge/version-0.3.0-blue.svg" alt="version" />
   <img src="https://img.shields.io/badge/license-MIT-green.svg" alt="license" />
   <img src="https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey.svg" alt="platform" />
   <img src="https://img.shields.io/badge/Vue-3.x-brightgreen.svg" alt="Vue" />
@@ -47,6 +47,7 @@
 - **Multi-provider Configuration**: Supports OpenAI-compatible interfaces and Anthropic Messages interfaces.
 - **Model Capabilities Configuration**: Configure context length, default models, and vision capabilities for each model.
 - **Chat History**: Save AI assistant conversation context, support multi-conversation switching, and retain attachment history.
+- **Toolbox**: Built-in utilities for AI translation, aspect ratio calculation, timestamp conversion, color conversion, and Base64 / URL encoding and decoding.
 - **Local Storage**: SQLite persistence, suitable for desktop, local servers, and NAS deployments.
 - **Docker Deployment**: Dockerfile and Docker Compose configurations provided.
 
@@ -58,6 +59,7 @@
 | Backend | Node.js, Fastify, TypeScript |
 | Database | SQLite, better-sqlite3 |
 | AI Interfaces | OpenAI compatible, Anthropic Messages compatible |
+| Toolbox | AI translation, aspect ratio, timestamp, color conversion, encoding / decoding |
 | Documentation | Swagger UI / OpenAPI |
 | Deployment | Docker, Docker Compose |
 
@@ -183,6 +185,12 @@ http://localhost:3030
 Linka provides an official Docker image available on Docker Hub:
 [hongleiyu/linka - Docker Hub](https://hub.docker.com/repository/docker/hongleiyu/linka/general)
 
+Fixed version tags are recommended for easier upgrades and rollbacks:
+
+```bash
+docker pull hongleiyu/linka:0.3.0
+```
+
 ### Method 1: Using Docker Compose (Recommended)
 
 Create a `docker-compose.yml` file:
@@ -191,7 +199,7 @@ Create a `docker-compose.yml` file:
 version: '3.8'
 services:
   linka:
-    image: hongleiyu/linka:latest
+    image: hongleiyu/linka:0.3.0
     container_name: linka
     ports:
       - "3030:3030"
@@ -214,7 +222,7 @@ docker run -d \
   -p 3030:3030 \
   -v $(pwd)/data:/app/data \
   --restart unless-stopped \
-  hongleiyu/linka:latest
+  hongleiyu/linka:0.3.0
 ```
 
 ### Method 3: Build from Source
@@ -227,6 +235,17 @@ docker compose up -d --build
 
 **Data Persistence**:
 Regardless of the deployment method, the container's `/app/data` is mapped to the local `./data` directory to save the SQLite database and configuration files. When deploying to a NAS or server, regular backups of this directory are strongly recommended to prevent data loss.
+
+### Synology / NAS Offline Import
+
+If your NAS cannot access Docker Hub directly, export the image tarball on another machine and import it in Synology Container Manager:
+
+```bash
+docker pull --platform linux/amd64 hongleiyu/linka:0.3.0
+docker save -o linka-0.3.0-linux-amd64.tar hongleiyu/linka:0.3.0
+```
+
+After importing, create the container from `hongleiyu/linka:0.3.0`. Keep the same `/app/data` volume when upgrading from an older version.
 
 ## API Documentation
 
