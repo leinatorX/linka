@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
-import { ChevronDown, FileText, History, Loader2, Mic, Plus, Search, Send, Square, Video, X, Package, Link, Image as ImageIcon, Check, Pencil, Trash2 } from "@lucide/vue";
+import { ChevronDown, FileText, History, Loader2, Mic, Plus, Search, Send, Square, Video, X, Package, Link, Image as ImageIcon, Check, Pencil, Trash2, Tag } from "@lucide/vue";
 import type { AssistantUiMessage } from "../../composables/useAssistant";
 import type { AiModelConfig, AssistantAttachment, AssistantConversation, Bookmark, Category } from "../../types";
 import { listBookmarks, listCategories } from "../../api";
@@ -99,7 +99,11 @@ function parseRichTextSegments(text: string) {
       segments.push({ type: 'text', text: rest.substring(0, match.index) });
     }
     if (match[1]) {
-      segments.push({ type: 'command', name: match[1] });
+      if (isKnownSlashCommand(match[1])) {
+        segments.push({ type: 'command', name: match[1] });
+      } else {
+        segments.push({ type: 'text', text: match[1] });
+      }
     } else if (match[2]) {
       const mentionMatch = match[2].match(/^@\[(.*?)\]\((.*?)\)/);
       if (mentionMatch) {
@@ -122,6 +126,20 @@ const showMentionMenu = ref(false);
 const currentSearchText = ref("");
 const editingConversationId = ref<string | null>(null);
 const editingConversationTitle = ref("");
+
+function normalizeSlashCommandName(value: string) {
+  return value.trim().toLowerCase();
+}
+
+function getMatchedSlashCommands(query: string) {
+  const normalizedQuery = normalizeSlashCommandName(query);
+  return slashCommands.value.filter((cmd) => normalizeSlashCommandName(cmd.name).startsWith(normalizedQuery));
+}
+
+function isKnownSlashCommand(value: string) {
+  const normalizedValue = normalizeSlashCommandName(value);
+  return slashCommands.value.some((cmd) => normalizeSlashCommandName(cmd.name) === normalizedValue);
+}
 
 function openHistoryConversation(conversationId: string) {
   if (assistantHistoryManage.value || editingConversationId.value) {
@@ -196,7 +214,7 @@ function checkMenuTrigger() {
     const textBeforeCursor = node.textContent?.substring(0, sel.anchorOffset) || "";
     
     const commandMatch = textBeforeCursor.match(/(?:^|\s)(\/[\w\u4e00-\u9fa5-]*)$/);
-    if (commandMatch) {
+    if (commandMatch && getMatchedSlashCommands(commandMatch[1]).length > 0) {
       showCommandMenu.value = true;
       showMentionMenu.value = false;
       currentSearchText.value = commandMatch[1].toLowerCase();
@@ -349,7 +367,7 @@ const slashCommands = computed<SlashCommand[]>(() => [
 
 const matchedCommands = computed(() => {
   if (!showCommandMenu.value) return [];
-  return slashCommands.value.filter(cmd => cmd.name.toLowerCase().startsWith(currentSearchText.value));
+  return getMatchedSlashCommands(currentSearchText.value);
 });
 
 const selectedCommandIndex = ref(0);
@@ -542,7 +560,7 @@ function applyCombinedMention(option: CombinedMention) {
   } else {
     const name = escapeHtml(option.data.name);
     const id = escapeHtml(option.data.id);
-    insertBadge(`<span class="active-command-badge mention-badge" contenteditable="false" data-type="category" data-name="${name}" data-id="${id}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-package"><line x1="16.5" x2="7.5" y1="9.4" y2="4.21"/><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.29 7 12 12 20.71 7"/><line x1="12" x2="12" y1="22" y2="12"/></svg>${name}</span>`);
+    insertBadge(`<span class="active-command-badge mention-badge" contenteditable="false" data-type="category" data-name="${name}" data-id="${id}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-tag"><path d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z"/><circle cx="7.5" cy="7.5" r=".5" fill="currentColor"/></svg>${name}</span>`);
   }
 }
 
@@ -809,7 +827,7 @@ const previewImageUrl = ref<string | null>(null);
                 </span>
                 <span v-else-if="seg.type === 'bookmark' || seg.type === 'category'" class="user-slash-command mention-badge">
                   <Link v-if="seg.type === 'bookmark'" :size="16" />
-                  <Package v-else :size="16" />
+                  <Tag v-else :size="16" />
                   {{ seg.name }}
                 </span>
                 <template v-else>
@@ -904,7 +922,7 @@ const previewImageUrl = ref<string | null>(null);
                    @mousedown.prevent
                    @click="applyCombinedMention(item)">
                 <div class="command-name" style="display:flex;align-items:center;gap:4px;flex-shrink:0;">
-                  <component :is="item.type === 'bookmark' ? Link : Package" :size="14" />
+                  <component :is="item.type === 'bookmark' ? Link : Tag" :size="14" />
                   {{ item.type === 'bookmark' ? (item.data as Bookmark).title : (item.data as Category).name }}
                 </div>
                 <div v-if="item.type === 'bookmark'" class="command-desc">{{ (item.data as Bookmark).summary || (item.data as Bookmark).url }}</div>
