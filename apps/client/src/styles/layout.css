@@ -697,22 +697,21 @@
   width: 44px;
   height: 44px;
   border-radius: 12px;
-  background: var(--bg-surface);
-  border: 1px solid var(--border-subtle);
+  background: transparent;
   display: flex;
   align-items: center;
   justify-content: center;
   overflow: hidden;
   flex-shrink: 0;
   position: relative;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.05);
 }
 
 .site-icon img {
-  width: 20px;
-  height: 20px;
+  width: 32px;
+  height: 32px;
   object-fit: contain;
   z-index: 1;
+  border-radius: 6px; /* Soften square favicons slightly */
 }
 
 .site-icon span {
