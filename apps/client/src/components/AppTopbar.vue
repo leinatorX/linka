@@ -145,7 +145,7 @@ function handleFilterWheel(event: WheelEvent) {
           <Moon v-else :size="18" />
         </button>
 
-        <button class="top-icon" title="工具箱" @click="$emit('toggleToolbox')">
+        <button class="top-icon" :title="t('toolbox.title')" @click="$emit('toggleToolbox')">
           <LayoutGrid :size="18" />
         </button>
 

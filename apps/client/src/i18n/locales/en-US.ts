@@ -254,8 +254,40 @@ export default {
       },
       timestamp: {
         name: "Timestamp Converter",
-        desc: "Real-time Unix timestamp viewer with bi-directional conversion to readable dates."
+        desc: "Display current Unix timestamp and convert bidirectionally between timestamp and human-readable dates."
+      },
+      encoderDecoder: {
+        name: "Base64 / URL Encode",
+        desc: "Support string encoding and decoding for Base64 and URL."
+      },
+      colorConverter: {
+        name: "Color Converter",
+        desc: "Convert and preview between HEX, RGB, RGBA, and HSL color formats quickly."
       }
+    },
+    encoderDecoder: {
+      copied: "Copied",
+      input: "Input",
+      output: "Output",
+      inputPlaceholder: "Enter content here...",
+      outputPlaceholder: "Result will appear here...",
+      encode: "Encode",
+      decode: "Decode",
+      swap: "Swap",
+      encodeFailed: "Encoding failed",
+      decodeFailed: "Decoding failed",
+      textMode: "Base64 (Text)",
+      imageMode: "Base64 (Image)",
+      imageToBase64: "Image to Base64",
+      uploadHint: "Click or drag image here",
+      changeImage: "Change image",
+      copyBase64: "Copy Base64",
+      base64ToImage: "Base64 to Image",
+      pasteBase64Hint: "Paste Base64 string here (e.g. data:image/png;base64,...)",
+      imagePreview: "Image Preview"
+    },
+    colorConverter: {
+      copied: "Copied"
     },
     aiTranslator: {
       translateTo: "Translate to {lang}",

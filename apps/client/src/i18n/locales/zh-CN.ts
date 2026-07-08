@@ -255,7 +255,39 @@ export default {
       timestamp: {
         name: "时间戳转换",
         desc: "实时显示当前 Unix 时间戳，支持时间戳与人类可读日期的双向相互转换。"
+      },
+      encoderDecoder: {
+        name: "Base64 / URL 编解码",
+        desc: "支持 Base64 和 URL 的字符串编码与解码。"
+      },
+      colorConverter: {
+        name: "颜色格式转换",
+        desc: "快速实现 HEX、RGB、RGBA 与 HSL 之间的互转与预览。"
       }
+    },
+    encoderDecoder: {
+      copied: "已复制",
+      input: "输入",
+      output: "输出",
+      inputPlaceholder: "在此输入内容...",
+      outputPlaceholder: "结果将在此显示...",
+      encode: "编码",
+      decode: "解码",
+      swap: "上下互换",
+      encodeFailed: "编码失败",
+      decodeFailed: "解码失败",
+      textMode: "Base64 (文本)",
+      imageMode: "Base64 (图片)",
+      imageToBase64: "图片转 Base64",
+      uploadHint: "点击或拖拽图片到此处",
+      changeImage: "更换图片",
+      copyBase64: "复制 Base64",
+      base64ToImage: "Base64 转图片",
+      pasteBase64Hint: "在此粘贴 Base64 字符串 (建议带有 data:image/... 前缀)",
+      imagePreview: "图片预览"
+    },
+    colorConverter: {
+      copied: "已复制"
     },
     aiTranslator: {
       translateTo: "翻译为 {lang}",

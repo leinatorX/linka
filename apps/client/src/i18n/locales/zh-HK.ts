@@ -254,8 +254,40 @@ export default {
       },
       timestamp: {
         name: "時間戳轉換",
-        desc: "即時顯示當前 Unix 時間戳，支援時間戳與人類可讀日期的雙向互轉。"
+        desc: "實時顯示當前 Unix 時間戳，支援時間戳與人類可讀日期的雙向相互轉換。"
+      },
+      encoderDecoder: {
+        name: "Base64 / URL 編解碼",
+        desc: "支援 Base64 和 URL 的字串編碼與解碼。"
+      },
+      colorConverter: {
+        name: "顏色格式轉換",
+        desc: "快速實現 HEX、RGB、RGBA 與 HSL 之間的互轉與預覽。"
       }
+    },
+    encoderDecoder: {
+      copied: "已複製",
+      input: "輸入",
+      output: "輸出",
+      inputPlaceholder: "在此輸入內容...",
+      outputPlaceholder: "結果將在此顯示...",
+      encode: "編碼",
+      decode: "解碼",
+      swap: "上下互換",
+      encodeFailed: "編碼失敗",
+      decodeFailed: "解碼失敗",
+      textMode: "Base64 (文本)",
+      imageMode: "Base64 (圖片)",
+      imageToBase64: "圖片轉 Base64",
+      uploadHint: "點擊或拖曳圖片到此處",
+      changeImage: "更換圖片",
+      copyBase64: "複製 Base64",
+      base64ToImage: "Base64 轉圖片",
+      pasteBase64Hint: "在此貼上 Base64 字串 (建議帶有 data:image/... 前綴)",
+      imagePreview: "圖片預覽"
+    },
+    colorConverter: {
+      copied: "已複製"
     },
     aiTranslator: {
       translateTo: "翻譯為 {lang}",

@@ -69,7 +69,7 @@ onUnmounted(() => {
               @click="activeTool = tool"
             >
               <div class="tool-icon" :class="`category-${tool.category}`">
-                <component :is="tool.icon" :size="24" />
+                <component :is="tool.icon" :size="20" />
               </div>
               <div class="tool-info">
                 <h3>{{ t(tool.name) }}</h3>
@@ -195,17 +195,18 @@ onUnmounted(() => {
 
 .tool-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-  gap: 16px;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 12px;
 }
 
 .tool-card {
   background: rgba(255, 255, 255, 0.02);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-lg, 12px);
-  padding: 20px;
+  padding: 16px;
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
+  align-items: flex-start;
   gap: 16px;
   cursor: pointer;
   transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
@@ -219,9 +220,10 @@ onUnmounted(() => {
 }
 
 .tool-icon {
-  width: 48px;
-  height: 48px;
-  border-radius: 12px;
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  border-radius: 10px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -232,19 +234,20 @@ onUnmounted(() => {
 .category-ai { background: linear-gradient(135deg, #8b5cf6, #6d28d9); }
 .category-dev { background: linear-gradient(135deg, #3b82f6, #1d4ed8); }
 .category-utility { background: linear-gradient(135deg, #10b981, #047857); }
+.category-design { background: linear-gradient(135deg, #f59e0b, #d97706); }
 
 .tool-info h3 {
-  margin: 0 0 6px 0;
-  font-size: 16px;
+  margin: 0 0 4px 0;
+  font-size: 15px;
   font-weight: 600;
   color: var(--text-primary);
 }
 
 .tool-info p {
   margin: 0;
-  font-size: 13px;
+  font-size: 12px;
   color: var(--text-secondary);
-  line-height: 1.5;
+  line-height: 1.4;
 }
 
 .empty-state, .loading-state {

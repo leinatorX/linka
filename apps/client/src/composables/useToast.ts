@@ -8,10 +8,10 @@ export interface Toast {
   type: ToastType;
 }
 
-export function useToast() {
-  const toasts = ref<Toast[]>([]);
-  let nextToastId = 0;
+const toasts = ref<Toast[]>([]);
+let nextToastId = 0;
 
+export function useToast() {
   function showToast(message: string, type: ToastType = "info", duration = 3000) {
     const id = nextToastId++;
     toasts.value.push({ id, message, type });

@@ -1,5 +1,5 @@
 import type { IToolWidget } from './types';
-import { Languages, Ratio, Clock } from '@lucide/vue';
+import { Languages, Ratio, Clock, FileCode, Palette } from '@lucide/vue';
 import { defineAsyncComponent } from 'vue';
 
 // Registry of all tools
@@ -27,5 +27,21 @@ export const registeredTools: IToolWidget[] = [
     icon: Clock,
     category: 'utility',
     component: defineAsyncComponent(() => import('./widgets/Timestamp.vue')) as any
+  },
+  {
+    id: 'encoder-decoder',
+    name: 'toolbox.tools.encoderDecoder.name',
+    description: 'toolbox.tools.encoderDecoder.desc',
+    icon: FileCode,
+    category: 'dev',
+    component: defineAsyncComponent(() => import('./widgets/EncoderDecoder.vue')) as any
+  },
+  {
+    id: 'color-converter',
+    name: 'toolbox.tools.colorConverter.name',
+    description: 'toolbox.tools.colorConverter.desc',
+    icon: Palette,
+    category: 'design',
+    component: defineAsyncComponent(() => import('./widgets/ColorConverter.vue')) as any
   }
 ];
