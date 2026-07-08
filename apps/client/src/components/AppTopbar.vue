@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Archive, Moon, Search, Sun } from "@lucide/vue";
+import { Archive, Moon, Search, Sun, LayoutGrid } from "@lucide/vue";
 import { computed, ref, onMounted, onUnmounted } from "vue";
 import { RouterLink } from "vue-router";
 import { useI18n } from "vue-i18n";
@@ -23,6 +23,7 @@ const emit = defineEmits<{
   toggleArchived: [];
   openSettings: [];
   changeTheme: [theme: ThemeMode];
+  toggleToolbox: [];
 }>();
 
 const { t, locale } = useI18n();
@@ -142,6 +143,10 @@ function handleFilterWheel(event: WheelEvent) {
         <button class="top-icon theme-toggle-btn" :title="themeTitle" @click="cycleTheme">
           <Sun v-if="theme === 'light'" :size="18" />
           <Moon v-else :size="18" />
+        </button>
+
+        <button class="top-icon" title="工具箱" @click="$emit('toggleToolbox')">
+          <LayoutGrid :size="18" />
         </button>
 
         <button class="top-icon" :class="{ active: showArchived }" :title="showArchived ? t('topbar.viewCurrent') : t('topbar.viewArchived')"

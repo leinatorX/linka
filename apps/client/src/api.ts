@@ -290,3 +290,69 @@ export function reorderAiProviders(orderedIds: string[]): Promise<{ settings: { 
     body: JSON.stringify({ orderedIds })
   });
 }
+
+export async function streamGenericChatMessage(
+  payload: { messages: { role: "system" | "user" | "assistant"; content: string }[]; model?: string },
+  handlers: {
+    onReasoning?: (data: { text: string }) => void;
+    onDelta?: (data: { text: string }) => void;
+    onDone?: () => void;
+    onError?: (message: string) => void;
+  },
+  options?: { signal?: AbortSignal }
+) {
+  const response = await fetch("/api/ai/chat/stream", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+    signal: options?.signal
+  });
+
+  if (!response.ok || !response.body) {
+    const error = await response.json().catch(() => ({ message: "Request failed" }));
+    throw new Error(error.message ?? "Request failed");
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+
+  function consumeEvent(rawEvent: string) {
+    const eventName = rawEvent.split("\n").find((line) => line.startsWith("event:"))?.slice(6).trim();
+    const dataLine = rawEvent.split("\n").find((line) => line.startsWith("data:"));
+    if (!dataLine) return;
+
+    try {
+      const data = JSON.parse(dataLine.slice(5).trim());
+      if (eventName === "reasoning") {
+        handlers.onReasoning?.(data);
+      } else if (eventName === "delta") {
+        handlers.onDelta?.(data);
+      } else if (eventName === "error") {
+        handlers.onError?.(data.message);
+      } else if (eventName === "done") {
+        handlers.onDone?.();
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const parts = buffer.split("\n\n");
+      buffer = parts.pop() ?? "";
+
+      for (const part of parts) {
+        if (part.trim()) consumeEvent(part);
+      }
+    }
+  } catch (error: any) {
+    if (error.name === "AbortError") throw error;
+    handlers.onError?.(error.message);
+  }
+}

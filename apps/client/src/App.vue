@@ -17,6 +17,7 @@ import CategorySettings from "./components/settings/CategorySettings.vue";
 import DeleteProviderModal from "./components/settings/DeleteProviderModal.vue";
 import EditBookmarkModal from "./components/settings/EditBookmarkModal.vue";
 import SettingsPage from "./components/settings/SettingsPage.vue";
+import ToolboxContainer from "./tools/ToolboxContainer.vue";
 import { useAiSettings } from "./composables/useAiSettings";
 import { useAssistant } from "./composables/useAssistant";
 import { useAuth } from "./composables/useAuth";
@@ -31,6 +32,7 @@ const HOME_CATEGORY = "首页";
 const route = useRoute();
 const router = useRouter();
 const settingsTab = ref<SettingsTab>("account");
+const showToolbox = ref(false);
 const isSettingsPage = computed(() => route.path === "/settings");
 
 const { t } = useI18n();
@@ -319,6 +321,7 @@ onUnmounted(() => {
       @change-theme="applyTheme"
       @search="search"
       @toggle-archived="toggleArchivedView"
+      @toggle-toolbox="showToolbox = !showToolbox"
       @open-settings="openSettings"
     />
 
@@ -489,6 +492,8 @@ onUnmounted(() => {
     @confirm="confirmDeleteProvider"
     @cancel="cancelDeleteProvider"
   />
+
+  <ToolboxContainer :is-open="showToolbox" @close="showToolbox = false" />
 
   <ToastContainer :toasts="toasts" />
 </template>

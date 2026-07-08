@@ -236,6 +236,73 @@ export default {
     searchPlaceholder: "Search bookmarks...",
     viewCurrent: "View current bookmarks",
     viewArchived: "View archives",
-    settingsPrefix: "Settings: ",
+    settingsPrefix: "Settings:",
+  },
+  toolbox: {
+    title: "Toolbox",
+    back: "Back",
+    empty: "No tools available",
+    loading: "Loading...",
+    tools: {
+      aiTranslator: {
+        name: "AI Translator",
+        desc: "High-quality, multi-language text translation powered by AI with terminology retention."
+      },
+      aspectRatio: {
+        name: "Aspect Ratio",
+        desc: "Calculate common aspect ratios for images and videos with W1:H1 = W2:H2 linking."
+      },
+      timestamp: {
+        name: "Timestamp Converter",
+        desc: "Real-time Unix timestamp viewer with bi-directional conversion to readable dates."
+      }
+    },
+    aiTranslator: {
+      translateTo: "Translate to {lang}",
+      translating: "Translating...",
+      translate: "Translate",
+      sourcePlaceholder: "Enter text to translate...",
+      shortcutHint: "Ctrl + Enter to translate",
+      targetPlaceholder: "Translation result will appear here...",
+      copied: "Copied",
+      copy: "Copy",
+      failed: "Translation failed",
+      prompt: "You are a professional translation engine. Please translate the following text into {lang}.\nRequirements:\n1. Return only the translation result without any explanations.\n2. Maintain original meaning and tone.\n3. Keep proper nouns unchanged.\n\nText to translate:\n{text}"
+    },
+    aspectRatio: {
+      vertical: "(Vertical)",
+      originalSize: "Original Size (W₁ × H₁)",
+      newSize: "New Size (W₂ × H₂)",
+      width: "Width",
+      height: "Height",
+      placeholder: "Enter number",
+      custom: "Custom",
+      customExample: "e.g., 2.35:1",
+      classic: "Classic",
+      ultrawide: "Ultrawide",
+      square: "Square",
+      portrait: "Portrait"
+    },
+    timestamp: {
+      currentTime: "Current Timestamp",
+      clickToCopy: "Click to Copy",
+      toDateTime: "Timestamp to DateTime",
+      toTimestamp: "DateTime to Timestamp",
+      timestampPlaceholder: "Enter timestamp...",
+      datePlaceholder: "e.g. 2026-07-08 14:11:37",
+      invalidFormat: "Invalid Format",
+      convertFailed: "Convert Failed",
+      seconds: "Seconds",
+      secondsShort: "s",
+      milliseconds: "Milliseconds",
+      millisecondsShort: "ms",
+      switchUnit: "Switch Unit",
+      copy: "Copy",
+      stop: "Stop",
+      start: "Start",
+      convert: "Convert",
+      result: "Result",
+      localTime: "Local Time"
+    }
   }
 };

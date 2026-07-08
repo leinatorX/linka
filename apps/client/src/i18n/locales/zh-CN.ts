@@ -237,5 +237,72 @@ export default {
     viewCurrent: "查看当前书签",
     viewArchived: "查看归档",
     settingsPrefix: "设置：",
+  },
+  toolbox: {
+    title: "工具箱",
+    back: "返回",
+    empty: "暂无可用的小工具",
+    loading: "加载中...",
+    tools: {
+      aiTranslator: {
+        name: "AI 翻译",
+        desc: "利用智能体进行多语种、高质量的文本翻译，支持术语保留与自然语言润色。"
+      },
+      aspectRatio: {
+        name: "宽高比计算",
+        desc: "快捷计算图片、视频的常用宽高比，支持 W1:H1 = W2:H2 联动计算。"
+      },
+      timestamp: {
+        name: "时间戳转换",
+        desc: "实时显示当前 Unix 时间戳，支持时间戳与人类可读日期的双向相互转换。"
+      }
+    },
+    aiTranslator: {
+      translateTo: "翻译为 {lang}",
+      translating: "翻译中...",
+      translate: "翻译",
+      sourcePlaceholder: "输入要翻译的文本...",
+      shortcutHint: "Ctrl + Enter 翻译",
+      targetPlaceholder: "翻译结果将显示在这里...",
+      copied: "已复制",
+      copy: "复制",
+      failed: "翻译失败",
+      prompt: "你是一个专业的翻译引擎。请将以下文本翻译为 {lang}。\n要求：\n1. 只返回翻译结果，不要任何解释说明。\n2. 保持原意和语气。\n3. 专有名词保留原样。\n\n待翻译文本：\n{text}"
+    },
+    aspectRatio: {
+      vertical: "(竖屏)",
+      originalSize: "原尺寸 (W₁ × H₁)",
+      newSize: "新尺寸 (W₂ × H₂)",
+      width: "宽度",
+      height: "高度",
+      placeholder: "请输入数字",
+      custom: "自定义",
+      customExample: "例: 2.35:1",
+      classic: "经典",
+      ultrawide: "超宽屏",
+      square: "正方形",
+      portrait: "纵向"
+    },
+    timestamp: {
+      currentTime: "当前时间戳",
+      clickToCopy: "点击复制",
+      toDateTime: "时间戳转日期时间",
+      toTimestamp: "日期时间转时间戳",
+      timestampPlaceholder: "输入时间戳...",
+      datePlaceholder: "例如: 2026-07-08 14:11:37",
+      invalidFormat: "格式错误",
+      convertFailed: "转换失败",
+      seconds: "秒",
+      secondsShort: "秒(s)",
+      milliseconds: "毫秒",
+      millisecondsShort: "毫秒(ms)",
+      switchUnit: "切换单位",
+      copy: "复制",
+      stop: "停止",
+      start: "开始",
+      convert: "转换",
+      result: "转换结果",
+      localTime: "本地时间"
+    }
   }
 };

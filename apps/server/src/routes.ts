@@ -1,7 +1,7 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { z } from "zod";
 import { config } from "./config.js";
-import { generateAssistantConversationTitle, generateAssistantReply, generateAssistantToolResultReply, planAssistantToolCall, streamAssistantReply, testAiConnection } from "./services/ai.js";
+import { generateAssistantConversationTitle, generateAssistantReply, generateAssistantToolResultReply, planAssistantToolCall, streamAssistantReply, testAiConnection, streamGenericChat } from "./services/ai.js";
 import type { AssistantAttachment } from "./services/ai.js";
 import { addAssistantMessage, buildConversationContext, createAssistantConversation, deleteAssistantConversations, ensureAssistantConversation, getAssistantConversation, listAssistantConversations, updateAssistantConversationAutoTitle, updateAssistantConversationTitle } from "./services/assistant.js";
 import { executeAssistantToolPlan, inferAssistantToolPlan } from "./services/assistantTools.js";
@@ -1154,6 +1154,71 @@ export async function registerRoutes(app: FastifyInstance) {
         message: text,
         conversation
       });
+    } finally {
+      reply.raw.end();
+    }
+  });
+
+  app.post("/api/ai/chat/stream", {
+    schema: {
+      description: "通用无状态大模型流式对话接口，不附带任何上下文，不保存历史",
+      tags: ["AI"],
+      body: zodToJSON(z.object({
+        messages: z.array(z.object({
+          role: z.enum(["system", "user", "assistant"]),
+          content: z.string()
+        })),
+        model: z.string().optional()
+      }))
+    }
+  }, async (request, reply) => {
+    const payload = z.object({
+      messages: z.array(z.object({
+        role: z.enum(["system", "user", "assistant"]),
+        content: z.string()
+      })),
+      model: z.string().optional()
+    }).safeParse(request.body);
+    
+    if (!payload.success) {
+      return reply.code(400).send({ message: "Invalid request" });
+    }
+
+    reply.hijack();
+    reply.raw.writeHead(200, {
+      "Content-Type": "text/event-stream; charset=utf-8",
+      "Cache-Control": "no-cache, no-transform",
+      Connection: "keep-alive",
+      "X-Accel-Buffering": "no"
+    });
+
+    try {
+      const stream = streamGenericChat({
+        messages: payload.data.messages as any,
+        model: payload.data.model
+      });
+
+      let text = "";
+      for await (const chunk of stream) {
+        if (chunk.type === "text") {
+          text += chunk.text;
+          writeSse(reply.raw, "delta", { text: chunk.text });
+        } else if (chunk.type === "reasoning") {
+          writeSse(reply.raw, "reasoning", { text: chunk.text });
+        }
+      }
+
+      writeSse(reply.raw, "message", {
+        id: crypto.randomUUID(),
+        role: "assistant",
+        text,
+        timestamp: Date.now()
+      });
+      writeSse(reply.raw, "done", {});
+    } catch (error: any) {
+      request.log.error({ error }, "generic stream failed");
+      writeSse(reply.raw, "error", { message: error.message || "Request failed" });
+      writeSse(reply.raw, "done", {});
     } finally {
       reply.raw.end();
     }

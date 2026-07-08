@@ -237,5 +237,72 @@ export default {
     viewCurrent: "查看目前書籤",
     viewArchived: "查看封存",
     settingsPrefix: "設定：",
+  },
+  toolbox: {
+    title: "工具箱",
+    back: "返回",
+    empty: "暫無可用的小工具",
+    loading: "載入中...",
+    tools: {
+      aiTranslator: {
+        name: "AI 翻譯",
+        desc: "利用智能體進行多語種、高品質的文字翻譯，支援術語保留與自然語言潤色。"
+      },
+      aspectRatio: {
+        name: "長寬比計算",
+        desc: "快捷計算圖片、影片的常用長寬比，支援 W1:H1 = W2:H2 聯動計算。"
+      },
+      timestamp: {
+        name: "時間戳轉換",
+        desc: "即時顯示當前 Unix 時間戳，支援時間戳與人類可讀日期的雙向互轉。"
+      }
+    },
+    aiTranslator: {
+      translateTo: "翻譯為 {lang}",
+      translating: "翻譯中...",
+      translate: "翻譯",
+      sourcePlaceholder: "輸入要翻譯的文字...",
+      shortcutHint: "Ctrl + Enter 翻譯",
+      targetPlaceholder: "翻譯結果將顯示在這裡...",
+      copied: "已複製",
+      copy: "複製",
+      failed: "翻譯失敗",
+      prompt: "你是一個專業的翻譯引擎。請將以下文字翻譯為 {lang}。\n要求：\n1. 只返回翻譯結果，不要任何解釋說明。\n2. 保持原意和語氣。\n3. 專有名詞保留原樣。\n\n待翻譯文字：\n{text}"
+    },
+    aspectRatio: {
+      vertical: "(直向)",
+      originalSize: "原尺寸 (W₁ × H₁)",
+      newSize: "新尺寸 (W₂ × H₂)",
+      width: "寬度",
+      height: "高度",
+      placeholder: "請輸入數字",
+      custom: "自訂",
+      customExample: "例: 2.35:1",
+      classic: "經典",
+      ultrawide: "超寬螢幕",
+      square: "正方形",
+      portrait: "直向"
+    },
+    timestamp: {
+      currentTime: "當前時間戳",
+      clickToCopy: "點擊複製",
+      toDateTime: "時間戳轉日期時間",
+      toTimestamp: "日期時間轉時間戳",
+      timestampPlaceholder: "輸入時間戳...",
+      datePlaceholder: "例如: 2026-07-08 14:11:37",
+      invalidFormat: "格式錯誤",
+      convertFailed: "轉換失敗",
+      seconds: "秒",
+      secondsShort: "秒(s)",
+      milliseconds: "毫秒",
+      millisecondsShort: "毫秒(ms)",
+      switchUnit: "切換單位",
+      copy: "複製",
+      stop: "停止",
+      start: "開始",
+      convert: "轉換",
+      result: "轉換結果",
+      localTime: "本地時間"
+    }
   }
 };
