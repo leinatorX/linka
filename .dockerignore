@@ -1,6 +1,8 @@
 node_modules
 dist
 data
+dist-docker
+tmp-dev-logs
 .env
 .git
 *.log
