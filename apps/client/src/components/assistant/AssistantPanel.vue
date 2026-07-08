@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
-import { ChevronDown, FileText, History, Loader2, Mic, Plus, Search, Send, Square, Video, X, Package, Link, Image as ImageIcon, Check, Pencil, Trash2, Tag } from "@lucide/vue";
+import { ChevronDown, FileText, History, Loader2, Mic, Plus, Search, Send, Square, SquareTerminal, Video, X, Link, Image as ImageIcon, Check, Pencil, Trash2, Tag } from "@lucide/vue";
 import type { AssistantUiMessage } from "../../composables/useAssistant";
 import type { AiModelConfig, AssistantAttachment, AssistantConversation, Bookmark, Category } from "../../types";
 import { listBookmarks, listCategories } from "../../api";
@@ -547,7 +547,7 @@ function applyCommand(cmd: SlashCommand) {
   showCommandMenu.value = false;
   const name = escapeHtml(cmd.template);
   const display = escapeHtml(cmd.template.substring(1));
-  insertBadge(`<span class="active-command-badge command-badge" contenteditable="false" data-name="${name}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-package"><line x1="16.5" x2="7.5" y1="9.4" y2="4.21"/><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.29 7 12 12 20.71 7"/><line x1="12" x2="12" y1="22" y2="12"/></svg>${display}</span>`);
+  insertBadge(`<span class="active-command-badge command-badge" contenteditable="false" data-name="${name}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-square-terminal"><path d="m7 11 2-2-2-2"/><path d="M11 13h4"/><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/></svg>${display}</span>`);
 }
 
 function applyCombinedMention(option: CombinedMention) {
@@ -822,7 +822,7 @@ const previewImageUrl = ref<string | null>(null);
             <p v-else-if="message.text || !message.reasoning">
               <template v-for="(seg, i) in parseRichTextSegments(message.text)" :key="i">
                 <span v-if="seg.type === 'command'" class="user-slash-command">
-                  <Package :size="16" />
+                  <SquareTerminal :size="16" />
                   {{ seg.name!.substring(1) }}
                 </span>
                 <span v-else-if="seg.type === 'bookmark' || seg.type === 'category'" class="user-slash-command mention-badge">
@@ -902,7 +902,10 @@ const previewImageUrl = ref<string | null>(null);
                  :class="{ active: index === selectedCommandIndex }"
                  @mousedown.prevent
                  @click="applyCommand(cmd)">
-              <div class="command-name">{{ cmd.name }}</div>
+              <div class="command-name" style="display:flex;align-items:center;gap:4px;flex-shrink:0;">
+                <SquareTerminal :size="14" />
+                {{ cmd.name.substring(1) }}
+              </div>
               <div class="command-desc">{{ cmd.description }}</div>
             </div>
           </div>
