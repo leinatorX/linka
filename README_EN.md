@@ -117,6 +117,7 @@ LINKA_PORT=3030
 LINKA_HOST=0.0.0.0
 LINKA_DB_PATH=./data/linka.sqlite
 LINKA_APP_URL=http://localhost:3030
+LINKA_ENABLE_DOCS=false
 
 OPENAI_API_KEY=
 OPENAI_BASE_URL=https://api.openai.com/v1
@@ -133,6 +134,7 @@ Common Configuration Explanations:
 | `LINKA_HOST` | `0.0.0.0` | Backend listening address |
 | `LINKA_DB_PATH` | `./data/linka.sqlite` | SQLite database path |
 | `LINKA_APP_URL` | `http://localhost:3030` | App access URL, used for Cookie security policy |
+| `LINKA_ENABLE_DOCS` | Enabled by default in development, disabled by default in production | Enable Swagger UI / OpenAPI documentation |
 | `OPENAI_API_KEY` | Empty | Default OpenAI provider key on first startup |
 | `OPENAI_BASE_URL` | `https://api.openai.com/v1` | OpenAI compatible API URL |
 | `OPENAI_MODEL` | `gpt-4.1-mini` | Default OpenAI model name |
@@ -253,6 +255,12 @@ Accessible after starting the service:
 
 - Swagger UI: [http://localhost:3030/documentation](http://localhost:3030/documentation)
 - OpenAPI JSON: [http://localhost:3030/documentation/json](http://localhost:3030/documentation/json)
+
+Production images disable Swagger / OpenAPI documentation by default. To temporarily enable it, start Linka with:
+
+```env
+LINKA_ENABLE_DOCS=true
+```
 
 API Modules include:
 

@@ -24,43 +24,45 @@ await app.register(cors, {
   origin: true
 });
 
-// 注册 Swagger OpenAPI 规范生成器
-await app.register(swagger, {
-  openapi: {
-    info: {
-      title: "Linka API 文档",
-      description: "Linka 书签管理与 AI 助手后端接口文档",
-      version: "0.1.0"
-    },
-    servers: [
-      {
-        url: `http://${config.host === "0.0.0.0" ? "127.0.0.1" : config.host}:${config.port}`,
-        description: "本地服务"
-      }
-    ],
-    components: {
-      securitySchemes: {
-        apiKeyAuth: {
-          type: "apiKey",
-          in: "header",
-          name: "Authorization",
-          description: "请输入 'Bearer <apiToken>'（若配置了 API_TOKEN）"
+if (config.enableDocs) {
+  // 注册 Swagger OpenAPI 规范生成器。生产镜像默认关闭，避免公开接口文档。
+  await app.register(swagger, {
+    openapi: {
+      info: {
+        title: "Linka API 文档",
+        description: "Linka 书签管理与 AI 助手后端接口文档",
+        version: "0.1.0"
+      },
+      servers: [
+        {
+          url: `http://${config.host === "0.0.0.0" ? "127.0.0.1" : config.host}:${config.port}`,
+          description: "本地服务"
+        }
+      ],
+      components: {
+        securitySchemes: {
+          apiKeyAuth: {
+            type: "apiKey",
+            in: "header",
+            name: "Authorization",
+            description: "请输入 'Bearer <apiToken>'（若配置了 API_TOKEN）"
+          }
         }
       }
     }
-  }
-});
+  });
 
-// 注册 Swagger UI 静态页面托管，公开端点为 /documentation
-await app.register(swaggerUi, {
-  routePrefix: "/documentation",
-  uiConfig: {
-    docExpansion: "list",
-    deepLinking: false
-  },
-  staticCSP: true,
-  transformStaticCSP: (header) => header
-});
+  // 注册 Swagger UI 静态页面托管，公开端点为 /documentation。
+  await app.register(swaggerUi, {
+    routePrefix: "/documentation",
+    uiConfig: {
+      docExpansion: "list",
+      deepLinking: false
+    },
+    staticCSP: true,
+    transformStaticCSP: (header) => header
+  });
+}
 
 await registerRoutes(app);
 

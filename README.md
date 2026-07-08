@@ -117,6 +117,7 @@ LINKA_PORT=3030
 LINKA_HOST=0.0.0.0
 LINKA_DB_PATH=./data/linka.sqlite
 LINKA_APP_URL=http://localhost:3030
+LINKA_ENABLE_DOCS=false
 
 OPENAI_API_KEY=
 OPENAI_BASE_URL=https://api.openai.com/v1
@@ -133,6 +134,7 @@ LINKA_API_TOKEN=
 | `LINKA_HOST` | `0.0.0.0` | 后端监听地址 |
 | `LINKA_DB_PATH` | `./data/linka.sqlite` | SQLite 数据库路径 |
 | `LINKA_APP_URL` | `http://localhost:3030` | 应用访问地址，用于 Cookie 安全策略判断 |
+| `LINKA_ENABLE_DOCS` | 开发环境默认开启，生产环境默认关闭 | 是否启用 Swagger UI / OpenAPI 文档 |
 | `OPENAI_API_KEY` | 空 | 首次启动时的默认 OpenAI 供应商密钥 |
 | `OPENAI_BASE_URL` | `https://api.openai.com/v1` | OpenAI 兼容接口地址 |
 | `OPENAI_MODEL` | `gpt-4.1-mini` | 默认 OpenAI 模型名 |
@@ -276,6 +278,12 @@ LINKA_APP_URL=http://<NAS_IP>:3030
 
 - Swagger UI：[http://localhost:3030/documentation](http://localhost:3030/documentation)
 - OpenAPI JSON：[http://localhost:3030/documentation/json](http://localhost:3030/documentation/json)
+
+生产镜像默认关闭 Swagger / OpenAPI 文档。如果需要临时查看接口文档，可以启动时设置：
+
+```env
+LINKA_ENABLE_DOCS=true
+```
 
 接口模块包括：
 

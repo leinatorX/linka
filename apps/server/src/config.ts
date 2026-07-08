@@ -13,6 +13,7 @@ export interface AppConfig {
   apiToken: string;
   defaultUsername: string;
   defaultPassword: string;
+  enableDocs: boolean;
 }
 
 function findWorkspaceRoot(startDir: string) {
@@ -48,6 +49,15 @@ function resolveDbPath() {
   return path.join(findWorkspaceRoot(moduleDir), "data", "linka.sqlite");
 }
 
+function resolveEnableDocs() {
+  const raw = process.env.LINKA_ENABLE_DOCS;
+  if (typeof raw === "string") {
+    return ["1", "true", "yes", "on"].includes(raw.trim().toLowerCase());
+  }
+
+  return process.env.NODE_ENV !== "production";
+}
+
 export const config: AppConfig = {
   port: Number(process.env.LINKA_PORT ?? 3030),
   host: process.env.LINKA_HOST ?? "0.0.0.0",
@@ -58,5 +68,6 @@ export const config: AppConfig = {
   openaiModel: process.env.OPENAI_MODEL ?? "gpt-4.1-mini",
   apiToken: process.env.LINKA_API_TOKEN ?? "",
   defaultUsername: process.env.LINKA_DEFAULT_USERNAME ?? "admin",
-  defaultPassword: process.env.LINKA_DEFAULT_PASSWORD ?? "linka123456"
+  defaultPassword: process.env.LINKA_DEFAULT_PASSWORD ?? "linka123456",
+  enableDocs: resolveEnableDocs()
 };
