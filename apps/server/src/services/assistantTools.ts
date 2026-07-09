@@ -96,7 +96,131 @@ function isAffirmativeReply(message: string) {
   return /^(是|是的|对|对的|可以|好|好的|行|确认|没错|帮我移|移吧|可以的)[\s。！!]*$/.test(message.trim());
 }
 
+function inferSlashCommandToolPlan(message: string): AssistantToolPlan | null {
+  const normalized = message.trim();
+  const match = normalized.match(/^\/(搜索|搜尋|搜寻|search|联网搜索|網絡搜索|网络搜索|fetch|抓取|读取网页|讀取網頁)\s+([\s\S]+)$/i);
+  if (!match) {
+    return null;
+  }
+
+  const command = match[1].toLowerCase();
+  const value = match[2].trim();
+  if (!value) {
+    return null;
+  }
+
+  if (/^(fetch|抓取|读取网页|讀取網頁)$/i.test(command)) {
+    return {
+      tool: "web_fetch",
+      arguments: { url: value },
+      confidence: 1,
+      requiresConfirmation: false,
+      reason: "用户通过 Slash 命令要求抓取指定网页内容。"
+    };
+  }
+
+  return {
+    tool: "web_search",
+    arguments: { query: value },
+    confidence: 1,
+    requiresConfirmation: false,
+    reason: "用户通过 Slash 命令要求联网搜索。"
+  };
+}
+
+function isLocalSearchIntent(message: string) {
+  return /(书签|收藏|收藏夹|分类|Linka|本地|已保存|已收录)/i.test(message);
+}
+
+function isVagueSearchQuery(query: string) {
+  return /^(一下|一下啊|一下吧|下|啊|吧|这个|这个吧|刚才那个|上面那个|继续|搜一下|搜索一下)[\s。！!]*$/i.test(query.trim());
+}
+
+function extractRecentSearchTopic(context?: AssistantToolContext) {
+  const history = context?.history ?? [];
+  for (const item of [...history].reverse()) {
+    if (item.role !== "user") {
+      continue;
+    }
+
+    const content = item.content.trim();
+    if (!content || isLocalSearchIntent(content) || isVagueSearchQuery(content)) {
+      continue;
+    }
+
+    const slashPlan = inferSlashCommandToolPlan(content);
+    if (slashPlan?.tool === "web_search") {
+      return asText(slashPlan.arguments.query);
+    }
+
+    const explicitMatch = content.match(/^(?:帮我|请|麻烦)?(?:联网)?(?:搜索|搜一下|查一下|查询|查找|网上搜|網上搜|搜索一下)\s*([\s\S]+)$/i);
+    const explicitQuery = explicitMatch?.[1]?.trim();
+    if (explicitQuery && !isVagueSearchQuery(explicitQuery)) {
+      return explicitQuery;
+    }
+
+    return content;
+  }
+
+  return "";
+}
+
+function isTimelyExternalInfoQuery(message: string) {
+  if (isLocalSearchIntent(message)) {
+    return false;
+  }
+
+  return /(新闻|資訊|资讯|最新|今日|今天|现在|实时|热点|赛程|比分|价格|股价|天气|预警|名单|阵容|排名|结果|开奖结果|发布|更新|公告)/i.test(message);
+}
+
+function inferDirectWebSearchToolPlan(message: string, context?: AssistantToolContext): AssistantToolPlan | null {
+  const normalized = message.trim();
+  if (!normalized || /^[/$@]/.test(normalized)) {
+    return null;
+  }
+
+  // 明确指向 Linka 内部内容时保留给书签/分类工具链处理。
+  if (isLocalSearchIntent(normalized)) {
+    return null;
+  }
+
+  const match = normalized.match(/^(?:帮我|请|麻烦)?(?:联网)?(?:搜索|搜一下|查一下|查询|查找|网上搜|網上搜|搜索一下)\s*([\s\S]*)$/i);
+  let query = match?.[1]?.trim() ?? "";
+  if (match && !query) {
+    query = extractRecentSearchTopic(context);
+  }
+  if (query && isVagueSearchQuery(query)) {
+    query = extractRecentSearchTopic(context);
+  }
+
+  if (!query && isTimelyExternalInfoQuery(normalized)) {
+    query = normalized;
+  }
+
+  if (!query) {
+    return null;
+  }
+
+  return {
+    tool: "web_search",
+    arguments: { query },
+    confidence: 1,
+    requiresConfirmation: false,
+    reason: "用户直接要求搜索外部信息，且没有指向本地书签。"
+  };
+}
+
 export function inferAssistantToolPlan(message: string, context?: AssistantToolContext): AssistantToolPlan | null {
+  const slashCommandPlan = inferSlashCommandToolPlan(message);
+  if (slashCommandPlan) {
+    return slashCommandPlan;
+  }
+
+  const directWebSearchPlan = inferDirectWebSearchToolPlan(message, context);
+  if (directWebSearchPlan) {
+    return directWebSearchPlan;
+  }
+
   const url = extractFirstUrl(message);
   if (!url || !isValidUrl(url)) {
     const category = pickCategoryFromMessage(message) || (isAffirmativeReply(message) ? pickRecentCategoryFromHistory(context) : undefined);

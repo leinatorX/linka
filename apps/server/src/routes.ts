@@ -211,6 +211,14 @@ function assistantMultimodalUnavailableMessage() {
   return "图片/视频理解调用失败。请确认当前模型支持多模态输入，或切换到 MiniMax-M3、GPT-4o、Claude 等支持图片理解的模型后重试。";
 }
 
+function assistantWebContextFallbackMessage(webContext: string) {
+  return [
+    "搜索已完成，但当前 AI 模型在整理搜索结果时失败。先把原始搜索结果给你：",
+    "",
+    webContext
+  ].join("\n");
+}
+
 function assistantErrorMessage(error: unknown, hasAttachments = false) {
   const message = error instanceof Error ? error.message : "";
 
@@ -218,12 +226,24 @@ function assistantErrorMessage(error: unknown, hasAttachments = false) {
     return error.message;
   }
 
+  if (/AI (配置|模型)不完整/.test(message)) {
+    return assistantModelUnavailableMessage();
+  }
+
   if (hasAttachments && /new_sensitive|image is sensitive|content.*sensitive|内容安全|安全策略|\(1026\)|1026/i.test(message)) {
     return "这张图片被当前模型服务的内容安全策略拦截了，所以没有进入视觉理解流程。请换一张图片，或改用安全策略不同的视觉模型后重试。";
   }
 
+  if (/new_sensitive|content.*sensitive|内容安全|安全策略|\(1026\)|1026/i.test(message)) {
+    return "这次输入被当前 AI 模型服务的内容安全策略拦截了。可以换一个模型，或调整搜索词后重试。";
+  }
+
   if (hasAttachments && /support image input|image input|vision|图片|图像/i.test(message)) {
     return `当前模型或接口端点不支持图片输入：${message}`;
+  }
+
+  if (/AI 服务返回|fetch failed|network|timeout|ETIMEDOUT|ECONN|socket|TLS|aborted/i.test(message)) {
+    return `AI 服务调用失败：${message}`;
   }
 
   return hasAttachments ? assistantMultimodalUnavailableMessage() : assistantModelUnavailableMessage();
@@ -231,6 +251,25 @@ function assistantErrorMessage(error: unknown, hasAttachments = false) {
 
 function isConfirmationOnly(message: string) {
   return /^(确认执行|确认删除|确认操作|确定删除|确定执行)[\s。！!]*$/.test(message.trim());
+}
+
+function isExplicitLocalAssistantSearch(message: string) {
+  return /(书签|收藏|收藏夹|分类|Linka|本地|已保存|已收录)/i.test(message);
+}
+
+function extractWebSearchFallbackQuery(message: string, toolPlan: Awaited<ReturnType<typeof planAssistantToolCall>> | ReturnType<typeof inferAssistantToolPlan>) {
+  if (!toolPlan || toolPlan.tool !== "list_bookmarks" || !isSearchEnabled() || isExplicitLocalAssistantSearch(message)) {
+    return "";
+  }
+
+  const args = toolPlan.arguments ?? {};
+  const query = typeof args.q === "string" && args.q.trim()
+    ? args.q.trim()
+    : typeof args.query === "string" && args.query.trim()
+      ? args.query.trim()
+      : message.trim();
+
+  return query;
 }
 
 function toAssistantBookmarkHint(bookmark: ReturnType<typeof listBookmarks>[number]) {
@@ -296,6 +335,24 @@ async function renderAssistantToolMessage(message: string, toolResult: Awaited<R
   } catch {
     return toolResult.message;
   }
+}
+
+async function maybeExecuteWebSearchFallback(message: string, toolPlan: Awaited<ReturnType<typeof planAssistantToolCall>> | ReturnType<typeof inferAssistantToolPlan>, toolResult: Awaited<ReturnType<typeof executeAssistantToolPlan>>) {
+  const query = toolResult?.type === "search_results" && !toolResult.results?.length
+    ? extractWebSearchFallbackQuery(message, toolPlan)
+    : "";
+
+  if (!query) {
+    return null;
+  }
+
+  return executeAssistantToolPlan({
+    tool: "web_search",
+    arguments: { query },
+    confidence: 1,
+    requiresConfirmation: false,
+    reason: "本地书签搜索无结果，自动改为联网搜索。"
+  }, message);
 }
 
 export async function registerRoutes(app: FastifyInstance) {
@@ -985,11 +1042,21 @@ export async function registerRoutes(app: FastifyInstance) {
       message: effectiveMessage,
       categories: listCategories().map((category) => category.name),
       activeCategory: payload.data.activeCategory,
-      bookmarkHints: results.map(toAssistantBookmarkHint)
+      bookmarkHints: results.map(toAssistantBookmarkHint),
+      webSearchEnabled: isSearchEnabled()
     });
     const toolResult = toolPlan ? await executeAssistantToolPlan(toolPlan, effectiveMessage, toolContext) : null;
+    const webSearchFallbackResult = await maybeExecuteWebSearchFallback(effectiveMessage, toolPlan, toolResult);
+    if (webSearchFallbackResult?.type === "web_context") {
+      webContext = (webContext ? webContext + "\n" : "") + webSearchFallbackResult.message;
+    } else if (webSearchFallbackResult) {
+      return {
+        ...webSearchFallbackResult,
+        message: await renderAssistantToolMessage(effectiveMessage, webSearchFallbackResult)
+      };
+    }
 
-    if (toolResult) {
+    if (toolResult && !webSearchFallbackResult) {
       return {
         ...toolResult,
         message: await renderAssistantToolMessage(effectiveMessage, toolResult)
@@ -1012,6 +1079,14 @@ export async function registerRoutes(app: FastifyInstance) {
       };
     } catch (error) {
       request.log.error({ error }, "assistant chat failed");
+      if (webContext) {
+        const fallbackText = assistantWebContextFallbackMessage(webContext);
+        return {
+          type: "message",
+          message: fallbackText,
+          results: results.length ? results : undefined
+        };
+      }
       return {
         type: "message",
         message: assistantErrorMessage(error, Boolean(payload.data.attachments?.length))
@@ -1094,8 +1169,20 @@ export async function registerRoutes(app: FastifyInstance) {
       webSearchEnabled: isSearchEnabled()
     });
     const toolResult = toolPlan ? await executeAssistantToolPlan(toolPlan, effectiveMessage, toolContext) : null;
+    const webSearchFallbackResult = await maybeExecuteWebSearchFallback(effectiveMessage, toolPlan, toolResult);
+    if (webSearchFallbackResult?.type === "web_context") {
+      webContext = (webContext ? webContext + "\n" : "") + webSearchFallbackResult.message;
+    } else if (webSearchFallbackResult) {
+      const text = await renderAssistantToolMessage(effectiveMessage, webSearchFallbackResult);
+      addAssistantMessage(conversation.id, "assistant", text);
+      await refreshConversationTitle(text);
+      writeSse(reply.raw, "delta", { text });
+      writeSse(reply.raw, "done", { ...webSearchFallbackResult, message: text, conversation });
+      reply.raw.end();
+      return;
+    }
 
-    if (toolResult) {
+    if (toolResult && !webSearchFallbackResult) {
       if (toolResult.type === "web_context") {
         webContext = (webContext ? webContext + "\n" : "") + toolResult.message;
       } else {
@@ -1146,7 +1233,9 @@ export async function registerRoutes(app: FastifyInstance) {
       });
     } catch (error) {
       request.log.error({ error }, "assistant stream failed");
-      const text = assistantErrorMessage(error, Boolean(attachments?.length));
+      const text = webContext
+        ? assistantWebContextFallbackMessage(webContext)
+        : assistantErrorMessage(error, Boolean(attachments?.length));
       addAssistantMessage(conversation.id, "assistant", text);
       writeSse(reply.raw, "delta", { text });
       writeSse(reply.raw, "done", {

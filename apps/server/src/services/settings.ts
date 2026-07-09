@@ -324,7 +324,11 @@ export function getActiveAiConfig(modelName?: string): ActiveAiConfig {
     }
   }
 
-  const provider = settings.providers.find((item) => item.enabled && item.apiKey && item.baseUrl);
+  const isUsableProvider = (item: AiProviderConfig) => item.enabled && item.apiKey && item.baseUrl;
+  const activeProvider = settings.providers.find((item) => item.id === settings.activeProviderId);
+  const provider = activeProvider && isUsableProvider(activeProvider)
+    ? activeProvider
+    : settings.providers.find(isUsableProvider);
 
   if (!provider) {
     throw new Error("AI 配置不完整");
