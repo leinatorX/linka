@@ -559,3 +559,162 @@ export async function executeAssistantToolPlan(plan: AssistantToolPlan, message:
 
   return null;
 }
+
+export function getAssistantNativeOpenAiTools(options: { webSearchEnabled?: boolean } = {}) {
+  const tools: Array<{
+    type: "function";
+    function: {
+      name: string;
+      description: string;
+      parameters: Record<string, unknown>;
+    };
+  }> = [
+    {
+      type: "function",
+      function: {
+        name: "list_bookmarks",
+        description: "按关键词、分类或归档状态查询本地书签",
+        parameters: {
+          type: "object",
+          properties: {
+            keyword: { type: "string", description: "搜索关键词" },
+            category: { type: "string", description: "分类名称" },
+            archived: { type: "boolean", description: "是否已被归档" }
+          }
+        }
+      }
+    },
+    {
+      type: "function",
+      function: {
+        name: "create_bookmark",
+        description: "创建/保存新书签到书签库",
+        parameters: {
+          type: "object",
+          properties: {
+            url: { type: "string", description: "书签完整的网址 URL" },
+            title: { type: "string", description: "书签标题" },
+            category: { type: "string", description: "保存到的分类名称" },
+            description: { type: "string", description: "描述或备注" }
+          },
+          required: ["url"]
+        }
+      }
+    },
+    {
+      type: "function",
+      function: {
+        name: "update_bookmark",
+        description: "更新指定书签的信息（如修改标题、分类、描述）",
+        parameters: {
+          type: "object",
+          properties: {
+            id: { type: "string", description: "书签 ID" },
+            title: { type: "string", description: "新标题" },
+            category: { type: "string", description: "新分类" },
+            description: { type: "string", description: "新描述" }
+          }
+        }
+      }
+    },
+    {
+      type: "function",
+      function: {
+        name: "delete_bookmark",
+        description: "删除指定的书签（危险操作）",
+        parameters: {
+          type: "object",
+          properties: {
+            id: { type: "string", description: "书签 ID" },
+            title: { type: "string", description: "书签标题" }
+          }
+        }
+      }
+    },
+    {
+      type: "function",
+      function: {
+        name: "list_categories",
+        description: "列出当前系统中的所有书签分类",
+        parameters: {
+          type: "object",
+          properties: {}
+        }
+      }
+    },
+    {
+      type: "function",
+      function: {
+        name: "create_category",
+        description: "创建新的书签分类",
+        parameters: {
+          type: "object",
+          properties: {
+            name: { type: "string", description: "分类名称" },
+            color: { type: "string", description: "可选分类颜色十六进制码" }
+          },
+          required: ["name"]
+        }
+      }
+    },
+    {
+      type: "function",
+      function: {
+        name: "move_bookmarks_to_category",
+        description: "移动书签到指定的分类",
+        parameters: {
+          type: "object",
+          properties: {
+            id: { type: "string", description: "书签 ID" },
+            to: { type: "string", description: "目标分类名称" }
+          },
+          required: ["to"]
+        }
+      }
+    }
+  ];
+
+  if (options.webSearchEnabled) {
+    tools.push(
+      {
+        type: "function",
+        function: {
+          name: "web_search",
+          description: "使用搜索引擎进行实时网页搜索",
+          parameters: {
+            type: "object",
+            properties: {
+              query: { type: "string", description: "搜索关键词" }
+            },
+            required: ["query"]
+          }
+        }
+      },
+      {
+        type: "function",
+        function: {
+          name: "web_fetch",
+          description: "抓取并读取具体网页的内容",
+          parameters: {
+            type: "object",
+            properties: {
+              url: { type: "string", description: "目标网页的完整 URL" }
+            },
+            required: ["url"]
+          }
+        }
+      }
+    );
+  }
+
+  return tools;
+}
+
+export function getAssistantNativeAnthropicTools(options: { webSearchEnabled?: boolean } = {}) {
+  const openAiTools = getAssistantNativeOpenAiTools(options);
+  return openAiTools.map((item) => ({
+    name: item.function.name,
+    description: item.function.description,
+    input_schema: item.function.parameters
+  }));
+}

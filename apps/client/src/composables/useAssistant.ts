@@ -18,6 +18,7 @@ export interface AssistantUiMessage {
   reasoningCollapsed?: boolean;
   results?: Bookmark[];
   streaming?: boolean;
+  statusText?: string;
   confirmationRequest?: string;
 }
 
@@ -302,15 +303,20 @@ export function useAssistant(options: UseAssistantOptions) {
             ...assistantConversations.value.filter((conversation) => conversation.id !== data.conversation.id)
           ];
         },
+        onStatus(data) {
+          assistantMessage.statusText = data.text;
+        },
         onReasoning(data) {
           assistantMessage.reasoningCollapsed = false;
           assistantMessage.reasoning = `${assistantMessage.reasoning ?? ""}${data.text}`;
         },
         onDelta(data) {
+          assistantMessage.statusText = undefined;
           assistantMessage.text += data.text;
         },
         onDone(response) {
           assistantMessage.streaming = false;
+          assistantMessage.statusText = undefined;
           assistantMessage.reasoningCollapsed = Boolean(assistantMessage.reasoning);
           assistantMessage.text = response.message || assistantMessage.text;
           assistantMessage.results = response.results ?? (response.bookmark ? [response.bookmark] : undefined);
@@ -330,6 +336,7 @@ export function useAssistant(options: UseAssistantOptions) {
         },
         onError(messageText) {
           assistantMessage.streaming = false;
+          assistantMessage.statusText = undefined;
           assistantMessage.reasoningCollapsed = Boolean(assistantMessage.reasoning);
           assistantMessage.text = messageText;
         }

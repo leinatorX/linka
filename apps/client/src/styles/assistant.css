@@ -628,6 +628,24 @@
   }
 }
 
+.assistant-status-text {
+  font-size: 13px;
+  color: var(--text-secondary);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  animation: pulse-status 1.5s ease-in-out infinite alternate;
+}
+
+@keyframes pulse-status {
+  0% {
+    opacity: 0.65;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
 .result-list {
   margin-top: 12px;
   display: flex;

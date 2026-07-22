@@ -49,6 +49,9 @@ export type ReasoningEffort = "关闭" | "默认" | "低" | "中" | "高" | "最
 type StreamChunk = {
   type: "text" | "reasoning";
   text: string;
+} | {
+  type: "tool_call";
+  toolCall: AssistantToolPlan;
 };
 
 interface AssistantResult {
@@ -458,7 +461,7 @@ async function requestOpenAi(active: ActiveAiConfig, messages: ChatMessage[], js
   return payload.choices?.[0]?.message?.content ?? "";
 }
 
-async function* streamOpenAi(active: ActiveAiConfig, messages: ChatMessage[], effort?: ReasoningEffort) {
+async function* streamOpenAi(active: ActiveAiConfig, messages: ChatMessage[], effort?: ReasoningEffort, tools?: unknown[]) {
   const body: Record<string, unknown> = {
     model: active.model.name,
     temperature: active.provider.temperature,
@@ -466,6 +469,10 @@ async function* streamOpenAi(active: ActiveAiConfig, messages: ChatMessage[], ef
     stream: true,
     messages
   };
+  if (tools && Array.isArray(tools) && tools.length > 0) {
+    body.tools = tools;
+    body.tool_choice = "auto";
+  }
   applyOpenAiCompatibleReasoning(body, active, effort);
 
   const response = await fetch(`${active.provider.baseUrl.replace(/\/$/, "")}/chat/completions`, {
@@ -484,6 +491,8 @@ async function* streamOpenAi(active: ActiveAiConfig, messages: ChatMessage[], ef
   const reader = response.body.getReader();
   const decoder = new TextDecoder();
   let buffer = "";
+
+  const toolCallsMap = new Map<number, { name: string; arguments: string }>();
 
   while (true) {
     const { done, value } = await reader.read();
@@ -514,6 +523,7 @@ async function* streamOpenAi(active: ActiveAiConfig, messages: ChatMessage[], ef
               reasoning?: string;
               reasoning_content?: string;
               reasoning_details?: Array<{ text?: string; content?: string }>;
+              tool_calls?: Array<{ index?: number; id?: string; function?: { name?: string; arguments?: string } }>;
             };
           }>;
         };
@@ -527,8 +537,41 @@ async function* streamOpenAi(active: ActiveAiConfig, messages: ChatMessage[], ef
         if (delta?.content) {
           yield { type: "text", text: delta.content } satisfies StreamChunk;
         }
+        if (delta?.tool_calls?.length) {
+          for (const tc of delta.tool_calls) {
+            const idx = tc.index ?? 0;
+            const existing = toolCallsMap.get(idx) ?? { name: "", arguments: "" };
+            if (tc.function?.name) {
+              existing.name = tc.function.name;
+            }
+            if (tc.function?.arguments) {
+              existing.arguments += tc.function.arguments;
+            }
+            toolCallsMap.set(idx, existing);
+          }
+        }
       } catch {
         continue;
+      }
+    }
+  }
+
+  for (const [, toolCallData] of toolCallsMap) {
+    if (toolCallData.name) {
+      try {
+        const parsedArgs = JSON.parse(toolCallData.arguments || "{}");
+        yield {
+          type: "tool_call",
+          toolCall: {
+            tool: toolCallData.name as any,
+            arguments: parsedArgs,
+            confidence: 1,
+            requiresConfirmation: false,
+            reason: "模型原生工具调用"
+          }
+        } satisfies StreamChunk;
+      } catch {
+        // invalid JSON
       }
     }
   }
@@ -567,7 +610,7 @@ async function requestAnthropic(active: ActiveAiConfig, messages: ChatMessage[])
   return payload.content?.find((item) => item.type === "text")?.text ?? "";
 }
 
-async function* streamAnthropic(active: ActiveAiConfig, messages: ChatMessage[], effort?: ReasoningEffort) {
+async function* streamAnthropic(active: ActiveAiConfig, messages: ChatMessage[], effort?: ReasoningEffort, tools?: unknown[]) {
   const system = messages.filter((message) => message.role === "system").map((message) => getTextContent(message.content)).join("\n\n");
   const conversation = messages
     .filter((message) => message.role !== "system")
@@ -583,6 +626,9 @@ async function* streamAnthropic(active: ActiveAiConfig, messages: ChatMessage[],
     system,
     messages: conversation
   };
+  if (tools && Array.isArray(tools) && tools.length > 0) {
+    body.tools = tools;
+  }
   applyAnthropicCompatibleReasoning(body, active, effort);
 
   const response = await fetch(`${active.provider.baseUrl.replace(/\/$/, "")}/v1/messages`, {
@@ -602,6 +648,8 @@ async function* streamAnthropic(active: ActiveAiConfig, messages: ChatMessage[],
   const reader = response.body.getReader();
   const decoder = new TextDecoder();
   let buffer = "";
+
+  let currentToolCall: { name: string; arguments: string } | null = null;
 
   while (true) {
     const { done, value } = await reader.read();
@@ -625,7 +673,37 @@ async function* streamAnthropic(active: ActiveAiConfig, messages: ChatMessage[],
       }
 
       try {
-        const payload = JSON.parse(data) as { type?: string; delta?: { type?: string; text?: string; thinking?: string } };
+        const payload = JSON.parse(data) as {
+          type?: string;
+          content_block?: { type?: string; name?: string };
+          delta?: { type?: string; text?: string; thinking?: string; partial_json?: string };
+        };
+        if (payload.type === "content_block_start" && payload.content_block?.type === "tool_use") {
+          currentToolCall = { name: payload.content_block.name ?? "", arguments: "" };
+        }
+        if (payload.type === "content_block_delta" && payload.delta?.type === "input_json_delta" && payload.delta.partial_json) {
+          if (currentToolCall) {
+            currentToolCall.arguments += payload.delta.partial_json;
+          }
+        }
+        if (payload.type === "content_block_stop" && currentToolCall && currentToolCall.name) {
+          try {
+            const parsedArgs = JSON.parse(currentToolCall.arguments || "{}");
+            yield {
+              type: "tool_call",
+              toolCall: {
+                tool: currentToolCall.name as any,
+                arguments: parsedArgs,
+                confidence: 1,
+                requiresConfirmation: false,
+                reason: "模型原生工具调用"
+              }
+            } satisfies StreamChunk;
+          } catch {
+            // invalid JSON
+          }
+          currentToolCall = null;
+        }
         if (payload.type === "content_block_delta" && payload.delta?.thinking) {
           yield { type: "reasoning", text: payload.delta.thinking } satisfies StreamChunk;
         }
@@ -715,6 +793,7 @@ export async function* streamAssistantReply(options: {
   model?: string;
   effort?: ReasoningEffort;
   webContext?: string;
+  tools?: unknown[];
 }) {
   const prompt = buildAssistantUserPrompt({
     message: options.message,
@@ -737,11 +816,11 @@ export async function* streamAssistantReply(options: {
   ];
 
   if (active.provider.apiFormat === "anthropic") {
-    yield* streamAnthropic(active, messages, options.effort);
+    yield* streamAnthropic(active, messages, options.effort, options.tools);
     return;
   }
 
-  yield* streamOpenAi(active, messages, options.effort);
+  yield* streamOpenAi(active, messages, options.effort, options.tools);
 }
 
 export async function planAssistantToolCall(options: {

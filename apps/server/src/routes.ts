@@ -4,12 +4,12 @@ import { config } from "./config.js";
 import { generateAssistantConversationTitle, generateAssistantReply, generateAssistantToolResultReply, planAssistantToolCall, streamAssistantReply, testAiConnection, streamGenericChat } from "./services/ai.js";
 import type { AssistantAttachment } from "./services/ai.js";
 import { addAssistantMessage, buildConversationContext, createAssistantConversation, deleteAssistantConversations, ensureAssistantConversation, getAssistantConversation, listAssistantConversations, updateAssistantConversationAutoTitle, updateAssistantConversationTitle } from "./services/assistant.js";
-import { executeAssistantToolPlan, inferAssistantToolPlan } from "./services/assistantTools.js";
+import { executeAssistantToolPlan, inferAssistantToolPlan, getAssistantNativeOpenAiTools, getAssistantNativeAnthropicTools } from "./services/assistantTools.js";
 import { clearSessionCookie, getSessionFromRequest, login, logout, requireAuth, updateAvatar, updateCredentials } from "./services/auth.js";
 import { createBookmark, deleteBookmark, getBookmarkById, listBookmarks, updateBookmark } from "./services/bookmarks.js";
 import { createCategory, deleteCategory, listCategories, reorderCategories, updateCategory } from "./services/categories.js";
 
-import { getPublicAiSettings, getProviderApiKey, reorderAiProviders, saveAiSettings } from "./services/settings.js";
+import { getPublicAiSettings, getProviderApiKey, getActiveAiConfig, reorderAiProviders, saveAiSettings } from "./services/settings.js";
 import { getPublicWeatherSettings, saveWeatherSettings, fetchCurrentWeather } from "./services/weather.js";
 import { getPublicSearchSettings, isSearchEnabled, saveSearchSettings } from "./services/webSearch.js";
 import { isValidUrl } from "./utils/url.js";
@@ -1140,6 +1140,7 @@ export async function registerRoutes(app: FastifyInstance) {
     const shouldGenerateTitle = history.length === 0;
     writeSse(reply.raw, "meta", { conversation });
     addAssistantMessage(conversation.id, "user", rawMessage, attachments as AssistantAttachment[] | undefined);
+    writeSse(reply.raw, "status", { text: "正在分析您的意图..." });
 
     async function refreshConversationTitle(assistantReply: string) {
       if (!shouldGenerateTitle) {
@@ -1160,39 +1161,36 @@ export async function registerRoutes(app: FastifyInstance) {
     }
 
     const toolContext = { activeCategory, history };
-    const toolPlan = inferAssistantToolPlan(effectiveMessage, toolContext) ?? await planAssistantToolCall({
-      message: effectiveMessage,
-      categories: listCategories().map((category) => category.name),
-      activeCategory,
-      history,
-      bookmarkHints: results.map(toAssistantBookmarkHint),
-      webSearchEnabled: isSearchEnabled()
-    });
-    const toolResult = toolPlan ? await executeAssistantToolPlan(toolPlan, effectiveMessage, toolContext) : null;
-    const webSearchFallbackResult = await maybeExecuteWebSearchFallback(effectiveMessage, toolPlan, toolResult);
-    if (webSearchFallbackResult?.type === "web_context") {
-      webContext = (webContext ? webContext + "\n" : "") + webSearchFallbackResult.message;
-    } else if (webSearchFallbackResult) {
-      const text = await renderAssistantToolMessage(effectiveMessage, webSearchFallbackResult);
-      addAssistantMessage(conversation.id, "assistant", text);
-      await refreshConversationTitle(text);
-      writeSse(reply.raw, "delta", { text });
-      writeSse(reply.raw, "done", { ...webSearchFallbackResult, message: text, conversation });
-      reply.raw.end();
-      return;
-    }
+    const fastToolPlan = inferAssistantToolPlan(effectiveMessage, toolContext);
 
-    if (toolResult && !webSearchFallbackResult) {
-      if (toolResult.type === "web_context") {
-        webContext = (webContext ? webContext + "\n" : "") + toolResult.message;
-      } else {
-        const text = await renderAssistantToolMessage(effectiveMessage, toolResult);
+    if (fastToolPlan) {
+      writeSse(reply.raw, "status", { text: "正在执行快速指令..." });
+      const toolResult = await executeAssistantToolPlan(fastToolPlan, effectiveMessage, toolContext);
+      const webSearchFallbackResult = await maybeExecuteWebSearchFallback(effectiveMessage, fastToolPlan, toolResult);
+      if (webSearchFallbackResult?.type === "web_context") {
+        webContext = (webContext ? webContext + "\n" : "") + webSearchFallbackResult.message;
+      } else if (webSearchFallbackResult) {
+        const text = await renderAssistantToolMessage(effectiveMessage, webSearchFallbackResult);
         addAssistantMessage(conversation.id, "assistant", text);
         await refreshConversationTitle(text);
         writeSse(reply.raw, "delta", { text });
-        writeSse(reply.raw, "done", { ...toolResult, message: text, conversation });
+        writeSse(reply.raw, "done", { ...webSearchFallbackResult, message: text, conversation });
         reply.raw.end();
         return;
+      }
+
+      if (toolResult && !webSearchFallbackResult) {
+        if (toolResult.type === "web_context") {
+          webContext = (webContext ? webContext + "\n" : "") + toolResult.message;
+        } else {
+          const text = await renderAssistantToolMessage(effectiveMessage, toolResult);
+          addAssistantMessage(conversation.id, "assistant", text);
+          await refreshConversationTitle(text);
+          writeSse(reply.raw, "delta", { text });
+          writeSse(reply.raw, "done", { ...toolResult, message: text, conversation });
+          reply.raw.end();
+          return;
+        }
       }
     }
 
@@ -1211,10 +1209,50 @@ export async function registerRoutes(app: FastifyInstance) {
     }
 
     try {
+      writeSse(reply.raw, "status", { text: "正在思考与生成回答..." });
+      const activeConfig = getActiveAiConfig(model);
+      const nativeTools = activeConfig.provider.apiFormat === "anthropic"
+        ? getAssistantNativeAnthropicTools({ webSearchEnabled: isSearchEnabled() })
+        : getAssistantNativeOpenAiTools({ webSearchEnabled: isSearchEnabled() });
+
       let fullText = "";
-      for await (const chunk of streamAssistantReply({ message: effectiveMessage, bookmarks: results, history, attachments: attachments as AssistantAttachment[] | undefined, model, effort, webContext })) {
+      let executedNativeTool = false;
+
+      for await (const chunk of streamAssistantReply({
+        message: effectiveMessage,
+        bookmarks: results,
+        history,
+        attachments: attachments as AssistantAttachment[] | undefined,
+        model,
+        effort,
+        webContext,
+        tools: nativeTools
+      })) {
         if (chunk.type === "reasoning") {
           writeSse(reply.raw, "reasoning", { text: chunk.text });
+          continue;
+        }
+
+        if (chunk.type === "tool_call") {
+          const nativePlan = chunk.toolCall;
+          if (nativePlan && nativePlan.tool !== "none") {
+            writeSse(reply.raw, "status", { text: `正在执行操作 [${nativePlan.tool}]...` });
+            const toolResult = await executeAssistantToolPlan(nativePlan, effectiveMessage, toolContext);
+            if (toolResult) {
+              executedNativeTool = true;
+              if (toolResult.type === "web_context") {
+                webContext = (webContext ? webContext + "\n" : "") + toolResult.message;
+              } else {
+                const text = await renderAssistantToolMessage(effectiveMessage, toolResult);
+                addAssistantMessage(conversation.id, "assistant", text);
+                await refreshConversationTitle(text);
+                writeSse(reply.raw, "delta", { text });
+                writeSse(reply.raw, "done", { ...toolResult, message: text, conversation });
+                reply.raw.end();
+                return;
+              }
+            }
+          }
           continue;
         }
 
@@ -1222,15 +1260,17 @@ export async function registerRoutes(app: FastifyInstance) {
         writeSse(reply.raw, "delta", { text: chunk.text });
       }
 
-      const finalText = fullText.trim() || "我暂时没有生成有效回复。";
-      addAssistantMessage(conversation.id, "assistant", finalText);
-      await refreshConversationTitle(finalText);
-      writeSse(reply.raw, "done", {
-        type: "message",
-        message: finalText,
-        results: results.length ? results : undefined,
-        conversation
-      });
+      if (!executedNativeTool) {
+        const finalText = fullText.trim() || "我暂时没有生成有效回复。";
+        addAssistantMessage(conversation.id, "assistant", finalText);
+        await refreshConversationTitle(finalText);
+        writeSse(reply.raw, "done", {
+          type: "message",
+          message: finalText,
+          results: results.length ? results : undefined,
+          conversation
+        });
+      }
     } catch (error) {
       request.log.error({ error }, "assistant stream failed");
       const text = webContext

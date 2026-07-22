@@ -151,6 +151,7 @@ export async function streamAssistantMessage(
   payload: { conversationId?: string; message: string; activeCategory?: string; attachments?: AssistantAttachment[]; model?: string; effort?: string },
   handlers: {
     onMeta?: (data: { conversation: AssistantConversation }) => void;
+    onStatus?: (data: { text: string }) => void;
     onReasoning?: (data: { text: string }) => void;
     onDelta?: (data: { text: string }) => void;
     onDone?: (data: AssistantResponse & { conversation?: AssistantConversation }) => void;
@@ -188,6 +189,8 @@ export async function streamAssistantMessage(
 
     if (eventName === "meta") {
       handlers.onMeta?.(data);
+    } else if (eventName === "status") {
+      handlers.onStatus?.(data);
     } else if (eventName === "reasoning") {
       handlers.onReasoning?.(data);
     } else if (eventName === "delta") {
