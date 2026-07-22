@@ -22,7 +22,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-0.3.1-blue.svg" alt="version" />
+  <img src="https://img.shields.io/badge/version-0.3.2-blue.svg" alt="version" />
   <img src="https://img.shields.io/badge/license-MIT-green.svg" alt="license" />
   <img src="https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey.svg" alt="platform" />
   <img src="https://img.shields.io/badge/Vue-3.x-brightgreen.svg" alt="Vue" />
@@ -190,7 +190,7 @@ Linka 提供了官方的 Docker 镜像，你可以通过 Docker Hub 获取：
 当前推荐使用固定版本标签，便于升级和回滚：
 
 ```bash
-docker pull hongleiyu/linka:0.3.1
+docker pull hongleiyu/linka:0.3.2
 ```
 
 ### 方式一：使用 Docker Compose（推荐）
@@ -201,7 +201,7 @@ docker pull hongleiyu/linka:0.3.1
 version: '3.8'
 services:
   linka:
-    image: hongleiyu/linka:0.3.1
+    image: hongleiyu/linka:0.3.2
     container_name: linka
     ports:
       - "3030:3030"
@@ -233,7 +233,7 @@ docker run -d \
   -e LINKA_DB_PATH=/app/data/linka.sqlite \
   -e LINKA_APP_URL=http://localhost:3030 \
   --restart unless-stopped \
-  hongleiyu/linka:0.3.1
+  hongleiyu/linka:0.3.2
 ```
 
 ### 方式三：从源码构建运行
@@ -252,11 +252,11 @@ docker compose up -d --build
 如果 NAS 无法直接访问 Docker Hub，可以在本机导出对应架构的离线包，再到群晖 Container Manager 中导入：
 
 ```bash
-docker pull --platform linux/amd64 hongleiyu/linka:0.3.1
-docker save -o linka-0.3.1-linux-amd64.tar hongleiyu/linka:0.3.1
+docker pull --platform linux/amd64 hongleiyu/linka:0.3.2
+docker save -o linka-0.3.2-linux-amd64.tar hongleiyu/linka:0.3.2
 ```
 
-在群晖上导入后，使用镜像 `hongleiyu/linka:0.3.1` 创建容器。端口、存储和环境变量建议保持如下配置：
+在群晖上导入后，使用镜像 `hongleiyu/linka:0.3.2` 创建容器。端口、存储和环境变量建议保持如下配置：
 
 ```text
 端口：本地端口 3030 -> 容器端口 3030 / TCP

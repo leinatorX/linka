@@ -22,7 +22,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-0.3.1-blue.svg" alt="version" />
+  <img src="https://img.shields.io/badge/version-0.3.2-blue.svg" alt="version" />
   <img src="https://img.shields.io/badge/license-MIT-green.svg" alt="license" />
   <img src="https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey.svg" alt="platform" />
   <img src="https://img.shields.io/badge/Vue-3.x-brightgreen.svg" alt="Vue" />
@@ -190,7 +190,7 @@ Linka provides an official Docker image available on Docker Hub:
 Fixed version tags are recommended for easier upgrades and rollbacks:
 
 ```bash
-docker pull hongleiyu/linka:0.3.1
+docker pull hongleiyu/linka:0.3.2
 ```
 
 ### Method 1: Using Docker Compose (Recommended)
@@ -201,7 +201,7 @@ Create a `docker-compose.yml` file:
 version: '3.8'
 services:
   linka:
-    image: hongleiyu/linka:0.3.1
+    image: hongleiyu/linka:0.3.2
     container_name: linka
     ports:
       - "3030:3030"
@@ -224,7 +224,7 @@ docker run -d \
   -p 3030:3030 \
   -v $(pwd)/data:/app/data \
   --restart unless-stopped \
-  hongleiyu/linka:0.3.1
+  hongleiyu/linka:0.3.2
 ```
 
 ### Method 3: Build from Source
@@ -243,11 +243,11 @@ Regardless of the deployment method, the container's `/app/data` is mapped to th
 If your NAS cannot access Docker Hub directly, export the image tarball on another machine and import it in Synology Container Manager:
 
 ```bash
-docker pull --platform linux/amd64 hongleiyu/linka:0.3.1
-docker save -o linka-0.3.1-linux-amd64.tar hongleiyu/linka:0.3.1
+docker pull --platform linux/amd64 hongleiyu/linka:0.3.2
+docker save -o linka-0.3.2-linux-amd64.tar hongleiyu/linka:0.3.2
 ```
 
-After importing, create the container from `hongleiyu/linka:0.3.1`. Keep the same `/app/data` volume when upgrading from an older version.
+After importing, create the container from `hongleiyu/linka:0.3.2`. Keep the same `/app/data` volume when upgrading from an older version.
 
 ## API Documentation
 
