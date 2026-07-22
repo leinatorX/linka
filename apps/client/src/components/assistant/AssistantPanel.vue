@@ -812,12 +812,15 @@ const previewImageUrl = ref<string | null>(null);
             </div>
             <!-- assistant 消息走 markdown 渲染（已经过 XSS 过滤），user 消息保持纯文本。 -->
             <div v-if="message.role === 'assistant' && message.streaming && !message.text && !message.reasoning"
-              class="assistant-waiting" :aria-label="t('assistant.processingAria')">
-              <span v-if="message.statusText" class="assistant-status-text">{{ message.statusText }}</span>
+              class="assistant-waiting" :class="{ 'has-status': Boolean(message.statusText) }" :aria-label="t('assistant.processingAria')">
+              <div v-if="message.statusText" class="assistant-status-text">
+                <span class="status-pulse-dot"></span>
+                <span>{{ message.statusText }}</span>
+              </div>
               <template v-else>
-                <span></span>
-                <span></span>
-                <span></span>
+                <span class="assistant-waiting-dot"></span>
+                <span class="assistant-waiting-dot"></span>
+                <span class="assistant-waiting-dot"></span>
               </template>
             </div>
             <div v-else-if="message.role === 'assistant' && (message.text || !message.reasoning)" class="markdown-body"
