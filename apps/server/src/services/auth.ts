@@ -75,9 +75,30 @@ function hashPassword(password: string, salt = crypto.randomBytes(16).toString("
 }
 
 function verifyPassword(password: string, user: UserRecord) {
-  const expected = Buffer.from(user.password_hash, "hex");
-  const actual = Buffer.from(hashPassword(password, user.password_salt).hash, "hex");
-  return expected.length === actual.length && crypto.timingSafeEqual(expected, actual);
+  if (typeof user.password_hash !== "string" || typeof user.password_salt !== "string") {
+    return false;
+  }
+  if (!user.password_hash || !user.password_salt) {
+    return false;
+  }
+  let expected: Buffer;
+  let actual: Buffer;
+  try {
+    expected = Buffer.from(user.password_hash, "hex");
+    actual = Buffer.from(hashPassword(password, user.password_salt).hash, "hex");
+  } catch {
+    return false;
+  }
+  if (expected.length === 0 || expected.length !== actual.length) {
+    return false;
+  }
+  return crypto.timingSafeEqual(expected, actual);
+}
+
+export function verifyUserPassword(userId: string, password: string): boolean {
+  const user = selectUser.get() as UserRecord | undefined;
+  if (!user || user.id !== userId) return false;
+  return verifyPassword(password, user);
 }
 
 function hashToken(token: string) {

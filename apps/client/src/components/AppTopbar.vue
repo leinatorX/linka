@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Archive, Moon, Search, Sun, LayoutGrid } from "@lucide/vue";
+import { Archive, Moon, Search, Sun, LayoutGrid, ShieldCheck } from "@lucide/vue";
 import { computed, ref, onMounted, onUnmounted } from "vue";
 import { RouterLink } from "vue-router";
 import { useI18n } from "vue-i18n";
@@ -24,6 +24,7 @@ const emit = defineEmits<{
   openSettings: [];
   changeTheme: [theme: ThemeMode];
   toggleToolbox: [];
+  openVault: [];
 }>();
 
 const { t, locale } = useI18n();
@@ -147,6 +148,10 @@ function handleFilterWheel(event: WheelEvent) {
 
         <button class="top-icon" :title="t('toolbox.title')" @click="$emit('toggleToolbox')">
           <LayoutGrid :size="18" />
+        </button>
+
+        <button class="top-icon" :title="t('vault.title')" @click="$emit('openVault')">
+          <ShieldCheck :size="18" />
         </button>
 
         <button class="top-icon" :class="{ active: showArchived }" :title="showArchived ? t('topbar.viewCurrent') : t('topbar.viewArchived')"

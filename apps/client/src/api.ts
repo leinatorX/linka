@@ -1,4 +1,4 @@
-import type { AiProviderConfig, AiSettings, AiSettingsPayload, AssistantAttachment, AssistantConversation, AssistantMessage, AssistantResponse, AuthUser, Bookmark, Category } from "./types";
+import type { AiProviderConfig, AiSettings, AiSettingsPayload, AssistantAttachment, AssistantConversation, AssistantMessage, AssistantResponse, AuthUser, Bookmark, Category, VaultItemDetail, VaultItemSummary } from "./types";
 
 async function request<T>(url: string, options?: RequestInit): Promise<T> {
   const headers = new Headers(options?.headers);
@@ -358,4 +358,76 @@ export async function streamGenericChatMessage(
     if (error.name === "AbortError") throw error;
     handlers.onError?.(error.message);
   }
+}
+
+export function getVaultStatus(vaultToken?: string): Promise<{ isInitialized: boolean; isUnlocked: boolean }> {
+  return request("/api/vault/status", {
+    headers: vaultToken ? { "x-vault-token": vaultToken } : {}
+  });
+}
+
+export function setupVault(masterPassword: string): Promise<{ vaultToken: string }> {
+  return request("/api/vault/setup", {
+    method: "POST",
+    body: JSON.stringify({ masterPassword })
+  });
+}
+
+export function unlockVault(masterPassword: string): Promise<{ vaultToken: string }> {
+  return request("/api/vault/unlock", {
+    method: "POST",
+    body: JSON.stringify({ masterPassword })
+  });
+}
+
+export function lockVault(vaultToken?: string): Promise<{ success: boolean }> {
+  return request("/api/vault/lock", {
+    method: "POST",
+    headers: vaultToken ? { "x-vault-token": vaultToken } : {}
+  });
+}
+
+export function resetVault(password: string): Promise<{ success: boolean }> {
+  return request("/api/vault/reset", {
+    method: "POST",
+    body: JSON.stringify({ password })
+  });
+}
+
+export function listVaultItems(vaultToken: string, search?: string, category?: string): Promise<{ items: VaultItemSummary[] }> {
+  const params = new URLSearchParams();
+  if (search) params.set("search", search);
+  if (category) params.set("category", category);
+  return request(`/api/vault/items?${params.toString()}`, {
+    headers: { "x-vault-token": vaultToken }
+  });
+}
+
+export function getVaultItemDetail(vaultToken: string, id: string): Promise<{ item: VaultItemDetail }> {
+  return request(`/api/vault/items/${id}`, {
+    headers: { "x-vault-token": vaultToken }
+  });
+}
+
+export function createVaultItem(vaultToken: string, payload: any): Promise<{ item: VaultItemDetail }> {
+  return request("/api/vault/items", {
+    method: "POST",
+    headers: { "x-vault-token": vaultToken },
+    body: JSON.stringify(payload)
+  });
+}
+
+export function updateVaultItem(vaultToken: string, id: string, payload: any): Promise<{ item: VaultItemDetail }> {
+  return request(`/api/vault/items/${id}`, {
+    method: "PUT",
+    headers: { "x-vault-token": vaultToken },
+    body: JSON.stringify(payload)
+  });
+}
+
+export function deleteVaultItem(vaultToken: string, id: string): Promise<{ success: boolean }> {
+  return request(`/api/vault/items/${id}`, {
+    method: "DELETE",
+    headers: { "x-vault-token": vaultToken }
+  });
 }

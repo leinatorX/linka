@@ -110,6 +110,37 @@ export interface WeatherSettings {
   dateFormat: string;
 }
 
+export type VaultCredentialType = "api_key" | "secret_pair" | "user_password" | "custom";
+export type VaultCategory = "ai_provider" | "cloud_service" | "account_login" | "custom";
+
+export interface VaultPayload {
+  apiKey?: string;
+  secretId?: string;
+  secretKey?: string;
+  username?: string;
+  password?: string;
+  websiteUrl?: string;
+  customFields?: Array<{ key: string; value: string }>;
+  notes?: string;
+}
+
+export interface VaultItemSummary {
+  id: string;
+  category: string;
+  serviceName: string;
+  title: string;
+  credentialType: VaultCredentialType;
+  iconUrl: string;
+  tags: string[];
+  preview: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface VaultItemDetail extends VaultItemSummary {
+  payload: VaultPayload;
+}
+
 export type SearchEngine = "tavily" | "brave" | "searxng";
 
 export interface WebSearchSettings {

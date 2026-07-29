@@ -63,6 +63,27 @@ export interface SessionRecord {
   created_at: string;
 }
 
+export interface VaultItemRecord {
+  id: string;
+  category: string;
+  service_name: string;
+  title: string;
+  credential_type: string;
+  icon_url: string;
+  encrypted_payload: string;
+  iv: string;
+  auth_tag: string;
+  tags: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface VaultSettingRecord {
+  key: string;
+  value: string;
+  updated_at: string;
+}
+
 fs.mkdirSync(path.dirname(config.dbPath), { recursive: true });
 
 export const db = new Database(config.dbPath);
@@ -149,6 +170,30 @@ db.exec(`
 
   CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON sessions(user_id);
   CREATE INDEX IF NOT EXISTS idx_sessions_expires_at ON sessions(expires_at);
+
+  CREATE TABLE IF NOT EXISTS vault_items (
+    id TEXT PRIMARY KEY,
+    category TEXT NOT NULL DEFAULT 'ai_provider',
+    service_name TEXT NOT NULL,
+    title TEXT NOT NULL,
+    credential_type TEXT NOT NULL,
+    icon_url TEXT NOT NULL DEFAULT '',
+    encrypted_payload TEXT NOT NULL,
+    iv TEXT NOT NULL,
+    auth_tag TEXT NOT NULL,
+    tags TEXT NOT NULL DEFAULT '[]',
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_vault_items_service ON vault_items(service_name);
+  CREATE INDEX IF NOT EXISTS idx_vault_items_category ON vault_items(category);
+
+  CREATE TABLE IF NOT EXISTS vault_settings (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  );
 `);
 
 const bookmarkColumns = db.prepare("PRAGMA table_info(bookmarks)").all() as Array<{ name: string }>;

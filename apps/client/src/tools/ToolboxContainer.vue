@@ -44,7 +44,7 @@ onUnmounted(() => {
 
 <template>
   <Transition name="fade">
-    <div v-if="isOpen" class="toolbox-overlay" @click.self="close">
+    <div v-if="isOpen" class="toolbox-overlay">
       <div class="toolbox-modal">
         <div class="toolbox-header">
           <div class="header-left">
@@ -116,10 +116,8 @@ onUnmounted(() => {
 }
 
 .toolbox-modal {
-  width: 90%;
-  max-width: 800px;
-  height: 80vh;
-  max-height: 600px;
+  width: min(90vw, 800px);
+  height: min(80vh, 600px);
   background: var(--bg-surface);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-xl, 16px);
@@ -127,6 +125,21 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+}
+
+@media (min-width: 1800px) {
+  .toolbox-modal {
+    width: min(70vw, 1100px);
+    height: min(75vh, 800px);
+  }
+}
+
+@media (max-width: 768px) {
+  .toolbox-modal {
+    width: 96vw;
+    height: 90vh;
+    border-radius: 12px;
+  }
 }
 
 .toolbox-header {
