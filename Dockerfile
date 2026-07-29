@@ -1,4 +1,5 @@
 FROM node:22-bookworm-slim AS deps
+RUN apt-get update && apt-get install -y python3 make g++ && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 COPY package.json package-lock.json* ./
 COPY apps/client/package.json apps/client/package.json
@@ -11,6 +12,7 @@ COPY . .
 RUN npm run build
 
 FROM node:22-bookworm-slim AS runtime
+RUN apt-get update && apt-get install -y python3 make g++ && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 ENV NODE_ENV=production
 ENV LINKA_HOST=0.0.0.0
