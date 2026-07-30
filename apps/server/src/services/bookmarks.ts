@@ -4,6 +4,8 @@ import { classifyBookmark } from "./ai.js";
 import { ensureCategory, getCategoryNames, normalizeCategoryName } from "./categories.js";
 import { fetchPageMetadata } from "./metadata.js";
 import { getDomain, normalizeUrl } from "../utils/url.js";
+import { generateEmbedding, calculateKeywordScore, cosineSimilarity, calculateHybridScore } from "./vector.js";
+import { upsertBookmarkVectorRecord, getAllBookmarkVectorRecords } from "../db.js";
 
 export interface BookmarkInput {
   url: string;
@@ -68,15 +70,36 @@ export function listBookmarks(query: BookmarkQuery = {}) {
 
   if (query.q) {
     const keyword = query.q.toLowerCase();
-    bookmarks = bookmarks.filter((bookmark) => {
-      return [
+    const queryVector = generateEmbedding(keyword);
+    const vectors = getAllBookmarkVectorRecords();
+    const vectorMap = new Map(vectors.map(v => [v.bookmark_id, v.embedding_json]));
+
+    bookmarks = bookmarks.map((bookmark) => {
+      const content = [
         bookmark.title,
         bookmark.description,
         bookmark.summary,
         bookmark.domain,
         bookmark.category
-      ].join(" ").toLowerCase().includes(keyword);
-    });
+      ].join(" ").toLowerCase();
+      
+      const keywordScore = calculateKeywordScore(content, keyword);
+      
+      let vectorScore = 0;
+      const embeddingJson = vectorMap.get(bookmark.id);
+      if (embeddingJson) {
+        try {
+          const vec = JSON.parse(embeddingJson);
+          vectorScore = cosineSimilarity(vec, queryVector);
+        } catch {}
+      }
+      
+      const score = calculateHybridScore(vectorScore, keywordScore);
+      return { bookmark, score };
+    })
+    .filter(item => item.score > 0.1 || item.bookmark.title.toLowerCase().includes(keyword))
+    .sort((a, b) => b.score - a.score)
+    .map(item => item.bookmark);
   }
 
   return bookmarks;
@@ -134,6 +157,10 @@ export async function createBookmark(input: BookmarkInput) {
   };
 
   insertBookmark.run(record);
+  
+  const contentForEmbedding = `${record.title} ${record.description} ${record.summary} ${record.domain} ${record.category}`;
+  upsertBookmarkVectorRecord(record.id, generateEmbedding(contentForEmbedding));
+  
   return { status: "saved", bookmark: toBookmark(record) };
 }
 
@@ -169,7 +196,14 @@ export function updateBookmark(id: string, patch: Record<string, unknown>) {
   };
 
   updateBookmarkRecord.run(next);
-  return getBookmarkById(id);
+  const updated = getBookmarkById(id);
+  
+  if (updated) {
+    const contentForEmbedding = `${updated.title} ${updated.description} ${updated.summary} ${updated.domain} ${updated.category}`;
+    upsertBookmarkVectorRecord(updated.id, generateEmbedding(contentForEmbedding));
+  }
+  
+  return updated;
 }
 
 export function deleteBookmark(id: string) {

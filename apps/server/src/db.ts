@@ -22,6 +22,12 @@ export interface BookmarkRecord {
   updated_at: string;
 }
 
+export interface BookmarkVectorRecord {
+  bookmark_id: string;
+  embedding_json: string;
+  updated_at: string;
+}
+
 export interface CategoryRecord {
   id: string;
   name: string;
@@ -125,6 +131,13 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_bookmarks_created_at ON bookmarks(created_at);
   CREATE INDEX IF NOT EXISTS idx_bookmarks_category ON bookmarks(category);
   CREATE INDEX IF NOT EXISTS idx_bookmarks_archived ON bookmarks(archived);
+
+  CREATE TABLE IF NOT EXISTS bookmark_vectors (
+    bookmark_id TEXT PRIMARY KEY,
+    embedding_json TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    FOREIGN KEY(bookmark_id) REFERENCES bookmarks(id) ON DELETE CASCADE
+  );
 
   CREATE TABLE IF NOT EXISTS categories (
     id TEXT PRIMARY KEY,
@@ -294,4 +307,37 @@ export function toAgentRule(record: AgentRuleRecord) {
     createdAt: record.created_at,
     updatedAt: record.updated_at
   };
+}
+
+const insertBookmarkVector = db.prepare(`
+  INSERT INTO bookmark_vectors (bookmark_id, embedding_json, updated_at)
+  VALUES (@bookmark_id, @embedding_json, @updated_at)
+  ON CONFLICT(bookmark_id) DO UPDATE SET
+    embedding_json = excluded.embedding_json,
+    updated_at = excluded.updated_at
+`);
+
+const selectBookmarkVector = db.prepare("SELECT * FROM bookmark_vectors WHERE bookmark_id = ?");
+const selectAllBookmarkVectors = db.prepare("SELECT * FROM bookmark_vectors");
+const deleteBookmarkVector = db.prepare("DELETE FROM bookmark_vectors WHERE bookmark_id = ?");
+
+export function upsertBookmarkVectorRecord(bookmarkId: string, embedding: number[]) {
+  const now = new Date().toISOString();
+  insertBookmarkVector.run({
+    bookmark_id: bookmarkId,
+    embedding_json: JSON.stringify(embedding),
+    updated_at: now
+  });
+}
+
+export function getBookmarkVectorRecord(bookmarkId: string): BookmarkVectorRecord | undefined {
+  return selectBookmarkVector.get(bookmarkId) as BookmarkVectorRecord | undefined;
+}
+
+export function getAllBookmarkVectorRecords(): BookmarkVectorRecord[] {
+  return selectAllBookmarkVectors.all() as BookmarkVectorRecord[];
+}
+
+export function deleteBookmarkVectorRecord(bookmarkId: string) {
+  return deleteBookmarkVector.run(bookmarkId).changes > 0;
 }
