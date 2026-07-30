@@ -33,7 +33,7 @@ export interface VaultItemInput {
     username?: string;
     password?: string;
     websiteUrl?: string;
-    customFields?: Array<{ key: string; value: string }>;
+    customFields?: Array<{ key: string; value: string; type?: "text" | "password" }>;
     notes?: string;
   };
 }

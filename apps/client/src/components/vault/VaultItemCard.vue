@@ -238,15 +238,24 @@ async function quickCopyPrimary() {
       >
         <label>{{ cf.key }}:</label>
         <div class="secret-box">
-          <input :type="visibleFields['cf_' + idx] ? 'text' : 'password'" readonly :value="cf.value" />
-          <button class="icon-btn" @click="toggleVisibility('cf_' + idx)" :title="visibleFields['cf_' + idx] ? t('auth.hidePassword') : t('auth.showPassword')">
-            <EyeOff v-if="visibleFields['cf_' + idx]" :size="14" />
-            <Eye v-else :size="14" />
-          </button>
-          <button class="icon-btn" @click="copyText(cf.value, 'cf_' + idx, t('vault.copySuccess'))">
-            <Check v-if="copiedFields['cf_' + idx]" :size="14" class="icon-success" />
-            <Copy v-else :size="14" />
-          </button>
+          <template v-if="cf.type === 'text'">
+            <input type="text" readonly :value="cf.value" />
+            <button class="icon-btn" @click="copyText(cf.value, 'cf_' + idx, t('vault.copySuccess'))">
+              <Check v-if="copiedFields['cf_' + idx]" :size="14" class="icon-success" />
+              <Copy v-else :size="14" />
+            </button>
+          </template>
+          <template v-else>
+            <input :type="visibleFields['cf_' + idx] ? 'text' : 'password'" readonly :value="cf.value" />
+            <button class="icon-btn" @click="toggleVisibility('cf_' + idx)" :title="visibleFields['cf_' + idx] ? t('auth.hidePassword') : t('auth.showPassword')">
+              <EyeOff v-if="visibleFields['cf_' + idx]" :size="14" />
+              <Eye v-else :size="14" />
+            </button>
+            <button class="icon-btn" @click="copyText(cf.value, 'cf_' + idx, t('vault.copySuccess'))">
+              <Check v-if="copiedFields['cf_' + idx]" :size="14" class="icon-success" />
+              <Copy v-else :size="14" />
+            </button>
+          </template>
         </div>
       </div>
 

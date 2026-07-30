@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { ref, watch } from "vue";
+import { nextTick, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
-import { Plus, Trash2, X } from "@lucide/vue";
+import { Eye, EyeOff, Plus, Trash2, X } from "@lucide/vue";
 import type { VaultCredentialType, VaultItemDetail } from "../../types";
 
 const props = defineProps<{
@@ -30,8 +30,15 @@ const secretKey = ref("");
 const username = ref("");
 const password = ref("");
 const websiteUrl = ref("");
-const customFields = ref<Array<{ key: string; value: string }>>([]);
+const customFields = ref<Array<{ key: string; value: string; type: "text" | "password" }>>([]);
 const notes = ref("");
+
+// Add Field Modal State
+const showAddFieldModal = ref(false);
+const newFieldType = ref<"text" | "password">("password");
+const newFieldLabel = ref("");
+const fieldLabelInput = ref<HTMLInputElement | null>(null);
+const cfVisibility = ref<Record<number, boolean>>({});
 
 watch(
   () => props.initialData,
@@ -51,7 +58,13 @@ watch(
       username.value = p.username || "";
       password.value = p.password || "";
       websiteUrl.value = p.websiteUrl || "";
-      customFields.value = p.customFields ? [...p.customFields] : [];
+      customFields.value = p.customFields
+        ? p.customFields.map((cf: any) => ({
+            key: cf.key || "",
+            value: cf.value || "",
+            type: cf.type || "password"
+          }))
+        : [];
       notes.value = p.notes || "";
     } else {
       resetForm();
@@ -75,14 +88,39 @@ function resetForm() {
   websiteUrl.value = "";
   customFields.value = [];
   notes.value = "";
+  cfVisibility.value = {};
 }
 
-function addCustomField() {
-  customFields.value.push({ key: "", value: "" });
+function openAddFieldModal() {
+  newFieldType.value = "password";
+  newFieldLabel.value = "";
+  showAddFieldModal.value = true;
+  nextTick(() => {
+    fieldLabelInput.value?.focus();
+  });
+}
+
+function closeAddFieldModal() {
+  showAddFieldModal.value = false;
+}
+
+function confirmAddField() {
+  if (!newFieldLabel.value.trim()) return;
+  customFields.value.push({
+    key: newFieldLabel.value.trim(),
+    value: "",
+    type: newFieldType.value
+  });
+  showAddFieldModal.value = false;
+}
+
+function toggleCfVisibility(idx: number) {
+  cfVisibility.value[idx] = !cfVisibility.value[idx];
 }
 
 function removeCustomField(index: number) {
   customFields.value.splice(index, 1);
+  delete cfVisibility.value[index];
 }
 
 function handleSave() {
@@ -97,7 +135,13 @@ function handleSave() {
     username: username.value || undefined,
     password: password.value || undefined,
     websiteUrl: websiteUrl.value || undefined,
-    customFields: customFields.value.filter((cf) => cf.key.trim()),
+    customFields: customFields.value
+      .filter((cf) => cf.key.trim())
+      .map((cf) => ({
+        key: cf.key.trim(),
+        value: cf.value,
+        type: cf.type || "password"
+      })),
     notes: notes.value || undefined
   };
   
@@ -199,7 +243,7 @@ function handleSave() {
         <div class="custom-fields-section">
           <div class="section-title">
             <span>{{ t('vault.customFields') }}</span>
-            <button class="add-field-btn" @click="addCustomField">
+            <button type="button" class="add-field-btn" @click.stop.prevent="openAddFieldModal">
               <Plus :size="14" />
               <span>{{ t('vault.addCustomField') }}</span>
             </button>
@@ -216,12 +260,23 @@ function handleSave() {
               :placeholder="t('vault.fieldName')"
               class="flex-1"
             />
-            <input
-              v-model="cf.value"
-              type="text"
-              :placeholder="t('vault.fieldValue')"
-              class="flex-2"
-            />
+            <div class="custom-val-wrapper flex-2">
+              <input
+                v-model="cf.value"
+                :type="cf.type === 'password' && !cfVisibility[idx] ? 'password' : 'text'"
+                :placeholder="t('vault.fieldValue')"
+              />
+              <button
+                v-if="cf.type === 'password'"
+                type="button"
+                class="eye-btn"
+                @click="toggleCfVisibility(idx)"
+                :title="cfVisibility[idx] ? t('auth.hidePassword') : t('auth.showPassword')"
+              >
+                <EyeOff v-if="cfVisibility[idx]" :size="14" />
+                <Eye v-else :size="14" />
+              </button>
+            </div>
             <button class="remove-field-btn" @click="removeCustomField(idx)">
               <Trash2 :size="14" />
             </button>
@@ -236,8 +291,6 @@ function handleSave() {
             :placeholder="t('vault.notesPlaceholder')"
           ></textarea>
         </div>
-
-
       </div>
 
       <div class="modal-footer">
@@ -250,13 +303,60 @@ function handleSave() {
       </div>
     </div>
   </div>
+
+  <!-- 添加字段 弹窗 -->
+  <Teleport to="body">
+    <div v-if="showAddFieldModal" class="add-field-modal-overlay" @click.self="closeAddFieldModal">
+      <div class="add-field-modal-card">
+        <div class="add-field-header">
+          <h4>{{ t('vault.addFieldTitle') }}</h4>
+          <button class="close-btn" @click="closeAddFieldModal">
+            <X :size="18" />
+          </button>
+        </div>
+
+        <div class="add-field-body">
+          <div class="form-group">
+            <label>{{ t('vault.fieldType') }}</label>
+            <select v-model="newFieldType">
+              <option value="text">{{ t('vault.fieldTypeText') }}</option>
+              <option value="password">{{ t('vault.fieldTypePassword') }}</option>
+            </select>
+            <div class="field-hint">
+              {{ newFieldType === 'text' ? t('vault.fieldTypeTextHint') : t('vault.fieldTypePasswordHint') }}
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>{{ t('vault.fieldLabel') }} <span class="required-star">*</span></label>
+            <input
+              ref="fieldLabelInput"
+              v-model="newFieldLabel"
+              type="text"
+              :placeholder="t('vault.fieldLabelPlaceholder')"
+              @keyup.enter="confirmAddField"
+            />
+          </div>
+        </div>
+
+        <div class="add-field-footer">
+          <button class="btn-primary-sm" :disabled="!newFieldLabel.trim()" @click="confirmAddField">
+            {{ t('vault.add') }}
+          </button>
+          <button class="btn-secondary-sm" @click="closeAddFieldModal">
+            {{ t('common.cancel') }}
+          </button>
+        </div>
+      </div>
+    </div>
+  </Teleport>
 </template>
 
 <style scoped>
 .modal-overlay {
   position: fixed;
   inset: 0;
-  z-index: 1050;
+  z-index: 10500;
   background-color: rgba(0, 0, 0, 0.7);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
@@ -524,6 +624,168 @@ function handleSave() {
 }
 
 :root.light-theme .btn-secondary {
+  background-color: #f3f4f6;
+  color: #4b5563;
+  border-color: rgba(0, 0, 0, 0.1);
+}
+
+/* Custom Field Row Wrapper & Eye button */
+.custom-val-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.custom-val-wrapper input {
+  width: 100%;
+  padding-right: 32px;
+}
+
+.eye-btn {
+  position: absolute;
+  right: 6px;
+  background: transparent;
+  border: none;
+  color: #9ca3af;
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+}
+
+.eye-btn:hover {
+  color: #ffffff;
+}
+
+:root.light-theme .eye-btn:hover {
+  color: #111827;
+}
+
+/* Add Field Modal */
+.add-field-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 20000;
+  background-color: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+:root.light-theme .add-field-modal-overlay {
+  background-color: rgba(0, 0, 0, 0.4);
+}
+
+.add-field-modal-card {
+  background-color: #1c1c1e;
+  color: #f3f4f6;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 16px;
+  width: 100%;
+  max-width: 440px;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 20px 40px -5px rgba(0, 0, 0, 0.5);
+  overflow: hidden;
+  animation: modalPopIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes modalPopIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+:root.light-theme .add-field-modal-card {
+  background-color: #ffffff;
+  color: #111827;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.15);
+}
+
+.add-field-header {
+  padding: 16px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+:root.light-theme .add-field-header {
+  border-bottom-color: rgba(0, 0, 0, 0.06);
+}
+
+.add-field-header h4 {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 600;
+}
+
+.add-field-body {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.field-hint {
+  font-size: 12px;
+  color: #9ca3af;
+  margin-top: 4px;
+}
+
+:root.light-theme .field-hint {
+  color: #6b7280;
+}
+
+.required-star {
+  color: #ef4444;
+}
+
+.add-field-footer {
+  padding: 16px 20px;
+  display: flex;
+  gap: 10px;
+  justify-content: flex-start;
+}
+
+.btn-primary-sm {
+  background-color: #3b82f6;
+  color: #ffffff;
+  border: none;
+  padding: 8px 20px;
+  border-radius: 8px;
+  font-weight: 500;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.btn-primary-sm:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-secondary-sm {
+  background-color: #242426;
+  color: #9ca3af;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  padding: 8px 20px;
+  border-radius: 8px;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+:root.light-theme .btn-secondary-sm {
   background-color: #f3f4f6;
   color: #4b5563;
   border-color: rgba(0, 0, 0, 0.1);

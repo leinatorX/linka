@@ -1474,7 +1474,7 @@ export async function registerRoutes(app: FastifyInstance) {
         username: z.string().optional(),
         password: z.string().optional(),
         websiteUrl: z.string().optional(),
-        customFields: z.array(z.object({ key: z.string(), value: z.string() })).optional(),
+        customFields: z.array(z.object({ key: z.string(), value: z.string(), type: z.enum(["text", "password"]).optional() })).optional(),
         notes: z.string().optional()
       })
     });
@@ -1512,7 +1512,7 @@ export async function registerRoutes(app: FastifyInstance) {
         username: z.string().optional(),
         password: z.string().optional(),
         websiteUrl: z.string().optional(),
-        customFields: z.array(z.object({ key: z.string(), value: z.string() })).optional(),
+        customFields: z.array(z.object({ key: z.string(), value: z.string(), type: z.enum(["text", "password"]).optional() })).optional(),
         notes: z.string().optional()
       }).optional()
     });
