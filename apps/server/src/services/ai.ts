@@ -498,7 +498,9 @@ async function* streamOpenAi(active: ActiveAiConfig, messages: ChatMessage[], ef
 
   const toolCallsMap = new Map<number, { name: string; arguments: string }>();
 
-  while (true) {
+  let streamFinished = false;
+
+  while (!streamFinished) {
     const { done, value } = await reader.read();
     if (done) {
       break;
@@ -517,7 +519,8 @@ async function* streamOpenAi(active: ActiveAiConfig, messages: ChatMessage[], ef
       const data = text.slice(5).trim();
       if (!data) continue;
       if (data === "[DONE]") {
-        return;
+        streamFinished = true;
+        break;
       }
 
       try {
@@ -530,9 +533,11 @@ async function* streamOpenAi(active: ActiveAiConfig, messages: ChatMessage[], ef
               reasoning_details?: Array<{ text?: string; content?: string }>;
               tool_calls?: Array<{ index?: number; id?: string; function?: { name?: string; arguments?: string } }>;
             };
+            finish_reason?: string | null;
           }>;
         };
-        const delta = payload.choices?.[0]?.delta;
+        const choice = payload.choices?.[0];
+        const delta = choice?.delta;
         const reasoning = delta?.reasoning_content
           ?? delta?.reasoning
           ?? delta?.reasoning_details?.map((item) => item.text ?? item.content ?? "").join("");
@@ -554,6 +559,11 @@ async function* streamOpenAi(active: ActiveAiConfig, messages: ChatMessage[], ef
             }
             toolCallsMap.set(idx, existing);
           }
+        }
+        
+        if (choice && choice.finish_reason !== null && choice.finish_reason !== undefined) {
+          streamFinished = true;
+          break;
         }
       } catch {
         continue;
@@ -656,7 +666,9 @@ async function* streamAnthropic(active: ActiveAiConfig, messages: ChatMessage[],
 
   let currentToolCall: { name: string; arguments: string } | null = null;
 
-  while (true) {
+  let streamFinished = false;
+
+  while (!streamFinished) {
     const { done, value } = await reader.read();
     if (done) {
       break;
@@ -675,7 +687,8 @@ async function* streamAnthropic(active: ActiveAiConfig, messages: ChatMessage[],
       const data = text.slice(5).trim();
       if (!data) continue;
       if (data === "[DONE]") {
-        return;
+        streamFinished = true;
+        break;
       }
 
       try {
@@ -685,7 +698,8 @@ async function* streamAnthropic(active: ActiveAiConfig, messages: ChatMessage[],
           delta?: { type?: string; text?: string; thinking?: string; partial_json?: string };
         };
         if (payload.type === "message_stop") {
-          return;
+          streamFinished = true;
+          break;
         }
         if (payload.type === "content_block_start" && payload.content_block?.type === "tool_use") {
           currentToolCall = { name: payload.content_block.name ?? "", arguments: "" };
