@@ -358,12 +358,12 @@ onUnmounted(() => {
 
 
 const slashCommands = computed<SlashCommandItem[]>(() => [
-  { name: t('assistant.commands.addBookmark'), description: t('assistant.commands.addBookmarkDesc'), template: `${t('assistant.commands.addBookmark')} `, placeholder: '<网址>', icon: BookmarkPlus },
-  { name: t('assistant.commands.delBookmark'), description: t('assistant.commands.delBookmarkDesc'), template: `${t('assistant.commands.delBookmark')} `, placeholder: '<名称或ID>', icon: Trash2 },
-  { name: t('assistant.commands.addCategory'), description: t('assistant.commands.addCategoryDesc'), template: `${t('assistant.commands.addCategory')} `, placeholder: '<名称>', icon: Plus },
-  { name: t('assistant.commands.delCategory'), description: t('assistant.commands.delCategoryDesc'), template: `${t('assistant.commands.delCategory')} `, placeholder: '<名称>', icon: Trash2 },
-  { name: t('assistant.commands.searchWeb'), description: t('assistant.commands.searchWebDesc'), template: `${t('assistant.commands.searchWeb')} `, placeholder: '<关键词>', icon: Search },
-  { name: t('assistant.commands.fetchWeb'), description: t('assistant.commands.fetchWebDesc'), template: `${t('assistant.commands.fetchWeb')} `, placeholder: '<网址>', icon: Download }
+  { name: t('assistant.commands.addBookmark'), description: t('assistant.commands.addBookmarkDesc'), template: `${t('assistant.commands.addBookmark')} `, placeholder: '', icon: BookmarkPlus },
+  { name: t('assistant.commands.delBookmark'), description: t('assistant.commands.delBookmarkDesc'), template: `${t('assistant.commands.delBookmark')} `, placeholder: '', icon: Trash2 },
+  { name: t('assistant.commands.addCategory'), description: t('assistant.commands.addCategoryDesc'), template: `${t('assistant.commands.addCategory')} `, placeholder: '', icon: Plus },
+  { name: t('assistant.commands.delCategory'), description: t('assistant.commands.delCategoryDesc'), template: `${t('assistant.commands.delCategory')} `, placeholder: '', icon: Trash2 },
+  { name: t('assistant.commands.searchWeb'), description: t('assistant.commands.searchWebDesc'), template: `${t('assistant.commands.searchWeb')} `, placeholder: '', icon: Search },
+  { name: t('assistant.commands.fetchWeb'), description: t('assistant.commands.fetchWebDesc'), template: `${t('assistant.commands.fetchWeb')} `, placeholder: '', icon: Download }
 ]);
 
 const matchedCommands = computed(() => {
