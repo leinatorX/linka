@@ -341,7 +341,8 @@ export function useAssistant(options: UseAssistantOptions) {
           assistantMessage.text = messageText;
         }
       }, { signal: currentAbortController.signal });
-      await loadAssistantConversations();
+      isAssistantLoading.value = false;
+      void loadAssistantConversations();
     } catch (error: any) {
       if (error.name === "AbortError") {
         assistantMessages.value[0].text += " [已终止]";
