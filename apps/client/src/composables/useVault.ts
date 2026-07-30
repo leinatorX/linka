@@ -114,7 +114,7 @@ export function useVault() {
       );
       items.value = res.items;
     } catch (e: any) {
-      if (e.message?.includes("已锁定")) {
+      if (e.message?.includes("锁定") || e.message?.includes("解锁")) {
         lock();
       } else {
         errorMsg.value = e.message || "加载列表失败";
@@ -126,15 +126,24 @@ export function useVault() {
 
   async function fetchDetail(id: string): Promise<VaultItemDetail> {
     if (!vaultToken.value || !isUnlocked.value) {
-      throw new Error("保险箱已锁定");
+      lock();
+      throw new Error("保险箱已锁定，请先解锁");
     }
-    const res = await getVaultItemDetail(vaultToken.value, id);
-    return res.item;
+    try {
+      const res = await getVaultItemDetail(vaultToken.value, id);
+      return res.item;
+    } catch (e: any) {
+      if (e.message?.includes("锁定") || e.message?.includes("解锁")) {
+        lock();
+      }
+      throw e;
+    }
   }
 
   async function saveItem(payload: any, id?: string) {
     if (!vaultToken.value || !isUnlocked.value) {
-      throw new Error("保险箱已锁定");
+      lock();
+      throw new Error("保险箱已锁定，请先解锁");
     }
     loading.value = true;
     try {
@@ -145,7 +154,11 @@ export function useVault() {
       }
       await loadItems();
     } catch (e: any) {
-      errorMsg.value = e.message || "保存失败";
+      if (e.message?.includes("锁定") || e.message?.includes("解锁")) {
+        lock();
+      } else {
+        errorMsg.value = e.message || "保存失败";
+      }
       throw e;
     } finally {
       loading.value = false;
@@ -153,13 +166,20 @@ export function useVault() {
   }
 
   async function removeItem(id: string) {
-    if (!vaultToken.value || !isUnlocked.value) return;
+    if (!vaultToken.value || !isUnlocked.value) {
+      lock();
+      return;
+    }
     loading.value = true;
     try {
       await deleteVaultItem(vaultToken.value, id);
       await loadItems();
     } catch (e: any) {
-      errorMsg.value = e.message || "删除失败";
+      if (e.message?.includes("锁定") || e.message?.includes("解锁")) {
+        lock();
+      } else {
+        errorMsg.value = e.message || "删除失败";
+      }
       throw e;
     } finally {
       loading.value = false;

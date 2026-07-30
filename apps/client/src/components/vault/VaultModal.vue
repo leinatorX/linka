@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch } from "vue";
+import { onUnmounted, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { Eye, EyeOff, KeyRound, Lock, Plus, Search, ShieldCheck, Unlock, X } from "@lucide/vue";
 import { useVault } from "../../composables/useVault";
@@ -49,18 +49,36 @@ const showResetConfirm = ref(false);
 const loginPassword = ref("");
 const resetError = ref("");
 
+let autoCheckInterval: number | undefined;
+
 // 每次弹窗打开时检查状态，关闭时自动锁定
 watch(() => props.show, (newVal) => {
+  if (autoCheckInterval) {
+    window.clearInterval(autoCheckInterval);
+    autoCheckInterval = undefined;
+  }
   if (newVal) {
     formError.value = "";
     masterPassword.value = "";
     confirmMasterPassword.value = "";
     checkStatus();
+    // 定时自动同步检查解锁存活状态
+    autoCheckInterval = window.setInterval(() => {
+      if (props.show) {
+        checkStatus();
+      }
+    }, 10000);
   } else {
     // 关闭弹窗时自动锁定保险箱，确保下次打开需要重新输入主密码
     lock();
   }
 }, { immediate: true });
+
+onUnmounted(() => {
+  if (autoCheckInterval) {
+    window.clearInterval(autoCheckInterval);
+  }
+});
 
 async function handleUnlock() {
   if (!masterPassword.value) return;
