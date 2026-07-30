@@ -358,11 +358,12 @@ onUnmounted(() => {
 
 
 const slashCommands = computed<SlashCommandItem[]>(() => [
-  { name: '/search', description: '联网搜索', template: '/search ', placeholder: '<关键词>', icon: Search },
-  { name: '/fetch', description: '抓取网页内容', template: '/fetch ', placeholder: '<网址>', icon: Download },
-  { name: '/add', description: '快速收藏网页', template: '/add ', placeholder: '<网址>', icon: BookmarkPlus },
-  { name: '/category', description: '筛选或定位分类', template: '/category ', placeholder: '<名称>', icon: Tag },
-  { name: '/help', description: '获取命令与用法提示', template: '/help', placeholder: '', icon: HelpCircle }
+  { name: t('assistant.commands.addBookmark'), description: t('assistant.commands.addBookmarkDesc'), template: `${t('assistant.commands.addBookmark')} `, placeholder: '<网址>', icon: BookmarkPlus },
+  { name: t('assistant.commands.delBookmark'), description: t('assistant.commands.delBookmarkDesc'), template: `${t('assistant.commands.delBookmark')} `, placeholder: '<名称或ID>', icon: Trash2 },
+  { name: t('assistant.commands.addCategory'), description: t('assistant.commands.addCategoryDesc'), template: `${t('assistant.commands.addCategory')} `, placeholder: '<名称>', icon: Plus },
+  { name: t('assistant.commands.delCategory'), description: t('assistant.commands.delCategoryDesc'), template: `${t('assistant.commands.delCategory')} `, placeholder: '<名称>', icon: Trash2 },
+  { name: t('assistant.commands.searchWeb'), description: t('assistant.commands.searchWebDesc'), template: `${t('assistant.commands.searchWeb')} `, placeholder: '<关键词>', icon: Search },
+  { name: t('assistant.commands.fetchWeb'), description: t('assistant.commands.fetchWebDesc'), template: `${t('assistant.commands.fetchWeb')} `, placeholder: '<网址>', icon: Download }
 ]);
 
 const matchedCommands = computed(() => {
