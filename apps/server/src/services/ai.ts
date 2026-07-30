@@ -14,6 +14,7 @@ import {
   buildAssistantToolUserPrompt,
   buildAssistantToolResultPrompt
 } from "./prompts.js";
+import { executeAssistantToolPlan, type AssistantToolResult } from "./assistantTools.js";
 
 export interface AiClassification {
   title: string;
@@ -52,6 +53,9 @@ type StreamChunk = {
 } | {
   type: "tool_call";
   toolCall: AssistantToolPlan;
+} | {
+  type: "tool_result";
+  result: AssistantToolResult;
 };
 
 interface AssistantResult {
@@ -794,6 +798,7 @@ export async function* streamAssistantReply(options: {
   effort?: ReasoningEffort;
   webContext?: string;
   tools?: unknown[];
+  activeCategory?: string;
 }) {
   const prompt = buildAssistantUserPrompt({
     message: options.message,
@@ -815,12 +820,71 @@ export async function* streamAssistantReply(options: {
     }
   ];
 
-  if (active.provider.apiFormat === "anthropic") {
-    yield* streamAnthropic(active, messages, options.effort, options.tools);
-    return;
-  }
+  const maxSteps = 5;
 
-  yield* streamOpenAi(active, messages, options.effort, options.tools);
+  for (let step = 0; step < maxSteps; step++) {
+    const stream = active.provider.apiFormat === "anthropic"
+      ? streamAnthropic(active, messages, options.effort, options.tools)
+      : streamOpenAi(active, messages, options.effort, options.tools);
+
+    let hasToolCall = false;
+    let assistantMessageContent = "";
+    const currentToolCalls: AssistantToolPlan[] = [];
+
+    for await (const chunk of stream) {
+      if (chunk.type === "tool_call") {
+        hasToolCall = true;
+        currentToolCalls.push(chunk.toolCall);
+      } else if (chunk.type === "text") {
+        assistantMessageContent += chunk.text;
+      }
+      yield chunk;
+    }
+
+    if (assistantMessageContent) {
+      messages.push({ role: "assistant", content: assistantMessageContent });
+    }
+
+    if (!hasToolCall) {
+      break;
+    }
+
+    let shouldPauseLoop = false;
+    let toolResultContextText = "";
+
+    for (const toolCall of currentToolCalls) {
+      if (toolCall.tool === "none") continue;
+
+      const result = await executeAssistantToolPlan(toolCall, options.message, {
+        activeCategory: options.activeCategory,
+        history: options.history as any
+      });
+
+      if (result) {
+        yield { type: "tool_result", result } as StreamChunk;
+
+        if (result.type === "confirmation_request") {
+          shouldPauseLoop = true;
+          break; // 拦截二阶段确认，暂停执行后续操作
+        }
+
+        toolResultContextText += `\n执行工具 ${toolCall.tool} 结果：${result.message}`;
+        if (result.type === "web_context") {
+          toolResultContextText += `\n网页内容：${result.message}`;
+        }
+      }
+    }
+
+    if (shouldPauseLoop) {
+      break;
+    }
+
+    if (toolResultContextText) {
+      messages.push({ role: "user", content: `(系统通知) 以下是工具执行的返回结果，请根据这些结果继续回答用户的问题：\n${toolResultContextText}` });
+    } else {
+      messages.push({ role: "user", content: "(系统通知) 工具执行完毕但没有返回有用的文本结果，请继续回答。" });
+    }
+  }
 }
 
 export async function planAssistantToolCall(options: {

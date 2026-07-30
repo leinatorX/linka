@@ -311,7 +311,7 @@ export async function assistantRoutes(app: FastifyInstance) {
       } else if (webSearchFallbackResult) {
         const text = await shared.renderAssistantToolMessage(effectiveMessage, webSearchFallbackResult);
         addAssistantMessage(conversation.id, "assistant", text);
-        await refreshConversationTitle(text);
+        void refreshConversationTitle(text);
         shared.writeSse(reply.raw, "delta", { text });
         shared.writeSse(reply.raw, "done", { ...webSearchFallbackResult, message: text, conversation });
         reply.raw.end();
@@ -324,7 +324,7 @@ export async function assistantRoutes(app: FastifyInstance) {
         } else {
           const text = await shared.renderAssistantToolMessage(effectiveMessage, toolResult);
           addAssistantMessage(conversation.id, "assistant", text);
-          await refreshConversationTitle(text);
+          void refreshConversationTitle(text);
           shared.writeSse(reply.raw, "delta", { text });
           shared.writeSse(reply.raw, "done", { ...toolResult, message: text, conversation });
           reply.raw.end();
@@ -336,7 +336,7 @@ export async function assistantRoutes(app: FastifyInstance) {
     if (shared.isConfirmationOnly(effectiveMessage)) {
       const text = "没有找到可执行的待确认操作。请把要操作的书签或分类名称一起说清楚。";
       addAssistantMessage(conversation.id, "assistant", text);
-      await refreshConversationTitle(text);
+      void refreshConversationTitle(text);
       shared.writeSse(reply.raw, "delta", { text });
       shared.writeSse(reply.raw, "done", {
         type: "message",
@@ -365,7 +365,8 @@ export async function assistantRoutes(app: FastifyInstance) {
         model,
         effort,
         webContext,
-        tools: nativeTools
+        tools: nativeTools,
+        activeCategory
       })) {
         if (chunk.type === "reasoning") {
           shared.writeSse(reply.raw, "reasoning", { text: chunk.text });
@@ -376,40 +377,46 @@ export async function assistantRoutes(app: FastifyInstance) {
           const nativePlan = chunk.toolCall;
           if (nativePlan && nativePlan.tool !== "none") {
             shared.writeSse(reply.raw, "status", { text: `正在执行操作 [${nativePlan.tool}]...` });
-            const toolResult = await executeAssistantToolPlan(nativePlan, effectiveMessage, toolContext);
-            if (toolResult) {
-              executedNativeTool = true;
-              if (toolResult.type === "web_context") {
-                webContext = (webContext ? webContext + "\n" : "") + toolResult.message;
-              } else {
-                const text = await shared.renderAssistantToolMessage(effectiveMessage, toolResult);
-                addAssistantMessage(conversation.id, "assistant", text);
-                await refreshConversationTitle(text);
-                shared.writeSse(reply.raw, "delta", { text });
-                shared.writeSse(reply.raw, "done", { ...toolResult, message: text, conversation });
-                reply.raw.end();
-                return;
+          }
+          continue;
+        }
+
+        if (chunk.type === "tool_result") {
+          const toolResult = chunk.result;
+          if (toolResult.type === "confirmation_request") {
+            const text = toolResult.message;
+            addAssistantMessage(conversation.id, "assistant", text);
+            void refreshConversationTitle(text);
+            shared.writeSse(reply.raw, "delta", { text });
+            shared.writeSse(reply.raw, "done", { ...toolResult, message: text, conversation });
+            reply.raw.end();
+            return;
+          }
+          if (toolResult.results && Array.isArray(toolResult.results)) {
+            for (const r of toolResult.results) {
+              if (!results.some(b => b.id === r.id)) {
+                results.push(r as any);
               }
             }
           }
           continue;
         }
 
-        fullText += chunk.text;
-        shared.writeSse(reply.raw, "delta", { text: chunk.text });
+        if (chunk.type === "text") {
+          fullText += chunk.text;
+          shared.writeSse(reply.raw, "delta", { text: chunk.text });
+        }
       }
 
-      if (!executedNativeTool) {
-        const finalText = fullText.trim() || "我暂时没有生成有效回复。";
-        addAssistantMessage(conversation.id, "assistant", finalText);
-        await refreshConversationTitle(finalText);
-        shared.writeSse(reply.raw, "done", {
-          type: "message",
-          message: finalText,
-          results: results.length ? results : undefined,
-          conversation
-        });
-      }
+      const finalText = fullText.trim() || "我暂时没有生成有效回复。";
+      addAssistantMessage(conversation.id, "assistant", finalText);
+      void refreshConversationTitle(finalText);
+      shared.writeSse(reply.raw, "done", {
+        type: "message",
+        message: finalText,
+        results: results.length ? results : undefined,
+        conversation
+      });
     } catch (error) {
       request.log.error({ error }, "assistant stream failed");
       const text = webContext

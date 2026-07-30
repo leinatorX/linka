@@ -1277,8 +1277,10 @@ export async function registerRoutes(app: FastifyInstance) {
           continue;
         }
 
-        fullText += chunk.text;
-        writeSse(reply.raw, "delta", { text: chunk.text });
+        if (chunk.type === "text") {
+          fullText += chunk.text;
+          writeSse(reply.raw, "delta", { text: chunk.text });
+        }
       }
 
       if (!executedNativeTool) {

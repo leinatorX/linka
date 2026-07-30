@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
-import { ChevronDown, FileText, History, Loader2, Mic, Plus, Search, Send, Square, SquareTerminal, Video, X, Link, Image as ImageIcon, Check, Pencil, Trash2, Tag } from "@lucide/vue";
+import { ChevronDown, FileText, History, Loader2, Mic, Plus, Search, Send, Square, SquareTerminal, Video, X, Link, Image as ImageIcon, Check, Pencil, Trash2, Tag, Download, BookmarkPlus, HelpCircle } from "@lucide/vue";
+import AssistantSlashMenu, { type SlashCommandItem } from "./AssistantSlashMenu.vue";
 import type { AssistantUiMessage } from "../../composables/useAssistant";
 import type { AiModelConfig, AssistantAttachment, AssistantConversation, Bookmark, Category } from "../../types";
 import { listBookmarks, listCategories } from "../../api";
@@ -350,19 +351,12 @@ onUnmounted(() => {
 });
 
 
-interface SlashCommand {
-  name: string;
-  description: string;
-  template: string;
-}
-
-const slashCommands = computed<SlashCommand[]>(() => [
-  { name: t('assistant.commands.addBookmark'), description: t('assistant.commands.addBookmarkDesc'), template: `${t('assistant.commands.addBookmark')} ` },
-  { name: t('assistant.commands.delBookmark'), description: t('assistant.commands.delBookmarkDesc'), template: `${t('assistant.commands.delBookmark')} ` },
-  { name: t('assistant.commands.addCategory'), description: t('assistant.commands.addCategoryDesc'), template: `${t('assistant.commands.addCategory')} ` },
-  { name: t('assistant.commands.delCategory'), description: t('assistant.commands.delCategoryDesc'), template: `${t('assistant.commands.delCategory')} ` },
-  { name: t('assistant.commands.searchWeb'), description: t('assistant.commands.searchWebDesc'), template: `${t('assistant.commands.searchWeb')} ` },
-  { name: t('assistant.commands.fetchWeb'), description: t('assistant.commands.fetchWebDesc'), template: `${t('assistant.commands.fetchWeb')} ` },
+const slashCommands = computed<SlashCommandItem[]>(() => [
+  { name: '/search', description: '联网搜索', template: '/search ', placeholder: '<关键词>', icon: Search },
+  { name: '/fetch', description: '抓取网页内容', template: '/fetch ', placeholder: '<网址>', icon: Download },
+  { name: '/add', description: '快速收藏网页', template: '/add ', placeholder: '<网址>', icon: BookmarkPlus },
+  { name: '/category', description: '筛选或定位分类', template: '/category ', placeholder: '<名称>', icon: Tag },
+  { name: '/help', description: '获取命令与用法提示', template: '/help', placeholder: '', icon: HelpCircle }
 ]);
 
 const matchedCommands = computed(() => {
@@ -542,12 +536,26 @@ function escapeHtml(unsafe: string) {
     .replace(/'/g, "&#039;");
 }
 
-function applyCommand(cmd: SlashCommand) {
+function applyCommand(cmd: SlashCommandItem) {
   // 先关闭菜单，防止后续 Enter 事件二次触发
   showCommandMenu.value = false;
-  const name = escapeHtml(cmd.template);
-  const display = escapeHtml(cmd.template.substring(1));
+  const name = escapeHtml(cmd.name);
+  const display = escapeHtml(cmd.name.substring(1));
   insertBadge(`<span class="active-command-badge command-badge" contenteditable="false" data-name="${name}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-square-terminal"><path d="m7 11 2-2-2-2"/><path d="M11 13h4"/><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/></svg>${display}</span>`);
+
+  if (cmd.placeholder && editorRef.value) {
+    const sel = window.getSelection();
+    if (sel && sel.rangeCount > 0) {
+      const range = sel.getRangeAt(0);
+      const textNode = document.createTextNode(cmd.placeholder);
+      range.insertNode(textNode);
+      range.setStart(textNode, 0);
+      range.setEnd(textNode, cmd.placeholder.length);
+      sel.removeAllRanges();
+      sel.addRange(range);
+      onEditorInput();
+    }
+  }
 }
 
 function applyCombinedMention(option: CombinedMention) {
@@ -899,22 +907,13 @@ const previewImageUrl = ref<string | null>(null);
         </div>
         
         <transition name="fade">
-          <div v-if="showCommandMenu" class="command-menu">
-            <div v-if="matchedCommands.length === 0" class="command-menu-empty">
-              没有找到匹配的命令
-            </div>
-            <div v-for="(cmd, index) in matchedCommands" :key="cmd.name"
-                 class="command-menu-item"
-                 :class="{ active: index === selectedCommandIndex }"
-                 @mousedown.prevent
-                 @click="applyCommand(cmd)">
-              <div class="command-name" style="display:flex;align-items:center;gap:4px;flex-shrink:0;">
-                <SquareTerminal :size="14" />
-                {{ cmd.name.substring(1) }}
-              </div>
-              <div class="command-desc">{{ cmd.description }}</div>
-            </div>
-          </div>
+          <AssistantSlashMenu
+            v-if="showCommandMenu"
+            class="command-menu"
+            :commands="matchedCommands"
+            :selected-index="selectedCommandIndex"
+            @select="applyCommand"
+          />
         </transition>
 
         <transition name="fade">
