@@ -197,9 +197,13 @@ export async function streamAssistantMessage(
       handlers.onDelta?.(data);
     } else if (eventName === "done") {
       handlers.onDone?.(data);
+      return true;
     } else if (eventName === "error") {
       handlers.onError?.(data.message ?? "助手暂时不可用");
+      return true;
     }
+    
+    return false;
   }
 
   while (true) {
@@ -213,7 +217,9 @@ export async function streamAssistantMessage(
     buffer = events.pop() ?? "";
 
     for (const event of events) {
-      consumeEvent(event);
+      if (consumeEvent(event)) {
+        return;
+      }
     }
   }
 
