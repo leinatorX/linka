@@ -2,7 +2,13 @@
 import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { ChevronDown, FileText, History, Loader2, Mic, Plus, Search, Send, Square, SquareTerminal, Video, X, Link, Image as ImageIcon, Check, Pencil, Trash2, Tag, Download, BookmarkPlus, HelpCircle } from "@lucide/vue";
-import AssistantSlashMenu, { type SlashCommandItem } from "./AssistantSlashMenu.vue";
+export interface SlashCommandItem {
+  name: string;
+  description: string;
+  template: string;
+  placeholder: string;
+  icon?: any;
+}
 import type { AssistantUiMessage } from "../../composables/useAssistant";
 import type { AiModelConfig, AssistantAttachment, AssistantConversation, Bookmark, Category } from "../../types";
 import { listBookmarks, listCategories } from "../../api";
@@ -907,13 +913,22 @@ const previewImageUrl = ref<string | null>(null);
         </div>
         
         <transition name="fade">
-          <AssistantSlashMenu
-            v-if="showCommandMenu"
-            class="command-menu"
-            :commands="matchedCommands"
-            :selected-index="selectedCommandIndex"
-            @select="applyCommand"
-          />
+          <div class="command-menu" v-if="showCommandMenu">
+            <div v-if="matchedCommands.length === 0" class="command-menu-empty">
+              {{ t('assistant.commands.noCommandsFound') || '没有找到匹配的命令' }}
+            </div>
+            <div v-for="(cmd, index) in matchedCommands" :key="cmd.name"
+                 class="command-menu-item"
+                 :class="{ active: index === selectedCommandIndex }"
+                 @mousedown.prevent
+                 @click="applyCommand(cmd)">
+              <div class="command-name" style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
+                <component v-if="cmd.icon" :is="cmd.icon" :size="14" />
+                {{ cmd.name }}
+              </div>
+              <div class="command-desc">{{ cmd.description }}</div>
+            </div>
+          </div>
         </transition>
 
         <transition name="fade">
