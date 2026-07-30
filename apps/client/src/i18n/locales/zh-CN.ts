@@ -403,5 +403,44 @@ export default {
     deleteConfirm: "确定要删除此凭据吗？该操作无法撤销。",
     lockedHint: "保险箱已锁定",
     emptyHint: "暂无保存的凭据，点击右上角「新增凭据」添加。"
+  },
+  agentRules: {
+    title: "Agent 规则库",
+    desc: "统一保存与管理各类 AI 智能体规范（如 AGENTS.md、.cursorrules、CLAUDE.md 及通用 Prompt）",
+    searchPlaceholder: "搜索规则名称、技术栈或标签...",
+    newRule: "新增规则",
+    editRule: "编辑规则",
+    ruleTitle: "规则名称",
+    ruleTitlePlaceholder: "如：Vue 3 + Vite 开发规范、Cursor 全局规则",
+    ruleType: "规范类型",
+    category: "分类",
+    description: "说明/适用场景",
+    descriptionPlaceholder: "简述规则应用场景、适配项目或工具版本",
+    content: "规则 Markdown 内容",
+    contentPlaceholder: "# 项目规约\n\n## 代码风格\n- TypeScript 严格模式...",
+    tags: "标签 (逗号分隔)",
+    tagsPlaceholder: "Vue3, TypeScript, Tailwind",
+    categories: {
+      all: "全部",
+      general: "通用规范",
+      frontend: "前端规范",
+      backend: "后端规范",
+      fullstack: "全栈规范",
+      devops: "DevOps"
+    },
+    types: {
+      all: "全部类型",
+      agents_md: "AGENTS.md",
+      cursorrules: ".cursorrules",
+      windsurfrules: ".windsurfrules",
+      claude_md: "CLAUDE.md",
+      prompt: "通用 Prompt",
+      custom: "自定义"
+    },
+    copyContent: "一键复制",
+    copySuccess: "规则内容已复制到剪贴板",
+    downloadFile: "导出下载",
+    deleteConfirm: "确定要删除此规则吗？该操作无法撤销。",
+    emptyHint: "暂无保存的 Agent 规则，点击右上角「新增规则」创建。"
   }
 };

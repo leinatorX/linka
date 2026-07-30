@@ -1,4 +1,4 @@
-import type { AiProviderConfig, AiSettings, AiSettingsPayload, AssistantAttachment, AssistantConversation, AssistantMessage, AssistantResponse, AuthUser, Bookmark, Category, VaultItemDetail, VaultItemSummary } from "./types";
+import type { AgentRule, AgentRulePayload, AiProviderConfig, AiSettings, AiSettingsPayload, AssistantAttachment, AssistantConversation, AssistantMessage, AssistantResponse, AuthUser, Bookmark, Category, VaultItemDetail, VaultItemSummary } from "./types";
 
 async function request<T>(url: string, options?: RequestInit): Promise<T> {
   const headers = new Headers(options?.headers);
@@ -429,5 +429,37 @@ export function deleteVaultItem(vaultToken: string, id: string): Promise<{ succe
   return request(`/api/vault/items/${id}`, {
     method: "DELETE",
     headers: { "x-vault-token": vaultToken }
+  });
+}
+
+export function getAgentRules(search?: string, category?: string, ruleType?: string): Promise<{ rules: AgentRule[] }> {
+  const params = new URLSearchParams();
+  if (search) params.set("search", search);
+  if (category) params.set("category", category);
+  if (ruleType) params.set("ruleType", ruleType);
+  return request(`/api/agent-rules?${params.toString()}`);
+}
+
+export function getAgentRuleDetail(id: string): Promise<{ rule: AgentRule }> {
+  return request(`/api/agent-rules/${id}`);
+}
+
+export function createAgentRule(payload: AgentRulePayload): Promise<{ rule: AgentRule }> {
+  return request("/api/agent-rules", {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
+
+export function updateAgentRule(id: string, payload: Partial<AgentRulePayload>): Promise<{ rule: AgentRule }> {
+  return request(`/api/agent-rules/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(payload)
+  });
+}
+
+export function deleteAgentRule(id: string): Promise<{ success: boolean }> {
+  return request(`/api/agent-rules/${id}`, {
+    method: "DELETE"
   });
 }

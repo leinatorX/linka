@@ -402,6 +402,45 @@ export default {
     copySuccess: "已複製到剪貼簿",
     deleteConfirm: "確定要刪除此憑據嗎？該操作無法撤銷。",
     lockedHint: "保險箱已鎖定",
-    emptyHint: "暫無保存的憑據，點擊右上角「新增憑據」添加。"
+    emptyHint: "暫無儲存的憑據，點擊右上角「新增憑據」添加。"
+  },
+  agentRules: {
+    title: "Agent 規則庫",
+    desc: "統一儲存与管理各類 AI 智能體規範（如 AGENTS.md、.cursorrules、CLAUDE.md 及通用 Prompt）",
+    searchPlaceholder: "搜尋規則名稱、技術棧或標籤...",
+    newRule: "新增規則",
+    editRule: "編輯規則",
+    ruleTitle: "規則名稱",
+    ruleTitlePlaceholder: "如：Vue 3 + Vite 開發規範、Cursor 全局規則",
+    ruleType: "規範類型",
+    category: "分類",
+    description: "說明/適用場景",
+    descriptionPlaceholder: "簡述規則應用場景、適配項目或工具版本",
+    content: "規則 Markdown 內容",
+    contentPlaceholder: "# 項目規約\n\n## 代碼風格\n- TypeScript 嚴格模式...",
+    tags: "標籤 (逗號分隔)",
+    tagsPlaceholder: "Vue3, TypeScript, Tailwind",
+    categories: {
+      all: "全部",
+      general: "通用規範",
+      frontend: "前端規範",
+      backend: "後端規範",
+      fullstack: "全棧規範",
+      devops: "DevOps"
+    },
+    types: {
+      all: "全部類型",
+      agents_md: "AGENTS.md",
+      cursorrules: ".cursorrules",
+      windsurfrules: ".windsurfrules",
+      claude_md: "CLAUDE.md",
+      prompt: "通用 Prompt",
+      custom: "自訂"
+    },
+    copyContent: "一鍵複製",
+    copySuccess: "規則內容已複製到剪貼簿",
+    downloadFile: "導出下載",
+    deleteConfirm: "確定要刪除此規則嗎？該操作無法撤銷。",
+    emptyHint: "暫無儲存的 Agent 規則，點擊右上角「新增規則」創建。"
   }
 };

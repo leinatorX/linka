@@ -151,3 +151,29 @@ export interface WebSearchSettings {
   baseUrl: string;
   maxResults: number;
 }
+
+export type AgentRuleType = "agents_md" | "cursorrules" | "windsurfrules" | "claude_md" | "prompt" | "custom";
+export type AgentRuleCategory = "general" | "frontend" | "backend" | "fullstack" | "devops";
+
+export interface AgentRule {
+  id: string;
+  title: string;
+  ruleType: AgentRuleType;
+  category: AgentRuleCategory | string;
+  description: string;
+  content: string;
+  tags: string[];
+  isPinned: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AgentRulePayload {
+  title: string;
+  ruleType?: string;
+  category?: string;
+  description?: string;
+  content: string;
+  tags?: string[];
+  isPinned?: boolean;
+}

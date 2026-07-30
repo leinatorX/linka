@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Archive, Moon, Search, Sun, LayoutGrid, ShieldCheck } from "@lucide/vue";
+import { Archive, FileCode, LayoutGrid, Moon, Search, ShieldCheck, Sun } from "@lucide/vue";
 import { computed, ref, onMounted, onUnmounted } from "vue";
 import { RouterLink } from "vue-router";
 import { useI18n } from "vue-i18n";
@@ -25,6 +25,7 @@ const emit = defineEmits<{
   changeTheme: [theme: ThemeMode];
   toggleToolbox: [];
   openVault: [];
+  openAgentRules: [];
 }>();
 
 const { t, locale } = useI18n();
@@ -152,6 +153,10 @@ function handleFilterWheel(event: WheelEvent) {
 
         <button class="top-icon" :title="t('vault.title')" @click="$emit('openVault')">
           <ShieldCheck :size="18" />
+        </button>
+
+        <button class="top-icon" :title="t('agentRules.title')" @click="$emit('openAgentRules')">
+          <FileCode :size="18" />
         </button>
 
         <button class="top-icon" :class="{ active: showArchived }" :title="showArchived ? t('topbar.viewCurrent') : t('topbar.viewArchived')"

@@ -25,6 +25,14 @@ import {
   unlockVault,
   updateVaultItem
 } from "./services/vault.js";
+import {
+  createAgentRule,
+  deleteAgentRule,
+  getAgentRule,
+  getExportFilename,
+  listAgentRules,
+  updateAgentRule
+} from "./services/agentRules.js";
 import { isValidUrl } from "./utils/url.js";
 
 // 将 Zod 格式 schema 转换为 Fastify 原生 JSON Schema，保证 Swagger 能渲染出请求参数模型
@@ -1538,5 +1546,92 @@ export async function registerRoutes(app: FastifyInstance) {
     const { id } = request.params as { id: string };
     const success = deleteVaultItem(id);
     return { success };
+  });
+
+  // Agent Rules Hub Routes
+  app.get("/api/agent-rules", async (request, reply) => {
+    if (!requireAuth(request, reply)) return;
+    const { search, category, ruleType } = request.query as {
+      search?: string;
+      category?: string;
+      ruleType?: string;
+    };
+    const rules = listAgentRules(search, category, ruleType);
+    return { rules };
+  });
+
+  app.get("/api/agent-rules/:id", async (request, reply) => {
+    if (!requireAuth(request, reply)) return;
+    const { id } = request.params as { id: string };
+    try {
+      const rule = getAgentRule(id);
+      return { rule };
+    } catch (err: any) {
+      return reply.code(404).send({ message: err.message || "Agent 规则未找到" });
+    }
+  });
+
+  app.post("/api/agent-rules", async (request, reply) => {
+    if (!requireAuth(request, reply)) return;
+    const bodySchema = z.object({
+      title: z.string().trim().min(1).max(120),
+      ruleType: z.string().optional(),
+      category: z.string().optional(),
+      description: z.string().optional(),
+      content: z.string().default(""),
+      tags: z.array(z.string()).optional(),
+      isPinned: z.boolean().optional()
+    });
+    const parsed = bodySchema.safeParse(request.body);
+    if (!parsed.success) {
+      return reply.code(400).send({ message: "表单字段不合法" });
+    }
+    const rule = createAgentRule(parsed.data);
+    return { rule };
+  });
+
+  app.put("/api/agent-rules/:id", async (request, reply) => {
+    if (!requireAuth(request, reply)) return;
+    const { id } = request.params as { id: string };
+    const bodySchema = z.object({
+      title: z.string().trim().min(1).max(120).optional(),
+      ruleType: z.string().optional(),
+      category: z.string().optional(),
+      description: z.string().optional(),
+      content: z.string().optional(),
+      tags: z.array(z.string()).optional(),
+      isPinned: z.boolean().optional()
+    });
+    const parsed = bodySchema.safeParse(request.body);
+    if (!parsed.success) {
+      return reply.code(400).send({ message: "表单字段不合法" });
+    }
+    try {
+      const rule = updateAgentRule(id, parsed.data);
+      return { rule };
+    } catch (err: any) {
+      return reply.code(400).send({ message: err.message || "更新规则失败" });
+    }
+  });
+
+  app.delete("/api/agent-rules/:id", async (request, reply) => {
+    if (!requireAuth(request, reply)) return;
+    const { id } = request.params as { id: string };
+    const success = deleteAgentRule(id);
+    return { success };
+  });
+
+  app.get("/api/agent-rules/:id/download", async (request, reply) => {
+    if (!requireAuth(request, reply)) return;
+    const { id } = request.params as { id: string };
+    try {
+      const rule = getAgentRule(id);
+      const filename = getExportFilename(rule);
+      reply.header("Content-Disposition", `attachment; filename="${encodeURIComponent(filename)}"`);
+      reply.header("Content-Type", "text/markdown; charset=utf-8");
+      return reply.send(rule.content);
+    } catch (err: any) {
+      return reply.code(404).send({ message: err.message || "规则不存在" });
+    }
   });
 }

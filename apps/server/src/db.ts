@@ -84,6 +84,19 @@ export interface VaultSettingRecord {
   updated_at: string;
 }
 
+export interface AgentRuleRecord {
+  id: string;
+  title: string;
+  rule_type: string;
+  category: string;
+  description: string;
+  content: string;
+  tags: string;
+  is_pinned: 0 | 1;
+  created_at: string;
+  updated_at: string;
+}
+
 fs.mkdirSync(path.dirname(config.dbPath), { recursive: true });
 
 export const db = new Database(config.dbPath);
@@ -194,6 +207,23 @@ db.exec(`
     value TEXT NOT NULL,
     updated_at TEXT NOT NULL
   );
+
+  CREATE TABLE IF NOT EXISTS agent_rules (
+    id TEXT PRIMARY KEY,
+    title TEXT NOT NULL,
+    rule_type TEXT NOT NULL DEFAULT 'agents_md',
+    category TEXT NOT NULL DEFAULT 'general',
+    description TEXT NOT NULL DEFAULT '',
+    content TEXT NOT NULL DEFAULT '',
+    tags TEXT NOT NULL DEFAULT '[]',
+    is_pinned INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_agent_rules_rule_type ON agent_rules(rule_type);
+  CREATE INDEX IF NOT EXISTS idx_agent_rules_category ON agent_rules(category);
+  CREATE INDEX IF NOT EXISTS idx_agent_rules_updated_at ON agent_rules(updated_at);
 `);
 
 const bookmarkColumns = db.prepare("PRAGMA table_info(bookmarks)").all() as Array<{ name: string }>;
@@ -248,5 +278,20 @@ export function toAssistantMessage(record: AssistantMessageRecord) {
     role: record.role,
     content: record.content,
     createdAt: record.created_at
+  };
+}
+
+export function toAgentRule(record: AgentRuleRecord) {
+  return {
+    id: record.id,
+    title: record.title,
+    ruleType: record.rule_type,
+    category: record.category,
+    description: record.description,
+    content: record.content,
+    tags: JSON.parse(record.tags || "[]"),
+    isPinned: Boolean(record.is_pinned),
+    createdAt: record.created_at,
+    updatedAt: record.updated_at
   };
 }

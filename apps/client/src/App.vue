@@ -19,6 +19,7 @@ import EditBookmarkModal from "./components/settings/EditBookmarkModal.vue";
 import SettingsPage from "./components/settings/SettingsPage.vue";
 import ToolboxContainer from "./tools/ToolboxContainer.vue";
 import VaultModal from "./components/vault/VaultModal.vue";
+import AgentRulesModal from "./components/agent-rules/AgentRulesModal.vue";
 import { useAiSettings } from "./composables/useAiSettings";
 import { useAssistant } from "./composables/useAssistant";
 import { useAuth } from "./composables/useAuth";
@@ -35,6 +36,7 @@ const router = useRouter();
 const settingsTab = ref<SettingsTab>("account");
 const showToolbox = ref(false);
 const showVault = ref(false);
+const showAgentRules = ref(false);
 const isSettingsPage = computed(() => route.path === "/settings");
 
 const { t } = useI18n();
@@ -325,6 +327,7 @@ onUnmounted(() => {
       @toggle-archived="toggleArchivedView"
       @toggle-toolbox="showToolbox = !showToolbox"
       @open-vault="showVault = true"
+      @open-agent-rules="showAgentRules = true"
       @open-settings="openSettings"
     />
 
@@ -499,6 +502,8 @@ onUnmounted(() => {
   <ToolboxContainer :is-open="showToolbox" @close="showToolbox = false" />
 
   <VaultModal :show="showVault" @close="showVault = false" @show-toast="showToast" />
+
+  <AgentRulesModal :show="showAgentRules" @close="showAgentRules = false" @show-toast="showToast" />
 
   <ToastContainer :toasts="toasts" />
 </template>

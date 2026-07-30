@@ -402,6 +402,45 @@ export default {
     copySuccess: "Copied to clipboard",
     deleteConfirm: "Are you sure you want to delete this credential?",
     lockedHint: "Vault is locked",
-    emptyHint: "No saved credentials yet. Click 'Add Credential' to start."
+    emptyHint: "No saved credentials. Click 「New Item」 to add."
+  },
+  agentRules: {
+    title: "Agent Rules Hub",
+    desc: "Centralized store for AI agent instructions and conventions (AGENTS.md, .cursorrules, CLAUDE.md, System Prompts)",
+    searchPlaceholder: "Search rule title, tech stack or tags...",
+    newRule: "New Rule",
+    editRule: "Edit Rule",
+    ruleTitle: "Rule Title",
+    ruleTitlePlaceholder: "e.g. Vue 3 + Vite Guidelines, Cursor Global Rules",
+    ruleType: "Specification Type",
+    category: "Category",
+    description: "Description / Use Case",
+    descriptionPlaceholder: "Brief description of use case or target tool",
+    content: "Rule Markdown Content",
+    contentPlaceholder: "# Project Conventions\n\n## Code Style\n- TypeScript strict mode...",
+    tags: "Tags (Comma separated)",
+    tagsPlaceholder: "Vue3, TypeScript, Tailwind",
+    categories: {
+      all: "All",
+      general: "General",
+      frontend: "Frontend",
+      backend: "Backend",
+      fullstack: "Fullstack",
+      devops: "DevOps"
+    },
+    types: {
+      all: "All Types",
+      agents_md: "AGENTS.md",
+      cursorrules: ".cursorrules",
+      windsurfrules: ".windsurfrules",
+      claude_md: "CLAUDE.md",
+      prompt: "Prompt",
+      custom: "Custom"
+    },
+    copyContent: "Copy",
+    copySuccess: "Rule content copied to clipboard",
+    downloadFile: "Export File",
+    deleteConfirm: "Are you sure you want to delete this rule?",
+    emptyHint: "No agent rules found. Click 「New Rule」 to create one."
   }
 };
