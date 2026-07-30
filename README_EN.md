@@ -9,8 +9,8 @@
 </p>
 
 <p align="center">
-  An AI-powered bookmark manager for personal and small team self-hosting scenarios.<br/>
-  Fetches web metadata, uses LLMs to generate summaries, categories, and tags, and utilizes a conversational AI assistant for saving, retrieving, and understanding multi-modal content.
+  An AI-powered bookmark manager with a locally-encrypted vault for personal and small team self-hosting scenarios.<br/>
+  Built around the bookmark lifecycle — <b>capture → organize → search → converse</b>: automated web metadata extraction, AI-powered summarization, categorization and tagging, lightweight weighted retrieval, a ReAct-style AI assistant, and a local AES-256-GCM password vault safeguarding your most sensitive credentials.
 </p>
 
 <p align="center">
@@ -36,12 +36,15 @@
 ## Features
 
 - **Bookmark Management**: Add, edit, delete, paginate, and search your URL collections.
+- **Web Clipper (Browser Extension)**: A companion extension for Chrome, Edge, and Firefox that captures the current page (URL, title, selection, and metadata) and ships it to your self-hosted Linka in one click.
 - **Metadata Scraping**: Automatically parse titles, descriptions, favicons, and cover images.
 - **Smart Organization**: Generate summaries, recommend categories, and extract tags via AI.
 - **Category Views**: Support custom category management and seamless switching on the home page.
 - **Multi-language Support (i18n)**: Built-in Simplified Chinese, Traditional Chinese (Hong Kong, Taiwan), and English, with one-click switching.
 - **AI Assistant**: Search bookmarks, add collections, supplement descriptions, and execute bookmark operations using natural language.
-- **Safe Execution**: Before performing high-risk operations like deletion, the AI pops up an interactive card to request secondary confirmation, preventing accidental operations.
+- **ReAct-style Reasoning & Tool Use**: The assistant performs multi-step planning, calls tools, and surfaces the thought process so every action is auditable.
+- **Human-in-the-loop Confirmation**: Before high-risk actions (e.g. deletion), the AI pops up an interactive card to request explicit confirmation, preventing accidental operations.
+- **Lightweight Weighted Retrieval**: At ingest time, a 64-dim character-feature vector (`charCode % 64` hashing + L2 normalization) is produced and combined with keyword hit rates and cosine similarity under a 0.7 / 0.3 weighted score. **This is a zero-dependency, offline, millisecond-fast scoring scheme — it is not a real semantic embedding and cannot recognize synonyms or paraphrases.** A plug-in semantic embedding provider is on the roadmap.
 - **Flexible UI Experience**: Resizable AI assistant sidebar via drag-and-drop, voice input support, and responsive across different devices.
 - **Multi-modal Input**: The assistant supports image, video, and standard file attachments; image understanding relies on the current model's capabilities.
 - **Multi-provider Configuration**: Supports OpenAI-compatible interfaces and Anthropic Messages interfaces.
@@ -59,6 +62,9 @@
 | Backend | Node.js, Fastify, TypeScript |
 | Database | SQLite, better-sqlite3 |
 | AI Interfaces | OpenAI compatible, Anthropic Messages compatible |
+| Assistant Engine | ReAct multi-step reasoning, native tool calling, human-in-the-loop confirmation |
+| Retrieval | 64-dim character-feature vector + keyword weighted scoring (non-semantic embedding) |
+| Vault | AES-256-GCM, PBKDF2-SHA256 key derivation, HMAC verifier, in-memory session key |
 | Toolbox | AI translation, aspect ratio, timestamp, color conversion, encoding / decoding |
 | Documentation | Swagger UI / OpenAPI |
 | Deployment | Docker, Docker Compose |
@@ -355,6 +361,14 @@ npm run build
 - Finer-grained multi-user permissions.
 - Configurable metadata scraping strategies.
 - More comprehensive test coverage.
+
+## Roadmap
+
+- [ ] Web Clipper: more browser support
+- [ ] Auto category/tag inference from URL and title
+- [ ] Real semantic embedding provider (opt-in)
+- [ ] Backend-side search result highlighting
+- [ ] Mobile-first layout optimization
 
 ## License
 

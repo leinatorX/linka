@@ -9,8 +9,8 @@
 </p>
 
 <p align="center">
-  面向个人和小团队自托管场景的 <b>AI 知识库与加密保险箱</b>。<br/>
-  融合了自动化网页元数据提取、语义向量混合检索 (Hybrid Search) 与军工级本地 AES-GCM 加密，并由支持多步思考推理 (ReAct) 的对话式智能体深度赋能，实现全自动分类、联网探索和多模态理解。
+  面向个人和小团队自托管场景的 <b>AI 赋能书签管理平台</b>，并附带本地加密保险箱能力。<br/>
+  围绕书签的全生命周期（采集 → 整理 → 检索 → 对话），融合了自动化网页元数据提取、智能分类与标签、关键词与字符特征加权检索、ReAct 多步推理智能体，并由本地 AES-GCM 加密的密码保险箱守护核心隐私资产。
 </p>
 
 <p align="center">
@@ -37,7 +37,7 @@
 
 ### 🧠 AI 智能引擎与知识库
 - **智能体引擎 (ReAct Loop)**：强大的多步思考与推理链机制，支持连续自主调用工具（如自动触发联网搜索后再抓取网页进行综合总结）。
-- **混合语义检索 (Hybrid Search)**：书签与内容自带 Embedding 生成，结合关键词匹配与余弦相似度计算，实现精准的语义级别内容查找。
+- **轻量特征加权检索 (Hybrid Scoring)**：书签与内容在入库时生成 64 维字符特征向量（基于 `charCode % 64` 哈希桶 + L2 归一化），结合关键词命中（完全相等 / 子串包含 / 多词命中率）与余弦相似度按 0.7 / 0.3 权重加权打分，实现零依赖、低算力、纯本地的相似度排序。注意：此方案并非语义 Embedding，不能识别同义词或近义改写，定位是"轻量级、可离线、毫秒级"的轻量检索，未来将通过可选的 Embedding Provider 接入真正语义向量。
 - **自定义规则库 (Agent Rules)**：支持持久化存储自定义系统提示词，一键导出导入，精准调教 AI 的专属身份人设与输出规范。
 - **智能整理与分类**：基于大模型一键生成网页摘要、自动推荐最佳分类并提取核心标签。
 - **多模态与多模型**：助手支持图片、视频及常规附件理解（依赖底层模型）；无缝兼容 OpenAI (DeepSeek, Qwen) 和 Anthropic 等多种流式接口。
@@ -60,7 +60,7 @@
 | 后端 API | Node.js, Fastify (模块化路由), TypeScript |
 | 数据库存储 | SQLite (better-sqlite3) |
 | 加密内核 | PBKDF2, AES-GCM (Web Crypto API & Node Crypto) |
-| AI 与检索 | OpenAI/Anthropic Messages 接口, 余弦相似度 Vector 混合检索 |
+| AI 与检索 | OpenAI/Anthropic Messages 接口, 字符特征向量 + 关键词加权混合评分 (非语义 Embedding) |
 | 工程基建 | Vitest (单元测试), Swagger UI / OpenAPI |
 | 构建发布 | Vite, Docker, Docker Compose |
 
